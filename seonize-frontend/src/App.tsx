@@ -1,0 +1,35 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { MainLayout } from './components/layout';
+import {
+  HeroPage,
+  DashboardPage,
+  KeywordPage,
+  AnalysisPage,
+  OutlinePage,
+  WritingPage,
+  SettingsPage,
+} from './pages';
+import './index.css';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Hero page without layout */}
+        <Route path="/" element={<HeroPage />} />
+
+        {/* Pages with sidebar layout */}
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/keyword" element={<KeywordPage />} />
+          <Route path="/analysis" element={<AnalysisPage />} />
+          <Route path="/outline" element={<OutlinePage />} />
+          <Route path="/writing" element={<WritingPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;

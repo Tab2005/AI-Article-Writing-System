@@ -1,0 +1,107 @@
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.input-group--full-width {
+    width: 100%;
+}
+
+.input-group__label {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text);
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper__icon {
+    position: absolute;
+    left: var(--space-3);
+    display: flex;
+    align-items: center;
+    color: var(--color-text-muted);
+    pointer-events: none;
+}
+
+.input,
+.textarea,
+.select {
+    width: 100%;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    color: var(--color-text);
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-4);
+    transition: all var(--transition-fast);
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+    color: var(--color-text-muted);
+}
+
+.input--with-icon {
+    padding-left: calc(var(--space-3) + 24px + var(--space-2));
+}
+
+.input-wrapper--error .input,
+.input-wrapper--error .textarea,
+.input-wrapper--error .select {
+    border-color: var(--color-error);
+}
+
+.input-wrapper--error .input:focus,
+.input-wrapper--error .textarea:focus,
+.input-wrapper--error .select:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-3) center;
+    padding-right: calc(var(--space-4) + 20px);
+    cursor: pointer;
+}
+
+.input-group__error {
+    font-size: var(--text-sm);
+    color: var(--color-error);
+}
+
+.input-group__hint {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+/* Disabled state */
+.input:disabled,
+.textarea:disabled,
+.select:disabled {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+}

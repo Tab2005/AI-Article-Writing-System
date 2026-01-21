@@ -1,0 +1,1 @@
+# Seonize Backend - Core Package
