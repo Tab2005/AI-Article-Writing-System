@@ -97,6 +97,12 @@
     align-self: flex-start;
 }
 
+.settings-form__actions {
+    display: flex;
+    gap: var(--space-3);
+    padding-top: var(--space-2);
+}
+
 /* Actions */
 .settings-actions {
     display: flex;

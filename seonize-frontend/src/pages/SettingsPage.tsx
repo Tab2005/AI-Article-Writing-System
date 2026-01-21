@@ -30,10 +30,11 @@ export const SettingsPage: React.FC = () => {
 
     const [providers, setProviders] = useState<AIProvider[]>([]);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [savingGoogle, setSavingGoogle] = useState(false);
+    const [savingAI, setSavingAI] = useState(false);
     const [testingGoogle, setTestingGoogle] = useState(false);
     const [testingAI, setTestingAI] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string; section?: string } | null>(null);
     const [dbInfo, setDbInfo] = useState<{ type: string; is_local: boolean } | null>(null);
     const [cacheInfo, setCacheInfo] = useState<{ type: string; size?: number } | null>(null);
 
@@ -42,6 +43,14 @@ export const SettingsPage: React.FC = () => {
         loadProviders();
         loadSystemInfo();
     }, []);
+
+    // Auto-hide message after 3 seconds
+    useEffect(() => {
+        if (message) {
+            const timer = setTimeout(() => setMessage(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [message]);
 
     const loadSettings = async () => {
         try {
@@ -66,7 +75,6 @@ export const SettingsPage: React.FC = () => {
             }
         } catch (error) {
             console.error('Failed to load providers:', error);
-            // Use default providers
             setProviders([
                 { id: 'gemini', name: 'Google Gemini', models: ['gemini-2.0-flash', 'gemini-1.5-pro'], description: '' },
                 { id: 'zeabur', name: 'Zeabur AI Hub', models: ['gpt-4o-mini', 'gpt-4o'], description: '' },
@@ -92,27 +100,58 @@ export const SettingsPage: React.FC = () => {
         }
     };
 
-    const handleSave = async () => {
-        setSaving(true);
+    // Save Google API settings only
+    const handleSaveGoogle = async () => {
+        setSavingGoogle(true);
         setMessage(null);
 
         try {
             const response = await fetch(`${API_URL}/api/settings/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settings),
+                body: JSON.stringify({
+                    google_search_api_key: settings.google_search_api_key,
+                    google_search_cx: settings.google_search_cx,
+                }),
             });
 
             if (response.ok) {
-                setMessage({ type: 'success', text: '設定已儲存成功！' });
-                loadSettings();
+                setMessage({ type: 'success', text: 'Google Search API 設定已儲存！', section: 'google' });
             } else {
-                setMessage({ type: 'error', text: '儲存設定失敗' });
+                setMessage({ type: 'error', text: '儲存 Google 設定失敗', section: 'google' });
             }
         } catch (error) {
-            setMessage({ type: 'error', text: '儲存時發生錯誤' });
+            setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'google' });
         } finally {
-            setSaving(false);
+            setSavingGoogle(false);
+        }
+    };
+
+    // Save AI settings only
+    const handleSaveAI = async () => {
+        setSavingAI(true);
+        setMessage(null);
+
+        try {
+            const response = await fetch(`${API_URL}/api/settings/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ai_provider: settings.ai_provider,
+                    ai_api_key: settings.ai_api_key,
+                    ai_model: settings.ai_model,
+                }),
+            });
+
+            if (response.ok) {
+                setMessage({ type: 'success', text: 'AI 模組設定已儲存！', section: 'ai' });
+            } else {
+                setMessage({ type: 'error', text: '儲存 AI 設定失敗', section: 'ai' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'ai' });
+        } finally {
+            setSavingAI(false);
         }
     };
 
@@ -122,7 +161,7 @@ export const SettingsPage: React.FC = () => {
 
         try {
             const response = await fetch(
-                `${API_URL}/api/settings/test-google?api_key=${settings.google_search_api_key}&cx=${settings.google_search_cx}`,
+                `${API_URL}/api/settings/test-google?api_key=${encodeURIComponent(settings.google_search_api_key)}&cx=${encodeURIComponent(settings.google_search_cx)}`,
                 { method: 'POST' }
             );
 
@@ -130,9 +169,10 @@ export const SettingsPage: React.FC = () => {
             setMessage({
                 type: result.success ? 'success' : 'error',
                 text: result.message,
+                section: 'google',
             });
         } catch (error) {
-            setMessage({ type: 'error', text: '測試連線時發生錯誤' });
+            setMessage({ type: 'error', text: '測試連線時發生錯誤', section: 'google' });
         } finally {
             setTestingGoogle(false);
         }
@@ -157,9 +197,10 @@ export const SettingsPage: React.FC = () => {
             setMessage({
                 type: result.success ? 'success' : 'error',
                 text: result.message,
+                section: 'ai',
             });
         } catch (error) {
-            setMessage({ type: 'error', text: '測試連線時發生錯誤' });
+            setMessage({ type: 'error', text: '測試連線時發生錯誤', section: 'ai' });
         } finally {
             setTestingAI(false);
         }
@@ -185,7 +226,8 @@ export const SettingsPage: React.FC = () => {
                 </p>
             </div>
 
-            {message && (
+            {/* Global Message */}
+            {message && !message.section && (
                 <div className={`settings-message settings-message--${message.type}`}>
                     {message.text}
                 </div>
@@ -194,6 +236,9 @@ export const SettingsPage: React.FC = () => {
             {/* System Info */}
             <div className="settings-section">
                 <h3 className="settings-section__title">系統資訊</h3>
+                <p className="settings-section__desc">
+                    佈署到生產環境時會自動切換（透過環境變數 DATABASE_URL 和 REDIS_URL）
+                </p>
                 <div className="system-info-grid">
                     <KPICard
                         title="資料庫"
@@ -249,6 +294,13 @@ export const SettingsPage: React.FC = () => {
                     用於 SERP 競品分析，需要 Google Custom Search API
                 </p>
 
+                {/* Section-specific message */}
+                {message?.section === 'google' && (
+                    <div className={`settings-message settings-message--${message.type}`}>
+                        {message.text}
+                    </div>
+                )}
+
                 <div className="settings-form">
                     <Input
                         label="API Key"
@@ -265,14 +317,23 @@ export const SettingsPage: React.FC = () => {
                         onChange={(e) => setSettings({ ...settings, google_search_cx: e.target.value })}
                         fullWidth
                     />
-                    <Button
-                        variant="secondary"
-                        onClick={handleTestGoogle}
-                        loading={testingGoogle}
-                        disabled={!settings.google_search_api_key || !settings.google_search_cx}
-                    >
-                        測試連線
-                    </Button>
+                    <div className="settings-form__actions">
+                        <Button
+                            variant="secondary"
+                            onClick={handleTestGoogle}
+                            loading={testingGoogle}
+                            disabled={!settings.google_search_api_key || !settings.google_search_cx}
+                        >
+                            測試連線
+                        </Button>
+                        <Button
+                            variant="cta"
+                            onClick={handleSaveGoogle}
+                            loading={savingGoogle}
+                        >
+                            儲存 Google 設定
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -292,6 +353,13 @@ export const SettingsPage: React.FC = () => {
                 <p className="settings-section__desc">
                     配置 AI 內容生成服務，支援 Gemini、Zeabur AI Hub
                 </p>
+
+                {/* Section-specific message */}
+                {message?.section === 'ai' && (
+                    <div className={`settings-message settings-message--${message.type}`}>
+                        {message.text}
+                    </div>
+                )}
 
                 <div className="settings-form">
                     <Select
@@ -320,22 +388,24 @@ export const SettingsPage: React.FC = () => {
                         onChange={(e) => setSettings({ ...settings, ai_model: e.target.value })}
                         fullWidth
                     />
-                    <Button
-                        variant="secondary"
-                        onClick={handleTestAI}
-                        loading={testingAI}
-                        disabled={!settings.ai_api_key}
-                    >
-                        測試連線
-                    </Button>
+                    <div className="settings-form__actions">
+                        <Button
+                            variant="secondary"
+                            onClick={handleTestAI}
+                            loading={testingAI}
+                            disabled={!settings.ai_api_key}
+                        >
+                            測試連線
+                        </Button>
+                        <Button
+                            variant="cta"
+                            onClick={handleSaveAI}
+                            loading={savingAI}
+                        >
+                            儲存 AI 設定
+                        </Button>
+                    </div>
                 </div>
-            </div>
-
-            {/* Save Button */}
-            <div className="settings-actions">
-                <Button variant="cta" size="lg" onClick={handleSave} loading={saving}>
-                    儲存設定
-                </Button>
             </div>
         </div>
     );

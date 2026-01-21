@@ -58,8 +58,17 @@ class AIService:
             {
                 "id": AIProvider.ZEABUR,
                 "name": "Zeabur AI Hub",
-                "models": ["gpt-4o-mini", "gpt-4o", "claude-3-haiku"],
-                "description": "Zeabur 提供的 AI 代理服務",
+                "models": [
+                    # Claude 系列
+                    "claude-haiku-4-5", "claude-sonnet-4-5",
+                    # GPT 系列
+                    "gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini",
+                    # Gemini 系列
+                    "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-flash-image",
+                    # 其他模型
+                    "deepseek-v3.2-exp", "glm-4.6", "llama-3.3-70b", "gpt-oss-120b", "qwen-3-32",
+                ],
+                "description": "Zeabur 提供的 AI 代理服務（多模型支援）",
             },
             {
                 "id": AIProvider.OPENAI,
