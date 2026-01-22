@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { KPICard, DataTable, Button } from '../components/ui';
+import { useNavigate } from 'react-router-dom';
+import { KPICard, DataTable } from '../components/ui';
 import { projectsApi } from '../services/api';
 import type { ProjectState } from '../types';
+import { SearchIntent, WritingStyle, OptimizationMode } from '../types';
 import './DashboardPage.css';
 
 export const DashboardPage: React.FC = () => {
+    const navigate = useNavigate();
     const [projects, setProjects] = useState<ProjectState[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -28,9 +31,9 @@ export const DashboardPage: React.FC = () => {
                     primary_keyword: 'SEO 優化技巧',
                     country: 'TW',
                     language: 'zh-TW',
-                    intent: 'informational' as const,
-                    style: '專業教育風' as const,
-                    optimization_mode: 'seo' as const,
+                    intent: SearchIntent.INFORMATIONAL,
+                    style: WritingStyle.EDUCATIONAL,
+                    optimization_mode: OptimizationMode.SEO,
                     serp_results: [],
                     keywords: { secondary: ['關鍵字研究', '內容優化'], lsi: [] },
                     candidate_titles: [],
@@ -45,9 +48,9 @@ export const DashboardPage: React.FC = () => {
                     primary_keyword: '數位行銷策略',
                     country: 'TW',
                     language: 'zh-TW',
-                    intent: 'commercial' as const,
-                    style: '評論風' as const,
-                    optimization_mode: 'hybrid' as const,
+                    intent: SearchIntent.COMMERCIAL,
+                    style: WritingStyle.REVIEW,
+                    optimization_mode: OptimizationMode.HYBRID,
                     serp_results: [],
                     keywords: { secondary: ['社群行銷', 'SEO'], lsi: [] },
                     candidate_titles: [],
@@ -175,16 +178,13 @@ export const DashboardPage: React.FC = () => {
             <div className="dashboard-section">
                 <div className="dashboard-section__header">
                     <h2 className="dashboard-section__title">最近專案</h2>
-                    <Button variant="primary" size="sm">
-                        新建專案
-                    </Button>
                 </div>
                 <DataTable
                     columns={columns}
-                    data={projects}
+                    data={projects.slice(0, 5)} // 只顯示前5筆資料
                     loading={loading}
-                    onRowClick={(project) => console.log('Selected project:', project)}
-                    emptyMessage="尚無專案，點擊「新建專案」開始"
+                    onRowClick={(project) => navigate(`/projects/${project.project_id}`)}
+                    emptyMessage="尚無專案"
                 />
             </div>
 

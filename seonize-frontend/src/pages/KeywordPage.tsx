@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard } from '../components/ui';
 import { researchApi, analysisApi } from '../services/api';
 import type { SERPResult, AnalysisResponse } from '../types';
+import { SearchIntent, WritingStyle } from '../types';
 import './KeywordPage.css';
 
 export const KeywordPage: React.FC = () => {
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const initialKeyword = searchParams.get('q') || '';
 
     const [keyword, setKeyword] = useState(initialKeyword);
@@ -38,8 +40,8 @@ export const KeywordPage: React.FC = () => {
                 { rank: 3, url: 'https://example3.com', title: `${keyword}推薦：10 個必學技巧`, snippet: '專家推薦...', headings: [] },
             ]);
             setAnalysisResult({
-                intent_analysis: { intent: 'informational' as const, confidence: 0.85, signals: ['疑問詞觸發'] },
-                suggested_style: '專業教育風' as const,
+                intent_analysis: { intent: SearchIntent.INFORMATIONAL, confidence: 0.85, signals: ['疑問詞觸發'] },
+                suggested_style: WritingStyle.EDUCATIONAL,
                 keywords: { secondary_keywords: [`${keyword}技巧`, `${keyword}方法`], lsi_keywords: ['相關詞'], keyword_weights: {} },
                 title_suggestions: [
                     { title: `2026 ${keyword}完整指南`, ctr_score: 0.9, intent_match: true },
@@ -49,6 +51,23 @@ export const KeywordPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCreateProject = () => {
+        if (!analysisResult) return;
+
+        // 將分析結果傳遞到新建專案頁面
+        const projectData = {
+            keyword,
+            intent: analysisResult.intent_analysis.intent,
+            suggested_style: analysisResult.suggested_style,
+            keywords: analysisResult.keywords,
+            title_suggestions: analysisResult.title_suggestions,
+            serp_results: serpResults,
+        };
+
+        // 導航到新建專案頁面，帶上分析數據
+        navigate('/projects/new', { state: projectData });
     };
 
     const serpColumns = [
@@ -154,14 +173,30 @@ export const KeywordPage: React.FC = () => {
                     {/* Keywords Section */}
                     <div className="keyword-section">
                         <h3 className="keyword-section__title">延伸關鍵字</h3>
-                        <div className="keyword-tags">
-                            {analysisResult.keywords.secondary_keywords.map((kw, i) => (
-                                <span key={i} className="keyword-tag keyword-tag--secondary">{kw}</span>
-                            ))}
-                            {analysisResult.keywords.lsi_keywords.map((kw, i) => (
-                                <span key={i} className="keyword-tag keyword-tag--lsi">{kw}</span>
-                            ))}
-                        </div>
+
+                        {/* Secondary Keywords */}
+                        {analysisResult.keywords.secondary_keywords.length > 0 && (
+                            <div className="keyword-group">
+                                <div className="keyword-group__label">次要關鍵字</div>
+                                <div className="keyword-tags">
+                                    {analysisResult.keywords.secondary_keywords.map((kw, i) => (
+                                        <span key={`secondary-${i}`} className="keyword-tag keyword-tag--secondary">{kw}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* LSI Keywords */}
+                        {analysisResult.keywords.lsi_keywords.length > 0 && (
+                            <div className="keyword-group">
+                                <div className="keyword-group__label">LSI 關鍵字</div>
+                                <div className="keyword-tags">
+                                    {analysisResult.keywords.lsi_keywords.map((kw, i) => (
+                                        <span key={`lsi-${i}`} className="keyword-tag keyword-tag--lsi">{kw}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Title Suggestions */}
@@ -186,6 +221,21 @@ export const KeywordPage: React.FC = () => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Create Project Button */}
+                    <div className="keyword-section">
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            onClick={handleCreateProject}
+                            className="create-project-btn"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 5v14M5 12h14" />
+                            </svg>
+                            創建專案
+                        </Button>
                     </div>
                 </div>
             )}

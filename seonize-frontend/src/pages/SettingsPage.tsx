@@ -8,6 +8,7 @@ interface SettingsData {
     ai_provider: string;
     ai_api_key: string;
     ai_model: string;
+    serper_api_key: string;
 }
 
 interface AIProvider {
@@ -26,22 +27,28 @@ export const SettingsPage: React.FC = () => {
         ai_provider: 'gemini',
         ai_api_key: '',
         ai_model: 'gemini-2.0-flash',
+        serper_api_key: '',
     });
 
     const [providers, setProviders] = useState<AIProvider[]>([]);
     const [loading, setLoading] = useState(true);
     const [savingGoogle, setSavingGoogle] = useState(false);
     const [savingAI, setSavingAI] = useState(false);
+    const [savingSerper, setSavingSerper] = useState(false);
     const [testingGoogle, setTestingGoogle] = useState(false);
     const [testingAI, setTestingAI] = useState(false);
+    const [testingSerper, setTestingSerper] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string; section?: string } | null>(null);
     const [dbInfo, setDbInfo] = useState<{ type: string; is_local: boolean } | null>(null);
     const [cacheInfo, setCacheInfo] = useState<{ type: string; size?: number } | null>(null);
+    const [serpProvider, setSerpProvider] = useState<string>('google');
+    const [serpProviders, setSerpProviders] = useState<Array<{ id: string; name: string; description: string; configured: boolean }>>([]);
 
     useEffect(() => {
         loadSettings();
         loadProviders();
         loadSystemInfo();
+        loadSerpProviders();
     }, []);
 
     // Auto-hide message after 3 seconds
@@ -73,8 +80,8 @@ export const SettingsPage: React.FC = () => {
                 const data = await response.json();
                 setProviders(data);
             }
-        } catch (error) {
-            console.error('Failed to load providers:', error);
+        } catch {
+            console.error('Failed to load providers');
             setProviders([
                 { id: 'gemini', name: 'Google Gemini', models: ['gemini-2.0-flash', 'gemini-1.5-pro'], description: '' },
                 { id: 'zeabur', name: 'Zeabur AI Hub', models: ['gpt-4o-mini', 'gpt-4o'], description: '' },
@@ -95,8 +102,27 @@ export const SettingsPage: React.FC = () => {
             if (cacheResponse.ok) {
                 setCacheInfo(await cacheResponse.json());
             }
-        } catch (error) {
-            console.error('Failed to load system info:', error);
+        } catch {
+            console.error('Failed to load system info');
+        }
+    };
+
+    const loadSerpProviders = async () => {
+        try {
+            const [providersResponse, currentProviderResponse] = await Promise.all([
+                fetch(`${API_URL}/api/settings/serp-providers`),
+                fetch(`${API_URL}/api/settings/serp-provider`),
+            ]);
+
+            if (providersResponse.ok) {
+                setSerpProviders(await providersResponse.json());
+            }
+            if (currentProviderResponse.ok) {
+                const data = await currentProviderResponse.json();
+                setSerpProvider(data.provider);
+            }
+        } catch {
+            console.error('Failed to load SERP providers');
         }
     };
 
@@ -120,7 +146,7 @@ export const SettingsPage: React.FC = () => {
             } else {
                 setMessage({ type: 'error', text: '儲存 Google 設定失敗', section: 'google' });
             }
-        } catch (error) {
+        } catch {
             setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'google' });
         } finally {
             setSavingGoogle(false);
@@ -148,10 +174,36 @@ export const SettingsPage: React.FC = () => {
             } else {
                 setMessage({ type: 'error', text: '儲存 AI 設定失敗', section: 'ai' });
             }
-        } catch (error) {
+        } catch {
             setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'ai' });
         } finally {
             setSavingAI(false);
+        }
+    };
+
+    // Save Serper API settings only
+    const handleSaveSerper = async () => {
+        setSavingSerper(true);
+        setMessage(null);
+
+        try {
+            const response = await fetch(`${API_URL}/api/settings/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    serper_api_key: settings.serper_api_key,
+                }),
+            });
+
+            if (response.ok) {
+                setMessage({ type: 'success', text: 'Serper.dev API 設定已儲存！', section: 'serper' });
+            } else {
+                setMessage({ type: 'error', text: '儲存 Serper 設定失敗', section: 'serper' });
+            }
+        } catch {
+            setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'serper' });
+        } finally {
+            setSavingSerper(false);
         }
     };
 
@@ -171,7 +223,7 @@ export const SettingsPage: React.FC = () => {
                 text: result.message,
                 section: 'google',
             });
-        } catch (error) {
+        } catch {
             setMessage({ type: 'error', text: '測試連線時發生錯誤', section: 'google' });
         } finally {
             setTestingGoogle(false);
@@ -199,10 +251,55 @@ export const SettingsPage: React.FC = () => {
                 text: result.message,
                 section: 'ai',
             });
-        } catch (error) {
+        } catch {
             setMessage({ type: 'error', text: '測試連線時發生錯誤', section: 'ai' });
         } finally {
             setTestingAI(false);
+        }
+    };
+
+    const handleTestSerper = async () => {
+        setTestingSerper(true);
+        setMessage(null);
+
+        try {
+            const response = await fetch(`${API_URL}/api/settings/test-serper`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    api_key: settings.serper_api_key,
+                }),
+            });
+
+            const result = await response.json();
+            setMessage({
+                type: result.success ? 'success' : 'error',
+                text: result.message,
+                section: 'serper',
+            });
+        } catch {
+            setMessage({ type: 'error', text: '測試連線時發生錯誤', section: 'serper' });
+        } finally {
+            setTestingSerper(false);
+        }
+    };
+
+    const handleSerpProviderChange = async (provider: string) => {
+        try {
+            const response = await fetch(`${API_URL}/api/settings/serp-provider`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider }),
+            });
+
+            if (response.ok) {
+                setSerpProvider(provider);
+                setMessage({ type: 'success', text: `SERP 提供者已切換為 ${provider === 'google' ? 'Google Search API' : 'Serper.dev API'}`, section: 'serp' });
+            } else {
+                setMessage({ type: 'error', text: '切換 SERP 提供者失敗', section: 'serp' });
+            }
+        } catch {
+            setMessage({ type: 'error', text: '切換時發生錯誤', section: 'serp' });
         }
     };
 
@@ -281,129 +378,224 @@ export const SettingsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Google Search API */}
+            {/* SERP Provider Selection */}
             <div className="settings-section">
                 <h3 className="settings-section__title">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="11" cy="11" r="8" />
                         <path d="m21 21-4.3-4.3" />
                     </svg>
-                    Google Search API
+                    SERP 搜尋設定
                 </h3>
                 <p className="settings-section__desc">
-                    用於 SERP 競品分析，需要 Google Custom Search API
+                    選擇用於關鍵字分析的 SERP 搜尋 API
                 </p>
 
                 {/* Section-specific message */}
-                {message?.section === 'google' && (
+                {message?.section === 'serp' && (
                     <div className={`settings-message settings-message--${message.type}`}>
                         {message.text}
                     </div>
                 )}
 
                 <div className="settings-form">
-                    <Input
-                        label="API Key"
-                        type="password"
-                        placeholder="輸入 Google API Key..."
-                        value={settings.google_search_api_key}
-                        onChange={(e) => setSettings({ ...settings, google_search_api_key: e.target.value })}
+                    <Select
+                        label="SERP 提供者"
+                        options={serpProviders.map(p => ({
+                            value: p.id,
+                            label: `${p.name} ${p.configured ? '' : '(未設定)'}`
+                        }))}
+                        value={serpProvider}
+                        onChange={(e) => handleSerpProviderChange(e.target.value)}
                         fullWidth
                     />
-                    <Input
-                        label="Custom Search Engine ID (CX)"
-                        placeholder="輸入 Search Engine ID..."
-                        value={settings.google_search_cx}
-                        onChange={(e) => setSettings({ ...settings, google_search_cx: e.target.value })}
-                        fullWidth
-                    />
-                    <div className="settings-form__actions">
-                        <Button
-                            variant="secondary"
-                            onClick={handleTestGoogle}
-                            loading={testingGoogle}
-                            disabled={!settings.google_search_api_key || !settings.google_search_cx}
-                        >
-                            測試連線
-                        </Button>
-                        <Button
-                            variant="cta"
-                            onClick={handleSaveGoogle}
-                            loading={savingGoogle}
-                        >
-                            儲存 Google 設定
-                        </Button>
+                    <div className="serp-providers-info">
+                        {serpProviders.map(provider => (
+                            <div key={provider.id} className={`serp-provider-item ${provider.configured ? 'configured' : 'not-configured'}`}>
+                                <strong>{provider.name}</strong>: {provider.description}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
 
-            {/* AI Module */}
-            <div className="settings-section">
-                <h3 className="settings-section__title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 8V4H8" />
-                        <rect width="16" height="12" x="4" y="8" rx="2" />
-                        <path d="M2 14h2" />
-                        <path d="M20 14h2" />
-                        <path d="M15 13v2" />
-                        <path d="M9 13v2" />
-                    </svg>
-                    AI 模組設定
-                </h3>
-                <p className="settings-section__desc">
-                    配置 AI 內容生成服務，支援 Gemini、Zeabur AI Hub
-                </p>
+            {/* Settings Sections Grid */}
+            <div className="settings-sections-grid">
+                {/* Google Search API */}
+                <div className="settings-section">
+                    <h3 className="settings-section__title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.3-4.3" />
+                        </svg>
+                        Google Search API
+                    </h3>
+                    <p className="settings-section__desc">
+                        用於 SERP 競品分析，需要 Google Custom Search API
+                    </p>
 
-                {/* Section-specific message */}
-                {message?.section === 'ai' && (
-                    <div className={`settings-message settings-message--${message.type}`}>
-                        {message.text}
+                    {/* Section-specific message */}
+                    {message?.section === 'google' && (
+                        <div className={`settings-message settings-message--${message.type}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className="settings-form">
+                        <Input
+                            label="API Key"
+                            type="password"
+                            placeholder="輸入 Google API Key..."
+                            value={settings.google_search_api_key}
+                            onChange={(e) => setSettings({ ...settings, google_search_api_key: e.target.value })}
+                            fullWidth
+                        />
+                        <Input
+                            label="Custom Search Engine ID (CX)"
+                            placeholder="輸入 Search Engine ID..."
+                            value={settings.google_search_cx}
+                            onChange={(e) => setSettings({ ...settings, google_search_cx: e.target.value })}
+                            fullWidth
+                        />
+                        <div className="settings-form__actions">
+                            <Button
+                                variant="secondary"
+                                onClick={handleTestGoogle}
+                                loading={testingGoogle}
+                                disabled={!settings.google_search_api_key || !settings.google_search_cx}
+                            >
+                                測試連線
+                            </Button>
+                            <Button
+                                variant="cta"
+                                onClick={handleSaveGoogle}
+                                loading={savingGoogle}
+                            >
+                                儲存 Google 設定
+                            </Button>
+                        </div>
                     </div>
-                )}
+                </div>
 
-                <div className="settings-form">
-                    <Select
-                        label="AI 提供者"
-                        options={providers.map(p => ({ value: p.id, label: p.name }))}
-                        value={settings.ai_provider}
-                        onChange={(e) => setSettings({
-                            ...settings,
-                            ai_provider: e.target.value,
-                            ai_model: providers.find(p => p.id === e.target.value)?.models[0] || '',
-                        })}
-                        fullWidth
-                    />
-                    <Input
-                        label="API Key"
-                        type="password"
-                        placeholder={`輸入 ${selectedProvider?.name || 'AI'} API Key...`}
-                        value={settings.ai_api_key}
-                        onChange={(e) => setSettings({ ...settings, ai_api_key: e.target.value })}
-                        fullWidth
-                    />
-                    <Select
-                        label="模型"
-                        options={modelOptions}
-                        value={settings.ai_model}
-                        onChange={(e) => setSettings({ ...settings, ai_model: e.target.value })}
-                        fullWidth
-                    />
-                    <div className="settings-form__actions">
-                        <Button
-                            variant="secondary"
-                            onClick={handleTestAI}
-                            loading={testingAI}
-                            disabled={!settings.ai_api_key}
-                        >
-                            測試連線
-                        </Button>
-                        <Button
-                            variant="cta"
-                            onClick={handleSaveAI}
-                            loading={savingAI}
-                        >
-                            儲存 AI 設定
-                        </Button>
+                {/* AI Module */}
+                <div className="settings-section">
+                    <h3 className="settings-section__title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 8V4H8" />
+                            <rect width="16" height="12" x="4" y="8" rx="2" />
+                            <path d="M2 14h2" />
+                            <path d="M20 14h2" />
+                            <path d="M15 13v2" />
+                            <path d="M9 13v2" />
+                        </svg>
+                        AI 模組設定
+                    </h3>
+                    <p className="settings-section__desc">
+                        配置 AI 內容生成服務，支援 Gemini、Zeabur AI Hub
+                    </p>
+
+                    {/* Section-specific message */}
+                    {message?.section === 'ai' && (
+                        <div className={`settings-message settings-message--${message.type}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className="settings-form">
+                        <Select
+                            label="AI 提供者"
+                            options={providers.map(p => ({ value: p.id, label: p.name }))}
+                            value={settings.ai_provider}
+                            onChange={(e) => setSettings({
+                                ...settings,
+                                ai_provider: e.target.value,
+                                ai_model: providers.find(p => p.id === e.target.value)?.models[0] || '',
+                            })}
+                            fullWidth
+                        />
+                        <Input
+                            label="API Key"
+                            type="password"
+                            placeholder={`輸入 ${selectedProvider?.name || 'AI'} API Key...`}
+                            value={settings.ai_api_key}
+                            onChange={(e) => setSettings({ ...settings, ai_api_key: e.target.value })}
+                            fullWidth
+                        />
+                        <Select
+                            label="模型"
+                            options={modelOptions}
+                            value={settings.ai_model}
+                            onChange={(e) => setSettings({ ...settings, ai_model: e.target.value })}
+                            fullWidth
+                        />
+                        <div className="settings-form__actions">
+                            <Button
+                                variant="secondary"
+                                onClick={handleTestAI}
+                                loading={testingAI}
+                                disabled={!settings.ai_api_key}
+                            >
+                                測試連線
+                            </Button>
+                            <Button
+                                variant="cta"
+                                onClick={handleSaveAI}
+                                loading={savingAI}
+                            >
+                                儲存 AI 設定
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Serper.dev API */}
+                <div className="settings-section">
+                    <h3 className="settings-section__title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                            <path d="M21 3v5h-5" />
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                            <path d="M8 16H3v5" />
+                        </svg>
+                        Serper.dev API
+                    </h3>
+                    <p className="settings-section__desc">
+                        用於 SERP 競品分析，提供 Google 搜尋結果 API 服務
+                    </p>
+
+                    {/* Section-specific message */}
+                    {message?.section === 'serper' && (
+                        <div className={`settings-message settings-message--${message.type}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className="settings-form">
+                        <Input
+                            label="API Key"
+                            type="password"
+                            placeholder="輸入 Serper.dev API Key..."
+                            value={settings.serper_api_key}
+                            onChange={(e) => setSettings({ ...settings, serper_api_key: e.target.value })}
+                            fullWidth
+                        />
+                        <div className="settings-form__actions">
+                            <Button
+                                variant="secondary"
+                                onClick={handleTestSerper}
+                                loading={testingSerper}
+                                disabled={!settings.serper_api_key}
+                            >
+                                測試連線
+                            </Button>
+                            <Button
+                                variant="cta"
+                                onClick={handleSaveSerper}
+                                loading={savingSerper}
+                            >
+                                儲存 Serper 設定
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>

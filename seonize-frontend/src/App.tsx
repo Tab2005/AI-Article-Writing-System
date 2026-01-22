@@ -4,6 +4,9 @@ import {
   HeroPage,
   DashboardPage,
   KeywordPage,
+  ProjectNewPage,
+  ProjectDetailPage,
+  ProjectsPage,
   AnalysisPage,
   OutlinePage,
   WritingPage,
@@ -21,7 +24,10 @@ function App() {
         {/* Pages with sidebar layout */}
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/keyword" element={<KeywordPage />} />
+          <Route path="/projects/new" element={<ProjectNewPage />} />
+          <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/analysis" element={<AnalysisPage />} />
           <Route path="/outline" element={<OutlinePage />} />
           <Route path="/writing" element={<WritingPage />} />

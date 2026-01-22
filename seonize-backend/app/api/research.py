@@ -30,23 +30,20 @@ async def research_serp(request: ResearchRequest):
     執行 SERP 研究 - 獲取 Google Top 10 搜尋結果
     第一階段：數據採集與研究
     """
-    # TODO: Integrate with Google Search API or SerpApi
-    # For now, return mock data
-    mock_results = [
-        SERPResult(
-            rank=i + 1,
-            url=f"https://example{i + 1}.com/article",
-            title=f"範例標題 {i + 1} - {request.keyword}",
-            snippet=f"這是關於 {request.keyword} 的範例摘要內容...",
-            headings=[f"H2: 關於 {request.keyword}", "H2: 詳細說明", "H3: 注意事項"]
-        )
-        for i in range(request.num_results)
-    ]
-    
+    from app.services.serp_service import SERPService
+
+    # 使用 SERP 服務執行搜尋
+    results = await SERPService.search(
+        keyword=request.keyword,
+        num_results=request.num_results,
+        country=request.country,
+        language=request.language
+    )
+
     return ResearchResponse(
         keyword=request.keyword,
-        results=mock_results,
-        total_results=len(mock_results)
+        results=results,
+        total_results=len(results)
     )
 
 

@@ -10,7 +10,7 @@ interface Section {
 }
 
 export const WritingPage: React.FC = () => {
-    const [sections, setSections] = useState<Section[]>([
+    const [sections] = useState<Section[]>([
         { id: '1', heading: '什麼是 SEO？基礎概念解析', content: '', status: 'done' },
         { id: '2', heading: 'SEO 的重要性', content: '', status: 'generating' },
         { id: '3', heading: '2026 年最新 SEO 技巧', content: '', status: 'pending' },
@@ -18,7 +18,7 @@ export const WritingPage: React.FC = () => {
     ]);
 
     const [activeSection, setActiveSection] = useState<string>('2');
-    const [generatedContent, setGeneratedContent] = useState<string>(`## SEO 的重要性
+    const [generatedContent] = useState<string>(`## SEO 的重要性
 
 在數位時代，**搜尋引擎優化 (SEO)** 已成為企業線上成功的關鍵因素。根據最新統計，超過 93% 的線上體驗始於搜尋引擎，這意味著若您的網站無法在搜尋結果中獲得良好排名，您將錯失大量潛在客戶。
 

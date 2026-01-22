@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import './Input.css';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -19,7 +19,8 @@ export const Input: React.FC<InputProps> = ({
     id,
     ...props
 }) => {
-    const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+    const generatedId = useId();
+    const inputId = id || `input-${generatedId}`;
 
     return (
         <div className={`input-group ${fullWidth ? 'input-group--full-width' : ''} ${className}`}>
@@ -58,7 +59,8 @@ export const Textarea: React.FC<TextareaProps> = ({
     id,
     ...props
 }) => {
-    const textareaId = id || `textarea-${Math.random().toString(36).substr(2, 9)}`;
+    const generatedId = useId();
+    const textareaId = id || `textarea-${generatedId}`;
 
     return (
         <div className={`input-group ${fullWidth ? 'input-group--full-width' : ''} ${className}`}>
@@ -96,7 +98,8 @@ export const Select: React.FC<SelectProps> = ({
     id,
     ...props
 }) => {
-    const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
+    const generatedId = useId();
+    const selectId = id || `select-${generatedId}`;
 
     return (
         <div className={`input-group ${fullWidth ? 'input-group--full-width' : ''} ${className}`}>

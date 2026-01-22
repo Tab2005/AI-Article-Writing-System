@@ -27,6 +27,7 @@ class SettingsResponse(BaseModel):
     ai_provider: str = "gemini"
     ai_api_key: Optional[str] = None
     ai_model: str = "gemini-2.0-flash"
+    serper_api_key: Optional[str] = None
 
 
 class UpdateSettingsRequest(BaseModel):
@@ -35,12 +36,21 @@ class UpdateSettingsRequest(BaseModel):
     ai_provider: Optional[str] = None
     ai_api_key: Optional[str] = None
     ai_model: Optional[str] = None
+    serper_api_key: Optional[str] = None
 
 
 class TestConnectionRequest(BaseModel):
     provider: str
     api_key: str
     model: Optional[str] = None
+
+
+class TestSerperRequest(BaseModel):
+    api_key: str
+
+
+class SERPProviderUpdate(BaseModel):
+    provider: str
 
 
 class TestConnectionResponse(BaseModel):
@@ -69,7 +79,7 @@ async def get_settings(db: Session = Depends(get_db)):
     settings = {}
     
     # 從資料庫讀取設定
-    for key in ["google_search_api_key", "google_search_cx", "ai_provider", "ai_api_key", "ai_model"]:
+    for key in ["google_search_api_key", "google_search_cx", "ai_provider", "ai_api_key", "ai_model", "serper_api_key"]:
         value = Settings.get_value(db, key)
         if value:
             # API Key 類型需要遮蔽
@@ -84,6 +94,7 @@ async def get_settings(db: Session = Depends(get_db)):
         ai_provider=settings.get("ai_provider", "gemini"),
         ai_api_key=settings.get("ai_api_key"),
         ai_model=settings.get("ai_model", "gemini-2.0-flash"),
+        serper_api_key=settings.get("serper_api_key"),
     )
 
 
@@ -184,3 +195,44 @@ async def get_cache_info():
     """取得快取資訊"""
     from app.core.cache import get_cache
     return get_cache().get_stats()
+
+
+@router.get("/serp-providers")
+async def get_serp_providers():
+    """取得可用的 SERP 提供者"""
+    try:
+        from app.services.serp_service import SERPService
+        return SERPService.get_available_providers()
+    except Exception as e:
+        # 如果發生錯誤，返回預設提供者列表
+        return [
+            {
+                "id": "google",
+                "name": "Google Search API",
+                "description": "使用 Google Custom Search API（未設定）",
+                "configured": False,
+            },
+            {
+                "id": "serper",
+                "name": "Serper.dev API",
+                "description": "使用 Serper.dev Google SERP API（未設定）",
+                "configured": False,
+            }
+        ]
+
+
+@router.post("/serp-provider")
+async def set_serp_provider(request: SERPProviderUpdate, db: Session = Depends(get_db)):
+    """設定預設的 SERP 提供者"""
+    if request.provider not in ["google", "serper"]:
+        raise HTTPException(status_code=400, detail="無效的提供者")
+
+    Settings.set_value(db, "serp_provider", request.provider)
+    return {"message": f"SERP 提供者已設定為 {request.provider}"}
+
+
+@router.get("/serp-provider")
+async def get_serp_provider(db: Session = Depends(get_db)):
+    """取得目前的 SERP 提供者"""
+    provider = Settings.get_value(db, "serp_provider", "google")
+    return {"provider": provider}
