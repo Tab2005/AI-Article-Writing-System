@@ -17,6 +17,10 @@ export const ProjectsPage: React.FC = () => {
     const navigate = useNavigate();
     const [projects, setProjects] = useState<ProjectState[]>([]);
     const [loading, setLoading] = useState(true);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; project: ProjectState | null }>({
+        show: false,
+        project: null,
+    });
 
     useEffect(() => {
         loadProjects();
@@ -68,6 +72,17 @@ export const ProjectsPage: React.FC = () => {
             ]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteProject = async (project: ProjectState) => {
+        try {
+            await projectsApi.delete(project.project_id);
+            setProjects(prev => prev.filter(p => p.project_id !== project.project_id));
+            setDeleteConfirm({ show: false, project: null });
+        } catch (error) {
+            console.error('Failed to delete project:', error);
+            // TODO: Show error message
         }
     };
 
@@ -134,6 +149,36 @@ export const ProjectsPage: React.FC = () => {
             header: '更新時間',
             render: (value: unknown) => new Date(String(value)).toLocaleDateString('zh-TW'),
         },
+        {
+            key: 'actions',
+            header: '操作',
+            width: '120px',
+            render: (_value: unknown, row: ProjectState) => (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/projects/${row.project_id}`);
+                        }}
+                    >
+                        查看
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm({ show: true, project: row });
+                        }}
+                        style={{ color: 'var(--color-error)' }}
+                    >
+                        刪除
+                    </Button>
+                </div>
+            ),
+        },
     ];
 
     return (
@@ -160,10 +205,56 @@ export const ProjectsPage: React.FC = () => {
                     columns={columns}
                     data={projects}
                     loading={loading}
-                    onRowClick={(project) => navigate(`/projects/${project.project_id}`)}
                     emptyMessage="尚無專案，點擊「新建專案」開始"
                 />
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm.show && deleteConfirm.project && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                }}>
+                    <div className="modal-content" style={{
+                        background: 'white',
+                        borderRadius: '8px',
+                        padding: '24px',
+                        maxWidth: '400px',
+                        width: '90%',
+                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+                    }}>
+                        <h3 style={{ margin: '0 0 16px 0', color: 'var(--color-text)' }}>
+                            確認刪除專案
+                        </h3>
+                        <p style={{ margin: '0 0 24px 0', color: 'var(--color-text-secondary)' }}>
+                            您確定要刪除專案「{deleteConfirm.project.primary_keyword}」嗎？此操作無法撤銷。
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setDeleteConfirm({ show: false, project: null })}
+                            >
+                                取消
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => deleteConfirm.project && handleDeleteProject(deleteConfirm.project)}
+                                style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                            >
+                                刪除
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

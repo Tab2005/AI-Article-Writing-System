@@ -4,15 +4,18 @@
 Write-Host "Starting Seonize Development Environment..." -ForegroundColor Cyan
 Write-Host ""
 
+# Get the script directory
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+
 # Start Backend
 Write-Host "Starting Backend (FastAPI) on port 8000..." -ForegroundColor Green
-$backendJob = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\seonize-backend'; python -m uvicorn app.main:app --reload --port 8000" -PassThru
+$backendJob = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ScriptDir\seonize-backend'; python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000" -PassThru
 
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 3
 
 # Start Frontend  
 Write-Host "Starting Frontend (Vite) on port 5173..." -ForegroundColor Green
-$frontendJob = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\seonize-frontend'; npm run dev" -PassThru
+$frontendJob = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ScriptDir\seonize-frontend'; npm run dev -- --host 0.0.0.0" -PassThru
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Yellow

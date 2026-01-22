@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Input, Select } from '../components/ui';
 import { projectsApi } from '../services/api';
 import type { ProjectState } from '../types';
+import { SearchIntent, WritingStyle } from '../types';
 import './ProjectDetailPage.css';
 
 export const ProjectDetailPage: React.FC = () => {
@@ -12,6 +13,7 @@ export const ProjectDetailPage: React.FC = () => {
     const [project, setProject] = useState<ProjectState | null>(null);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState(false);
 
     const loadProject = useCallback(async () => {
         if (!projectId) return;
@@ -47,6 +49,17 @@ export const ProjectDetailPage: React.FC = () => {
             setEditing(false);
         } catch (error) {
             console.error('更新專案失敗:', error);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!project) return;
+
+        try {
+            await projectsApi.delete(project.project_id);
+            navigate('/projects');
+        } catch (error) {
+            console.error('刪除專案失敗:', error);
         }
     };
 
@@ -115,8 +128,11 @@ export const ProjectDetailPage: React.FC = () => {
                     </div>
                 </div>
                 <div className="project-detail-actions">
-                    <Button variant="secondary" onClick={() => navigate('/dashboard')}>
-                        返回儀表板
+                    <Button variant="secondary" onClick={() => navigate('/projects')}>
+                        返回列表
+                    </Button>
+                    <Button variant="outline" onClick={() => setDeleteConfirm(true)} style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}>
+                        刪除專案
                     </Button>
                     <Button variant="primary" onClick={() => setEditing(!editing)}>
                         {editing ? '取消編輯' : '編輯專案'}
@@ -289,6 +305,53 @@ export const ProjectDetailPage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm && project && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                }}>
+                    <div className="modal-content" style={{
+                        background: 'white',
+                        borderRadius: '8px',
+                        padding: '24px',
+                        maxWidth: '400px',
+                        width: '90%',
+                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+                    }}>
+                        <h3 style={{ margin: '0 0 16px 0', color: 'var(--color-text)' }}>
+                            確認刪除專案
+                        </h3>
+                        <p style={{ margin: '0 0 24px 0', color: 'var(--color-text-secondary)' }}>
+                            您確定要刪除專案「{project.primary_keyword}」嗎？此操作無法撤銷。
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setDeleteConfirm(false)}
+                            >
+                                取消
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleDelete}
+                                style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                            >
+                                刪除
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

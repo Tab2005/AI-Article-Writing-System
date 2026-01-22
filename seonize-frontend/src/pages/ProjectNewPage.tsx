@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Input, Select } from '../components/ui';
 import { projectsApi } from '../services/api';
-import type { AnalysisResponse } from '../types';
+import type { AnalysisResponse, ProjectCreate } from '../types';
 import { SearchIntent, WritingStyle, OptimizationMode } from '../types';
 import './ProjectNewPage.css';
 
@@ -12,7 +12,7 @@ export const ProjectNewPage: React.FC = () => {
     const projectData = location.state as AnalysisResponse | null; // 從關鍵字分析傳來的數據
 
     const [formData, setFormData] = useState<ProjectCreate>({
-        primary_keyword: projectData?.keyword || '',
+        primary_keyword: projectData?.keywords?.secondary_keywords?.[0] || '',
         country: 'TW',
         language: 'zh-TW',
         optimization_mode: OptimizationMode.SEO,
@@ -26,7 +26,7 @@ export const ProjectNewPage: React.FC = () => {
     // 如果有傳來的分析數據，預填表單
     useEffect(() => {
         if (projectData) {
-            setSelectedIntent(projectData.intent);
+            setSelectedIntent(projectData.intent_analysis?.intent || '');
             setSelectedStyle(projectData.suggested_style);
             if (projectData.title_suggestions?.length > 0) {
                 setSelectedTitle(projectData.title_suggestions[0].title);
