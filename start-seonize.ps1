@@ -9,7 +9,8 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # Start Backend
 Write-Host "Starting Backend (FastAPI) on port 8000..." -ForegroundColor Green
-$backendJob = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ScriptDir\seonize-backend'; python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000" -PassThru
+$backendPython = Join-Path $ScriptDir "seonize-backend\venv\Scripts\python.exe"
+$backendJob = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ScriptDir\seonize-backend'; & '$backendPython' -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000" -PassThru
 
 Start-Sleep -Seconds 3
 

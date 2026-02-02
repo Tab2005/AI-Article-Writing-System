@@ -6,6 +6,8 @@ Seonize Backend - Analysis API Router
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Optional
+import jieba
+from sklearn.feature_extraction.text import TfidfVectorizer
 from app.models.project import SearchIntent, WritingStyle
 
 router = APIRouter()
@@ -69,15 +71,32 @@ async def analyze_intent(request: AnalysisRequest):
         style = WritingStyle.EDUCATIONAL
         signals = ["預設為資訊型"]
     
-    # Mock keyword extraction (TODO: integrate jieba + TF-IDF)
+    # 關鍵字抽取：jieba + TF-IDF
+    corpus = [request.keyword] + request.titles + request.content_samples
+    corpus = [c for c in corpus if c and c.strip()]
+
+    def jieba_tokenizer(text: str) -> List[str]:
+        return [t for t in jieba.lcut(text) if t.strip()]
+
+    stop_words = {request.keyword, "的", "是", "了", "和", "與", "及", "在", "也", "或", "為", "如何", "什麼"}
+
+    tfidf = TfidfVectorizer(tokenizer=jieba_tokenizer, stop_words=stop_words)
+    tfidf_matrix = tfidf.fit_transform(corpus) if corpus else None
+    feature_names = tfidf.get_feature_names_out().tolist() if corpus else []
+
+    keyword_scores: Dict[str, float] = {}
+    if tfidf_matrix is not None and feature_names:
+        scores = tfidf_matrix.mean(axis=0).A1
+        keyword_scores = {feature_names[i]: float(scores[i]) for i in range(len(feature_names))}
+
+    sorted_keywords = sorted(keyword_scores.items(), key=lambda x: x[1], reverse=True)
+    secondary_keywords = [k for k, _ in sorted_keywords if k not in stop_words][:8]
+    lsi_keywords = [k for k, _ in sorted_keywords if k not in stop_words][8:16]
+
     keywords = KeywordExtractionResult(
-        secondary_keywords=[f"{request.keyword}技巧", f"{request.keyword}方法", f"{request.keyword}推薦"],
-        lsi_keywords=["相關詞1", "相關詞2", "相關詞3"],
-        keyword_weights={
-            request.keyword: 1.0,
-            f"{request.keyword}技巧": 0.8,
-            f"{request.keyword}方法": 0.75,
-        }
+        secondary_keywords=secondary_keywords,
+        lsi_keywords=lsi_keywords,
+        keyword_weights=keyword_scores,
     )
     
     # Generate title suggestions

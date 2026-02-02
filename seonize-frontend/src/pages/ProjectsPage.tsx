@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Button, DataTable } from '../components/ui';
 import { projectsApi } from '../services/api';
 import type { ProjectState } from '../types';
-import { SearchIntent, WritingStyle, OptimizationMode } from '../types';
 import './ProjectsPage.css';
 
 type ProjectColumn = {
@@ -17,6 +16,7 @@ export const ProjectsPage: React.FC = () => {
     const navigate = useNavigate();
     const [projects, setProjects] = useState<ProjectState[]>([]);
     const [loading, setLoading] = useState(true);
+    const [message, setMessage] = useState<string | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; project: ProjectState | null }>({
         show: false,
         project: null,
@@ -29,47 +29,13 @@ export const ProjectsPage: React.FC = () => {
     const loadProjects = async () => {
         try {
             setLoading(true);
+            setMessage(null);
             const data = await projectsApi.list();
             setProjects(data);
         } catch (error) {
             console.error('Failed to load projects:', error);
-            // Use mock data for demo
-            setProjects([
-                {
-                    project_id: '1',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    primary_keyword: 'SEO 優化技巧',
-                    country: 'TW',
-                    language: 'zh-TW',
-                    intent: SearchIntent.INFORMATIONAL,
-                    style: WritingStyle.EDUCATIONAL,
-                    optimization_mode: OptimizationMode.SEO,
-                    serp_results: [],
-                    keywords: { secondary: ['關鍵字研究', '內容優化'], lsi: [] },
-                    candidate_titles: [],
-                    full_content: '',
-                    word_count: 2500,
-                    keyword_density: { 'SEO': 2.5 },
-                },
-                {
-                    project_id: '2',
-                    created_at: new Date(Date.now() - 86400000).toISOString(),
-                    updated_at: new Date(Date.now() - 86400000).toISOString(),
-                    primary_keyword: '數位行銷策略',
-                    country: 'TW',
-                    language: 'zh-TW',
-                    intent: SearchIntent.COMMERCIAL,
-                    style: WritingStyle.REVIEW,
-                    optimization_mode: OptimizationMode.HYBRID,
-                    serp_results: [],
-                    keywords: { secondary: ['社群行銷', 'SEO'], lsi: [] },
-                    candidate_titles: [],
-                    full_content: '',
-                    word_count: 1800,
-                    keyword_density: { '數位行銷': 1.8 },
-                },
-            ]);
+            setProjects([]);
+            setMessage('載入專案清單失敗，請稍後再試');
         } finally {
             setLoading(false);
         }
@@ -77,12 +43,13 @@ export const ProjectsPage: React.FC = () => {
 
     const handleDeleteProject = async (project: ProjectState) => {
         try {
+            setMessage(null);
             await projectsApi.delete(project.project_id);
             setProjects(prev => prev.filter(p => p.project_id !== project.project_id));
             setDeleteConfirm({ show: false, project: null });
         } catch (error) {
             console.error('Failed to delete project:', error);
-            // TODO: Show error message
+            setMessage('刪除專案失敗，請稍後再試');
         }
     };
 
@@ -187,6 +154,9 @@ export const ProjectsPage: React.FC = () => {
                 <div className="projects-header__content">
                     <h1 className="projects-title">專案列表</h1>
                     <p className="projects-subtitle">管理您的所有專案</p>
+                    {message && (
+                        <div className="projects-message projects-message--error">{message}</div>
+                    )}
                 </div>
                 <Button
                     variant="primary"

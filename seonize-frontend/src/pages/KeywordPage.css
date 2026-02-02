@@ -25,6 +25,19 @@
     margin-bottom: var(--space-4);
 }
 
+.keyword-message {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-4);
+}
+
+.keyword-message--error {
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--color-danger, #ef4444);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
 .keyword-search__form {
     display: flex;
     gap: var(--space-3);

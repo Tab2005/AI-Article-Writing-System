@@ -30,6 +30,19 @@
     margin: 0;
 }
 
+.projects-message {
+    margin-top: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+}
+
+.projects-message--error {
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--color-danger, #ef4444);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
 .projects-create-btn {
     display: flex;
     align-items: center;

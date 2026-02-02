@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard } from '../components/ui';
 import { researchApi, analysisApi } from '../services/api';
 import type { SERPResult, AnalysisResponse } from '../types';
-import { SearchIntent, WritingStyle } from '../types';
 import './KeywordPage.css';
 
 export const KeywordPage: React.FC = () => {
@@ -15,15 +14,23 @@ export const KeywordPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [serpResults, setSerpResults] = useState<SERPResult[]>([]);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
+    const [message, setMessage] = useState<string | null>(null);
 
     const handleResearch = async () => {
         if (!keyword.trim()) return;
 
         setLoading(true);
+        setMessage(null);
         try {
             // Research SERP
             const serpData = await researchApi.serp({ keyword, num_results: 10 });
             setSerpResults(serpData.results);
+
+            if (serpData.error) {
+                setAnalysisResult(null);
+                setMessage(`SERP 取得失敗：${serpData.error}`);
+                return;
+            }
 
             // Analyze intent
             const analysisData = await analysisApi.analyzeIntent({
@@ -33,21 +40,9 @@ export const KeywordPage: React.FC = () => {
             setAnalysisResult(analysisData);
         } catch (error) {
             console.error('Research failed:', error);
-            // Mock data for demo
-            setSerpResults([
-                { rank: 1, url: 'https://example1.com', title: `${keyword} 完整指南 2026`, snippet: '深入了解...', headings: [] },
-                { rank: 2, url: 'https://example2.com', title: `${keyword}怎麼做？教學攻略`, snippet: '一步步教你...', headings: [] },
-                { rank: 3, url: 'https://example3.com', title: `${keyword}推薦：10 個必學技巧`, snippet: '專家推薦...', headings: [] },
-            ]);
-            setAnalysisResult({
-                intent_analysis: { intent: SearchIntent.INFORMATIONAL, confidence: 0.85, signals: ['疑問詞觸發'] },
-                suggested_style: WritingStyle.EDUCATIONAL,
-                keywords: { secondary_keywords: [`${keyword}技巧`, `${keyword}方法`], lsi_keywords: ['相關詞'], keyword_weights: {} },
-                title_suggestions: [
-                    { title: `2026 ${keyword}完整指南`, ctr_score: 0.9, intent_match: true },
-                    { title: `${keyword}必看！5 個關鍵技巧`, ctr_score: 0.85, intent_match: true },
-                ],
-            });
+            setSerpResults([]);
+            setAnalysisResult(null);
+            setMessage('研究失敗，請檢查 SERP 提供者設定與 API 連線');
         } finally {
             setLoading(false);
         }
@@ -97,6 +92,11 @@ export const KeywordPage: React.FC = () => {
             <div className="keyword-search">
                 <h2 className="keyword-search__title">關鍵字研究</h2>
                 <p className="keyword-search__desc">輸入目標關鍵字，分析 SERP 競品數據與搜尋意圖</p>
+                {message && (
+                    <div className="keyword-message keyword-message--error">
+                        {message}
+                    </div>
+                )}
                 <div className="keyword-search__form">
                     <Input
                         placeholder="輸入關鍵字..."

@@ -111,6 +111,8 @@ export interface ResearchResponse {
     keyword: string;
     results: SERPResult[];
     total_results: number;
+    ai_overview?: Record<string, unknown> | null;
+    error?: string | null;
 }
 
 export interface IntentResult {

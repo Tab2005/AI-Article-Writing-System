@@ -22,6 +22,7 @@ export const ProjectNewPage: React.FC = () => {
     const [selectedIntent, setSelectedIntent] = useState<SearchIntent | ''>('');
     const [selectedStyle, setSelectedStyle] = useState<WritingStyle | ''>('');
     const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState<string | null>(null);
 
     // 如果有傳來的分析數據，預填表單
     useEffect(() => {
@@ -37,6 +38,7 @@ export const ProjectNewPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setMessage(null);
 
         try {
             // 創建專案
@@ -55,7 +57,7 @@ export const ProjectNewPage: React.FC = () => {
             navigate(`/projects/${project.project_id}`);
         } catch (error) {
             console.error('創建專案失敗:', error);
-            // TODO: 顯示錯誤訊息
+            setMessage('建立專案失敗，請稍後再試');
         } finally {
             setLoading(false);
         }
@@ -86,6 +88,9 @@ export const ProjectNewPage: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="project-new-form">
+                    {message && (
+                        <div className="form-message form-message--error">{message}</div>
+                    )}
                     {/* 基本信息 */}
                     <div className="form-section">
                         <h2 className="form-section-title">基本信息</h2>

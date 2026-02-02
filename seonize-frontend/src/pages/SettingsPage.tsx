@@ -9,6 +9,10 @@ interface SettingsData {
     ai_api_key: string;
     ai_model: string;
     serper_api_key: string;
+    serpapi_api_key: string;
+    dataforseo_login: string;
+    dataforseo_password: string;
+    dataforseo_serp_mode: string;
 }
 
 interface AIProvider {
@@ -28,6 +32,10 @@ export const SettingsPage: React.FC = () => {
         ai_api_key: '',
         ai_model: 'gemini-2.0-flash',
         serper_api_key: '',
+        serpapi_api_key: '',
+        dataforseo_login: '',
+        dataforseo_password: '',
+        dataforseo_serp_mode: 'google_organic',
     });
 
     const [providers, setProviders] = useState<AIProvider[]>([]);
@@ -35,9 +43,13 @@ export const SettingsPage: React.FC = () => {
     const [savingGoogle, setSavingGoogle] = useState(false);
     const [savingAI, setSavingAI] = useState(false);
     const [savingSerper, setSavingSerper] = useState(false);
+    const [savingDataForSEO, setSavingDataForSEO] = useState(false);
     const [testingGoogle, setTestingGoogle] = useState(false);
     const [testingAI, setTestingAI] = useState(false);
     const [testingSerper, setTestingSerper] = useState(false);
+    const [savingSerpApi, setSavingSerpApi] = useState(false);
+    const [testingSerpApi, setTestingSerpApi] = useState(false);
+    const [testingDataForSEO, setTestingDataForSEO] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string; section?: string } | null>(null);
     const [dbInfo, setDbInfo] = useState<{ type: string; is_local: boolean } | null>(null);
     const [cacheInfo, setCacheInfo] = useState<{ type: string; size?: number } | null>(null);
@@ -114,8 +126,34 @@ export const SettingsPage: React.FC = () => {
                 fetch(`${API_URL}/api/settings/serp-provider`),
             ]);
 
+            const fallbackProviders = [
+                { id: 'google', name: 'Google Search API', description: '使用 Google Custom Search API', configured: false },
+                { id: 'serper', name: 'Serper.dev API', description: '使用 Serper.dev Google SERP API', configured: false },
+                { id: 'serpapi', name: 'SerpApi.com API', description: '使用 SerpApi.com Google SERP API', configured: false },
+                { id: 'dataforseo', name: 'DataForSEO API', description: '支援 Google SERP 與 AI Overviews (SGE)', configured: false },
+            ];
+
             if (providersResponse.ok) {
-                setSerpProviders(await providersResponse.json());
+                const providers = await providersResponse.json();
+                const byId = new Map<string, { id: string; name: string; description: string; configured: boolean }>();
+                if (Array.isArray(providers)) {
+                    providers.forEach((provider) => {
+                        if (provider?.id) {
+                            byId.set(provider.id, provider);
+                        }
+                    });
+                }
+                fallbackProviders.forEach((fallback) => {
+                    if (!byId.has(fallback.id)) {
+                        byId.set(fallback.id, fallback);
+                    }
+                });
+                const normalized = fallbackProviders
+                    .map((fallback) => byId.get(fallback.id) || fallback)
+                    .filter(Boolean) as Array<{ id: string; name: string; description: string; configured: boolean }>;
+                setSerpProviders(normalized);
+            } else {
+                setSerpProviders(fallbackProviders);
             }
             if (currentProviderResponse.ok) {
                 const data = await currentProviderResponse.json();
@@ -123,6 +161,12 @@ export const SettingsPage: React.FC = () => {
             }
         } catch {
             console.error('Failed to load SERP providers');
+            setSerpProviders([
+                { id: 'google', name: 'Google Search API', description: '使用 Google Custom Search API', configured: false },
+                { id: 'serper', name: 'Serper.dev API', description: '使用 Serper.dev Google SERP API', configured: false },
+                { id: 'serpapi', name: 'SerpApi.com API', description: '使用 SerpApi.com Google SERP API', configured: false },
+                { id: 'dataforseo', name: 'DataForSEO API', description: '支援 Google SERP 與 AI Overviews (SGE)', configured: false },
+            ]);
         }
     };
 
@@ -143,6 +187,8 @@ export const SettingsPage: React.FC = () => {
 
             if (response.ok) {
                 setMessage({ type: 'success', text: 'Google Search API 設定已儲存！', section: 'google' });
+                loadSettings(); // Reload to get masked values
+                loadSerpProviders(); // Refresh configured status
             } else {
                 setMessage({ type: 'error', text: '儲存 Google 設定失敗', section: 'google' });
             }
@@ -197,6 +243,8 @@ export const SettingsPage: React.FC = () => {
 
             if (response.ok) {
                 setMessage({ type: 'success', text: 'Serper.dev API 設定已儲存！', section: 'serper' });
+                loadSettings(); // Reload to get masked values
+                loadSerpProviders(); // Refresh configured status
             } else {
                 setMessage({ type: 'error', text: '儲存 Serper 設定失敗', section: 'serper' });
             }
@@ -204,6 +252,64 @@ export const SettingsPage: React.FC = () => {
             setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'serper' });
         } finally {
             setSavingSerper(false);
+        }
+    };
+
+    // Save SerpApi API settings only
+    const handleSaveSerpApi = async () => {
+        setSavingSerpApi(true);
+        setMessage(null);
+
+        try {
+            const response = await fetch(`${API_URL}/api/settings/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    serpapi_api_key: settings.serpapi_api_key,
+                }),
+            });
+
+            if (response.ok) {
+                setMessage({ type: 'success', text: 'SerpApi.com API 設定已儲存！', section: 'serpapi' });
+                loadSettings(); // Reload to get masked values
+                loadSerpProviders(); // Refresh configured status
+            } else {
+                setMessage({ type: 'error', text: '儲存 SerpApi 設定失敗', section: 'serpapi' });
+            }
+        } catch {
+            setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'serpapi' });
+        } finally {
+            setSavingSerpApi(false);
+        }
+    };
+
+    // Save DataForSEO settings only
+    const handleSaveDataForSEO = async () => {
+        setSavingDataForSEO(true);
+        setMessage(null);
+
+        try {
+            const response = await fetch(`${API_URL}/api/settings/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dataforseo_login: settings.dataforseo_login,
+                    dataforseo_password: settings.dataforseo_password,
+                    dataforseo_serp_mode: settings.dataforseo_serp_mode,
+                }),
+            });
+
+            if (response.ok) {
+                setMessage({ type: 'success', text: 'DataForSEO 設定已儲存！', section: 'dataforseo' });
+                loadSettings(); // Reload to get masked values
+                loadSerpProviders(); // Refresh configured status
+            } else {
+                setMessage({ type: 'error', text: '儲存 DataForSEO 設定失敗', section: 'dataforseo' });
+            }
+        } catch {
+            setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'dataforseo' });
+        } finally {
+            setSavingDataForSEO(false);
         }
     };
 
@@ -284,6 +390,59 @@ export const SettingsPage: React.FC = () => {
         }
     };
 
+    const handleTestSerpApi = async () => {
+        setTestingSerpApi(true);
+        setMessage(null);
+
+        try {
+            const response = await fetch(`${API_URL}/api/settings/test-serpapi`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    api_key: settings.serpapi_api_key,
+                }),
+            });
+
+            const result = await response.json();
+            setMessage({
+                type: result.success ? 'success' : 'error',
+                text: result.message,
+                section: 'serpapi',
+            });
+        } catch {
+            setMessage({ type: 'error', text: '測試連線時發生錯誤', section: 'serpapi' });
+        } finally {
+            setTestingSerpApi(false);
+        }
+    };
+
+    const handleTestDataForSEO = async () => {
+        setTestingDataForSEO(true);
+        setMessage(null);
+
+        try {
+            const response = await fetch(`${API_URL}/api/settings/test-dataforseo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    login: settings.dataforseo_login,
+                    password: settings.dataforseo_password,
+                }),
+            });
+
+            const result = await response.json();
+            setMessage({
+                type: result.success ? 'success' : 'error',
+                text: result.message,
+                section: 'dataforseo',
+            });
+        } catch {
+            setMessage({ type: 'error', text: '測試連線時發生錯誤', section: 'dataforseo' });
+        } finally {
+            setTestingDataForSEO(false);
+        }
+    };
+
     const handleSerpProviderChange = async (provider: string) => {
         try {
             const response = await fetch(`${API_URL}/api/settings/serp-provider`, {
@@ -294,7 +453,8 @@ export const SettingsPage: React.FC = () => {
 
             if (response.ok) {
                 setSerpProvider(provider);
-                setMessage({ type: 'success', text: `SERP 提供者已切換為 ${provider === 'google' ? 'Google Search API' : 'Serper.dev API'}`, section: 'serp' });
+                const providerName = serpProviders.find(p => p.id === provider)?.name || provider;
+                setMessage({ type: 'success', text: `SERP 提供者已切換為 ${providerName}`, section: 'serp' });
             } else {
                 setMessage({ type: 'error', text: '切換 SERP 提供者失敗', section: 'serp' });
             }
@@ -594,6 +754,124 @@ export const SettingsPage: React.FC = () => {
                                 loading={savingSerper}
                             >
                                 儲存 Serper 設定
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SerpApi.com API */}
+                <div className="settings-section">
+                    <h3 className="settings-section__title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7" />
+                            <path d="m16 20 2 2 4-4" />
+                            <rect width="20" height="14" x="2" y="5" rx="2" />
+                            <line x1="2" x2="22" y1="10" y2="10" />
+                        </svg>
+                        SerpApi.com API
+                    </h3>
+                    <p className="settings-section__desc">
+                        用於 SERP 競品分析，提供穩定的 Google 搜尋結果 API
+                    </p>
+
+                    {/* Section-specific message */}
+                    {message?.section === 'serpapi' && (
+                        <div className={`settings-message settings-message--${message.type}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className="settings-form">
+                        <Input
+                            label="API Key"
+                            type="password"
+                            placeholder="輸入 SerpApi.com API Key..."
+                            value={settings.serpapi_api_key}
+                            onChange={(e) => setSettings({ ...settings, serpapi_api_key: e.target.value })}
+                            fullWidth
+                        />
+                        <div className="settings-form__actions">
+                            <Button
+                                variant="secondary"
+                                onClick={handleTestSerpApi}
+                                loading={testingSerpApi}
+                                disabled={!settings.serpapi_api_key}
+                            >
+                                測試連線
+                            </Button>
+                            <Button
+                                variant="cta"
+                                onClick={handleSaveSerpApi}
+                                loading={savingSerpApi}
+                            >
+                                儲存 SerpApi 設定
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* DataForSEO API */}
+                <div className="settings-section">
+                    <h3 className="settings-section__title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                            <line x1="12" y1="22.08" x2="12" y2="12" />
+                        </svg>
+                        DataForSEO API
+                    </h3>
+                    <p className="settings-section__desc">
+                        專業級 SEO 數據 API，支援 AI Overviews (SGE) 與關鍵字數據
+                    </p>
+
+                    {/* Section-specific message */}
+                    {message?.section === 'dataforseo' && (
+                        <div className={`settings-message settings-message--${message.type}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className="settings-form">
+                        <Select
+                            label="SERP 模式"
+                            options={[
+                                { value: 'google_organic', label: 'Google Organic SERP' },
+                                { value: 'google_ai_mode', label: 'Google AI Mode SERP' },
+                            ]}
+                            value={settings.dataforseo_serp_mode}
+                            onChange={(e) => setSettings({ ...settings, dataforseo_serp_mode: e.target.value })}
+                            fullWidth
+                        />
+                        <Input
+                            label="Login (Email)"
+                            placeholder="輸入 DataForSEO 帳號..."
+                            value={settings.dataforseo_login}
+                            onChange={(e) => setSettings({ ...settings, dataforseo_login: e.target.value })}
+                            fullWidth
+                        />
+                        <Input
+                            label="API Password"
+                            type="password"
+                            placeholder="輸入 API 密碼..."
+                            value={settings.dataforseo_password}
+                            onChange={(e) => setSettings({ ...settings, dataforseo_password: e.target.value })}
+                            fullWidth
+                        />
+                        <div className="settings-form__actions">
+                            <Button
+                                variant="secondary"
+                                onClick={handleTestDataForSEO}
+                                loading={testingDataForSEO}
+                                disabled={!settings.dataforseo_login || !settings.dataforseo_password}
+                            >
+                                測試連線
+                            </Button>
+                            <Button
+                                variant="cta"
+                                onClick={handleSaveDataForSEO}
+                                loading={savingDataForSEO}
+                            >
+                                儲存 DataForSEO 設定
                             </Button>
                         </div>
                     </div>

@@ -93,16 +93,23 @@ class Settings(Base):
     def get_value(cls, db, key: str, default: str = None) -> str:
         """取得設定值"""
         setting = db.query(cls).filter(cls.key == key).first()
-        return setting.value if setting else default
+        if not setting or setting.value is None:
+            return default
+        return setting.value
 
     @classmethod
     def set_value(cls, db, key: str, value: str, encrypted: bool = False):
         """設定值"""
         setting = db.query(cls).filter(cls.key == key).first()
         if setting:
+            # 如果是金鑰類，自動去前後空白
+            if "api_key" in key or "password" in key:
+                value = value.strip()
             setting.value = value
             setting.encrypted = encrypted
         else:
+            if "api_key" in key or "password" in key:
+                value = value.strip()
             setting = cls(key=key, value=value, encrypted=encrypted)
             db.add(setting)
         db.commit()

@@ -3,19 +3,24 @@ Seonize Backend - SERP Service
 統一 SERP 搜尋服務介面，支援 Google Search API 和 Serper.dev API
 """
 
-import os
+import logging
+import time
 import httpx
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from enum import Enum
 from pydantic import BaseModel
 from app.models.project import SERPResult
-from app.core.database import get_db
 from app.models.db_models import Settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class SERPProvider(str, Enum):
     GOOGLE = "google"
     SERPER = "serper"
+    DATAFORSEO = "dataforseo"
+    SERPAPI = "serpapi"
 
 
 class SERPConfig(BaseModel):
@@ -23,6 +28,10 @@ class SERPConfig(BaseModel):
     google_api_key: str = ""
     google_cx: str = ""
     serper_api_key: str = ""
+    serpapi_api_key: str = ""
+    dataforseo_login: str = ""
+    dataforseo_password: str = ""
+    dataforseo_serp_mode: str = "google_organic"
 
 
 class SERPService:
@@ -36,8 +45,6 @@ class SERPService:
     @classmethod
     def get_config(cls) -> SERPConfig:
         """從資料庫取得 SERP 配置（帶快取）"""
-        import time
-        
         current_time = time.time()
         if (cls._config_cache is not None and cls._cache_timestamp is not None and 
             current_time - cls._cache_timestamp < cls._cache_timeout):
@@ -48,34 +55,38 @@ class SERPService:
             return cls._config_cache
         
         try:
-            db = next(get_db())
-            google_api_key = Settings.get_value(db, "google_search_api_key", "")
-            google_cx = Settings.get_value(db, "google_search_cx", "")
-            serper_api_key = Settings.get_value(db, "serper_api_key", "")
-            provider_str = Settings.get_value(db, "serp_provider", "")
-            cls._initialized = True
+            from app.core.database import SessionLocal
+            with SessionLocal() as db:
+                google_api_key = Settings.get_value(db, "google_search_api_key", "")
+                google_cx = Settings.get_value(db, "google_search_cx", "")
+                serper_api_key = Settings.get_value(db, "serper_api_key", "")
+                serpapi_api_key = Settings.get_value(db, "serpapi_api_key", "")
+                dfs_login = Settings.get_value(db, "dataforseo_login", "")
+                dfs_password = Settings.get_value(db, "dataforseo_password", "")
+                dfs_serp_mode = Settings.get_value(db, "dataforseo_serp_mode", "google_organic")
+                provider_str = Settings.get_value(db, "serp_provider", "")
+                
+                cls._initialized = True
         except Exception:
-            # 如果資料庫連線失敗，返回預設配置
-            if cls._config_cache is None:
-                cls._config_cache = SERPConfig()
-                cls._cache_timestamp = current_time
-            return cls._config_cache
+            logger.warning("Failed to load SERP config", exc_info=True)
+            # 如果資料庫連線失敗，且沒有快取，建立一個暫時的預設配置但不快取
+            return cls._config_cache or SERPConfig()
 
         # 確定提供者
-        if provider_str == "serper" and serper_api_key:
-            provider = SERPProvider.SERPER
-        elif provider_str == "google" and google_api_key and google_cx:
-            provider = SERPProvider.GOOGLE
-        elif serper_api_key:
-            provider = SERPProvider.SERPER  # fallback to serper if available
+        if provider_str in SERPProvider._value2member_map_:
+            provider = SERPProvider(provider_str)
         else:
-            provider = SERPProvider.GOOGLE  # fallback to google
+            provider = SERPProvider.GOOGLE
 
         config = SERPConfig(
             provider=provider,
             google_api_key=google_api_key,
             google_cx=google_cx,
             serper_api_key=serper_api_key,
+            serpapi_api_key=serpapi_api_key,
+            dataforseo_login=dfs_login,
+            dataforseo_password=dfs_password,
+            dataforseo_serp_mode=dfs_serp_mode,
         )
         
         # 快取配置
@@ -85,20 +96,51 @@ class SERPService:
         return config
 
     @classmethod
-    async def search(cls, keyword: str, num_results: int = 10, country: str = "TW", language: str = "zh-TW") -> List[SERPResult]:
-        """執行 SERP 搜尋"""
-        config = cls.get_config()
-
-        if config.provider == SERPProvider.SERPER and config.serper_api_key:
-            return await cls._search_serper(keyword, num_results, country, language, config.serper_api_key)
-        elif config.provider == SERPProvider.GOOGLE and config.google_api_key and config.google_cx:
-            return await cls._search_google(keyword, num_results, country, language, config.google_api_key, config.google_cx)
-        else:
-            # 如果沒有可用的 API，返回 mock 數據
-            return cls._get_mock_results(keyword, num_results)
+    def clear_cache(cls):
+        """清除配置快取，強迫下次重新讀取"""
+        cls._config_cache = None
+        cls._cache_timestamp = None
+        cls._initialized = False
 
     @classmethod
-    async def _search_google(cls, keyword: str, num_results: int, country: str, language: str, api_key: str, cx: str) -> List[SERPResult]:
+    async def search(cls, keyword: str, num_results: int = 10, country: str = "TW", language: str = "zh-TW") -> Dict[str, Any]:
+        """執行 SERP 搜尋，回傳包含結果列表與可能的 AI Overview"""
+        config = cls.get_config()
+
+        if config.provider == SERPProvider.SERPER:
+            if not config.serper_api_key:
+                return {"results": [], "ai_overview": None, "error": "SERP provider not configured: serper"}
+            results, error = await cls._search_serper(keyword, num_results, country, language, config.serper_api_key)
+            return {"results": results, "ai_overview": None, "error": error}
+        if config.provider == SERPProvider.SERPAPI:
+            if not config.serpapi_api_key:
+                return {"results": [], "ai_overview": None, "error": "SERP provider not configured: serpapi"}
+            results, error = await cls._search_serpapi(keyword, num_results, country, language, config.serpapi_api_key)
+            return {"results": results, "ai_overview": None, "error": error}
+        if config.provider == SERPProvider.DATAFORSEO:
+            if not (config.dataforseo_login and config.dataforseo_password):
+                return {"results": [], "ai_overview": None, "error": "SERP provider not configured: dataforseo"}
+            from app.services.dataforseo_service import DataForSEOService
+            language_code = DataForSEOService.resolve_language_code(language)
+            location_code = DataForSEOService.resolve_location_code(country)
+            return await DataForSEOService.get_serp_results(
+                keyword,
+                num_results=num_results,
+                login=config.dataforseo_login,
+                password=config.dataforseo_password,
+                language_code=language_code,
+                location_code=location_code,
+                serp_mode=config.dataforseo_serp_mode,
+            )
+        if config.provider == SERPProvider.GOOGLE:
+            if not (config.google_api_key and config.google_cx):
+                return {"results": [], "ai_overview": None, "error": "SERP provider not configured: google"}
+            results, error = await cls._search_google(keyword, num_results, country, language, config.google_api_key, config.google_cx)
+            return {"results": results, "ai_overview": None, "error": error}
+        return {"results": [], "ai_overview": None, "error": "SERP provider unavailable"}
+
+    @classmethod
+    async def _search_google(cls, keyword: str, num_results: int, country: str, language: str, api_key: str, cx: str) -> Tuple[List[SERPResult], Optional[str]]:
         """使用 Google Custom Search API 搜尋"""
         try:
             async with httpx.AsyncClient() as client:
@@ -127,17 +169,18 @@ class SERPService:
                             headings=[],  # Google API 不提供 headings
                         ))
 
-                    return results
+                    return results, None
                 else:
-                    print(f"Google Search API error: {response.status_code} - {response.text}")
-                    return cls._get_mock_results(keyword, num_results)
+                    error = f"Google Search API error: HTTP {response.status_code}"
+                    logger.warning("%s", error)
+                    return [], error
 
         except Exception as e:
-            print(f"Google Search API exception: {e}")
-            return cls._get_mock_results(keyword, num_results)
+            logger.warning("Google Search API exception", exc_info=True)
+            return [], str(e)
 
     @classmethod
-    async def _search_serper(cls, keyword: str, num_results: int, country: str, language: str, api_key: str) -> List[SERPResult]:
+    async def _search_serper(cls, keyword: str, num_results: int, country: str, language: str, api_key: str) -> Tuple[List[SERPResult], Optional[str]]:
         """使用 Serper.dev API 搜尋"""
         try:
             async with httpx.AsyncClient() as client:
@@ -168,14 +211,56 @@ class SERPService:
                             headings=[],  # Serper API 可能不提供 headings
                         ))
 
-                    return results
+                    return results, None
                 else:
-                    print(f"Serper.dev API error: {response.status_code} - {response.text}")
-                    return cls._get_mock_results(keyword, num_results)
+                    error = f"Serper.dev API error: HTTP {response.status_code}"
+                    logger.warning("%s", error)
+                    return [], error
 
         except Exception as e:
-            print(f"Serper.dev API exception: {e}")
-            return cls._get_mock_results(keyword, num_results)
+            logger.warning("Serper.dev API exception", exc_info=True)
+            return [], str(e)
+
+    @classmethod
+    async def _search_serpapi(cls, keyword: str, num_results: int, country: str, language: str, api_key: str) -> Tuple[List[SERPResult], Optional[str]]:
+        """使用 SerpApi.com API 搜尋"""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://serpapi.com/search",
+                    params={
+                        "q": keyword,
+                        "num": num_results,
+                        "gl": country.lower(),
+                        "hl": language,
+                        "api_key": api_key,
+                        "engine": "google",
+                    },
+                    timeout=20.0
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    results = []
+
+                    for i, item in enumerate(data.get("organic_results", [])):
+                        results.append(SERPResult(
+                            rank=i + 1,
+                            url=item.get("link", ""),
+                            title=item.get("title", ""),
+                            snippet=item.get("snippet", ""),
+                            headings=[],
+                        ))
+
+                    return results, None
+                else:
+                    error = f"SerpApi error: HTTP {response.status_code}"
+                    logger.warning("%s", error)
+                    return [], error
+
+        except Exception as e:
+            logger.warning("SerpApi exception", exc_info=True)
+            return [], str(e)
 
     @classmethod
     def _get_mock_results(cls, keyword: str, num_results: int) -> List[SERPResult]:
@@ -193,57 +278,53 @@ class SERPService:
 
     @classmethod
     def get_available_providers(cls) -> List[Dict[str, Any]]:
-        """取得可用的 SERP 提供者"""
+        """取得可用的 SERP 提供者清單"""
         try:
             config = cls.get_config()
             providers = []
 
-            # Google Search API
-            if config.google_api_key and config.google_cx:
-                providers.append({
-                    "id": "google",
-                    "name": "Google Search API",
-                    "description": "使用 Google Custom Search API",
-                    "configured": True,
-                })
-            else:
-                providers.append({
-                    "id": "google",
-                    "name": "Google Search API",
-                    "description": "使用 Google Custom Search API（未設定）",
-                    "configured": False,
-                })
+            # 1. Google Search API
+            is_google_configured = bool(config.google_api_key and config.google_cx)
+            providers.append({
+                "id": "google",
+                "name": "Google Search API",
+                "description": "使用 Google Custom Search API",
+                "configured": is_google_configured,
+            })
 
-            # Serper.dev API
-            if config.serper_api_key:
-                providers.append({
-                    "id": "serper",
-                    "name": "Serper.dev API",
-                    "description": "使用 Serper.dev Google SERP API",
-                    "configured": True,
-                })
-            else:
-                providers.append({
-                    "id": "serper",
-                    "name": "Serper.dev API",
-                    "description": "使用 Serper.dev Google SERP API（未設定）",
-                    "configured": False,
-                })
+            # 2. Serper.dev API
+            is_serper_configured = bool(config.serper_api_key)
+            providers.append({
+                "id": "serper",
+                "name": "Serper.dev API",
+                "description": "使用 Serper.dev Google SERP API",
+                "configured": is_serper_configured,
+            })
+            
+            # 2.5 SerpApi.com API
+            is_serpapi_configured = bool(config.serpapi_api_key)
+            providers.append({
+                "id": "serpapi",
+                "name": "SerpApi.com API",
+                "description": "使用 SerpApi.com Google SERP API",
+                "configured": is_serpapi_configured,
+            })
+            
+            # 3. DataForSEO API
+            is_dfs_configured = bool(config.dataforseo_login and config.dataforseo_password)
+            providers.append({
+                "id": "dataforseo",
+                "name": "DataForSEO API",
+                "description": "支援 Google SERP 與 AI Overviews (SGE)",
+                "configured": is_dfs_configured,
+            })
 
             return providers
         except Exception:
-            # 如果資料庫連線失敗，返回預設提供者列表
+            logger.warning("Failed to get SERP providers", exc_info=True)
             return [
-                {
-                    "id": "google",
-                    "name": "Google Search API",
-                    "description": "使用 Google Custom Search API（未設定）",
-                    "configured": False,
-                },
-                {
-                    "id": "serper",
-                    "name": "Serper.dev API",
-                    "description": "使用 Serper.dev Google SERP API（未設定）",
-                    "configured": False,
-                }
+                {"id": "google", "name": "Google Search API", "description": "Google Search API", "configured": False},
+                {"id": "serper", "name": "Serper.dev API", "description": "Serper.dev API", "configured": False},
+                {"id": "serpapi", "name": "SerpApi.com API", "description": "SerpApi.com API", "configured": False},
+                {"id": "dataforseo", "name": "DataForSEO API", "description": "DataForSEO API", "configured": False},
             ]

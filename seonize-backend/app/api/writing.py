@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from app.models.project import OptimizationMode
+from app.services.ai_service import AIService
 
 router = APIRouter()
 
@@ -39,49 +40,19 @@ async def generate_section(request: WritingRequest):
     生成單一章節內容
     第四階段：分段迭代撰寫
     """
-    # TODO: Integrate with Gemini 2.5 Flash or OpenAI GPT-4o
-    # For now, return mock content
-    
-    heading = request.section.heading
-    keywords = request.section.keywords
-    
-    mock_content = f"""## {heading}
+    result = await AIService.generate_section_content(
+        heading=request.section.heading,
+        keywords=request.section.keywords,
+        previous_summary=request.section.previous_summary,
+        optimization_mode=request.optimization_mode,
+    )
 
-{request.section.previous_summary}
-
-針對{keywords[0] if keywords else '此主題'}，我們需要深入了解以下幾個重要面向。
-
-### 核心概念
-
-在探討{heading}之前，首先需要建立正確的基礎認知。{keywords[0] if keywords else '相關知識'}的掌握，是理解整體架構的關鍵。
-
-### 實踐方法
-
-根據專業建議，以下是具體的執行步驟：
-
-1. **第一步**：進行初步評估與規劃
-2. **第二步**：實施核心策略
-3. **第三步**：追蹤成效並持續優化
-
-### 注意事項
-
-在執行過程中，請特別注意以下幾點：
-
-- 確保數據準確性
-- 保持內容的一致性
-- 定期檢視並調整策略
-
-透過以上方法，您可以更有效地掌握{keywords[0] if keywords else '此領域'}的精髓。
-"""
-    
-    word_count = len(mock_content.replace(" ", "").replace("\n", ""))
-    
     return WritingResponse(
-        heading=heading,
-        content=mock_content,
-        word_count=word_count,
-        embedded_keywords=keywords[:3] if keywords else [],
-        summary=f"本章節介紹了{heading}的核心概念、實踐方法與注意事項。"
+        heading=result["heading"],
+        content=result["content"],
+        word_count=result["word_count"],
+        embedded_keywords=result["embedded_keywords"],
+        summary=result["summary"],
     )
 
 
@@ -106,21 +77,39 @@ async def generate_full_article(request: FullArticleRequest):
     """
     生成完整文章（批次處理所有章節）
     """
-    # TODO: Implement full article generation with iteration control
-    
     full_content = f"# {request.h1}\n\n"
-    
+    summaries: List[str] = []
+    all_keywords: List[str] = []
+
     for section in request.sections:
-        full_content += f"## {section.heading}\n\n"
-        full_content += "此章節內容正在生成中...\n\n"
-    
+        result = await AIService.generate_section_content(
+            heading=section.heading,
+            keywords=section.keywords,
+            previous_summary=summaries[-1] if summaries else "",
+            optimization_mode=request.optimization_mode,
+        )
+        full_content += f"## {result['heading']}\n\n{result['content']}\n\n"
+        summaries.append(result["summary"])
+        all_keywords.extend(section.keywords)
+
     word_count = len(full_content.replace(" ", "").replace("\n", ""))
-    
+
+    def calc_density(content: str, keywords: List[str]) -> Dict[str, float]:
+        density: Dict[str, float] = {}
+        content_no_space = content.replace(" ", "").replace("\n", "")
+        total_len = max(len(content_no_space), 1)
+        for kw in set([k for k in keywords if k]):
+            count = content_no_space.count(kw)
+            density[kw] = round((count * len(kw)) / total_len * 100, 2)
+        return density
+
+    keyword_density = calc_density(full_content, all_keywords)
+
     return FullArticleResponse(
         title=request.h1,
         content=full_content,
         word_count=word_count,
-        keyword_density={"主關鍵字": 2.5, "次關鍵字": 1.2},
+        keyword_density=keyword_density,
         meta_title=f"{request.h1} | Seonize SEO 優質內容",
         meta_description=f"深入了解{request.h1}，本文提供完整指南、實用技巧與專業建議。"
     )
