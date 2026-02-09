@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard } from '../components/ui';
 import { researchApi, analysisApi } from '../services/api';
-import type { SERPResult, AnalysisResponse, KeywordIdeasResponse, KeywordIdea } from '../types';
+import type { SERPResult, AnalysisResponse, KeywordIdeasResponse } from '../types';
 import './KeywordPage.css';
 
 export const KeywordPage: React.FC = () => {
@@ -18,6 +18,7 @@ export const KeywordPage: React.FC = () => {
     const [keywordIdeas, setKeywordIdeas] = useState<KeywordIdeasResponse | null>(null);
     const [paa, setPaa] = useState<string[]>([]);
     const [relatedSearches, setRelatedSearches] = useState<string[]>([]);
+    const [aiOverview, setAiOverview] = useState<any | null>(null);
     const [message, setMessage] = useState<string | null>(null);
 
     // 自動觸研：如果 URL 有搜尋參數則自動執行
@@ -46,6 +47,7 @@ export const KeywordPage: React.FC = () => {
             setSerpResults(serpRes.results);
             setPaa(serpRes.paa || []);
             setRelatedSearches(serpRes.related_searches || []);
+            setAiOverview(serpRes.ai_overview);
             setKeywordIdeas(ideasRes);
 
             if (serpRes.error) {
@@ -217,8 +219,8 @@ export const KeywordPage: React.FC = () => {
                         />
                     </div>
 
-                    {/* Semantic Intent Section (PAA & Related Searches) */}
-                    {(paa.length > 0 || relatedSearches.length > 0) && (
+                    {/* Semantic Intent Section (PAA, Related Searches & AI Overview) */}
+                    {(paa.length > 0 || relatedSearches.length > 0 || aiOverview) && (
                         <div className="keyword-section keyword-section--intent">
                             <h3 className="keyword-section__title">語義意圖與熱門問題</h3>
                             <div className="intent-grid">
@@ -235,12 +237,26 @@ export const KeywordPage: React.FC = () => {
                                         </div>
                                     </div>
                                 )}
+                                {aiOverview && (
+                                    <div className="intent-group">
+                                        <div className="intent-group__header">AI 總結 (AI Overview)</div>
+                                        <div className="paa-list">
+                                            <div className="paa-item">
+                                                <span className="paa-item__icon" style={{ color: '#8B5CF6' }}>✨</span>
+                                                {aiOverview.description || aiOverview.snippet || "已擷取 Google AI 總結內容"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 {relatedSearches.length > 0 && (
                                     <div className="intent-group">
                                         <div className="intent-group__header">相關搜尋</div>
-                                        <div className="keyword-tags">
+                                        <div className="paa-list">
                                             {relatedSearches.map((s, i) => (
-                                                <span key={i} className="keyword-tag keyword-tag--related">{s}</span>
+                                                <div key={i} className="paa-item">
+                                                    <span className="paa-item__icon" style={{ color: '#f59e0b' }}>🔗</span>
+                                                    {s}
+                                                </div>
                                             ))}
                                         </div>
                                     </div>

@@ -147,7 +147,7 @@
 /* Intent Sections */
 .intent-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: var(--space-6);
 }
 
@@ -176,8 +176,11 @@
 }
 
 .paa-item__icon {
-    color: var(--color-primary);
+    font-size: 14px;
     font-weight: var(--font-bold);
+    min-width: 1.5em;
+    display: flex;
+    justify-content: center;
 }
 
 /* Title Suggestions */
