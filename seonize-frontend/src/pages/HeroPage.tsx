@@ -50,7 +50,7 @@ export const HeroPage: React.FC = () => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (keyword.trim()) {
-            navigate(`/keyword?q=${encodeURIComponent(keyword)}&country=${country}&lang=${language}`);
+            navigate('/login');
         }
     };
 

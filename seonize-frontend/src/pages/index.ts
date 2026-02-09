@@ -1,5 +1,6 @@
 export { HeroPage } from './HeroPage';
 export { DashboardPage } from './DashboardPage';
+export { LoginPage } from './LoginPage';
 export { KeywordPage } from './KeywordPage';
 export { ProjectNewPage } from './ProjectNewPage';
 export { ProjectDetailPage } from './ProjectDetailPage';

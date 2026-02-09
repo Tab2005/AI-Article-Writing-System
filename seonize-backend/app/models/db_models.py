@@ -133,3 +133,24 @@ class SerpCache(Base):
         if not self.expires_at:
             return True
         return datetime.utcnow() > self.expires_at
+
+class KeywordCache(Base):
+    """關鍵字快取資料表，儲存 Keyword Ideas 研究結果"""
+    __tablename__ = "keyword_cache"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    keyword = Column(String(255), nullable=False, index=True)
+    location_code = Column(Integer, nullable=False)
+    language_code = Column(String(10), nullable=False)
+    
+    seed_data = Column(JSON, nullable=True)     # 核心詞數據 {search_volume, cpc, ...}
+    suggestions = Column(JSON, nullable=True)   # 長尾詞建議列表 [{keyword, search_volume, ...}]
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)
+
+    @property
+    def is_expired(self) -> bool:
+        if not self.expires_at:
+            return False # 預設不逾期
+        return datetime.utcnow() > self.expires_at

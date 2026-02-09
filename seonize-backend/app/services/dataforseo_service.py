@@ -1,14 +1,12 @@
-"""
-Seonize Backend - DataForSEO Service
-處理 DataForSEO API 的介接，包含 SERP, AI Overviews 與 Keyword Data
-"""
-
 import logging
 import httpx
 import base64
 from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.project import SERPResult
+from app.models.db_models import KeywordCache
 
 
 logger = logging.getLogger(__name__)
@@ -80,16 +78,31 @@ class DataForSEOService:
         language_code: str = "zh_TW", 
         location_code: int = 2158,
         include_ai_overview: bool = True,
+        db: Optional[Session] = None,
         login: Optional[str] = None,
         password: Optional[str] = None,
         serp_mode: str = "google_organic",
     ) -> Dict[str, Any]:
         """
         獲取 Google SERP 結果，支援 AI Overviews (SGE)
+        包含快取邏輯：優先從 SerpCache 讀取
         """
+        # 1. 檢查快取
+        if db:
+            from app.models.db_models import SerpCache
+            cache = db.query(SerpCache).filter(
+                SerpCache.keyword == keyword,
+                SerpCache.country == "TW", # 這裡暫定，實際可連動 location_code
+                SerpCache.language == "zh-TW"
+            ).first()
+            
+            if cache and not cache.is_expired:
+                logger.info(f"Using cached SERP results for: {keyword}")
+                return cache.results
+
         mode = (serp_mode or "google_organic").lower()
         if mode not in ["google_organic", "google_ai_mode"]:
-            return {"results": [], "ai_overview": None, "error": f"Unsupported DataForSEO SERP mode: {serp_mode}"}
+            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": f"Unsupported DataForSEO SERP mode: {serp_mode}"}
 
         url = f"{cls.BASE_URL}/serp/google/organic/live/advanced"
         if mode == "google_ai_mode":
@@ -104,9 +117,6 @@ class DataForSEOService:
             "calculate_rectangles": False
         }]
         
-        # 如果需要 AI Overview，則調用專用端點或在進階請求中處理
-        # 注意: Advanced 端點通常已包含 AI Overview 資訊 (如果有的話)
-        
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -118,37 +128,60 @@ class DataForSEOService:
                 
                 if response.status_code != 200:
                     logger.warning("DataForSEO Error: HTTP %s", response.status_code)
-                    return {"results": [], "ai_overview": None, "error": f"DataForSEO Error: HTTP {response.status_code}"}
+                    return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": f"DataForSEO Error: HTTP {response.status_code}"}
                 
                 data = response.json()
-                return cls._parse_serp_response(data)
+                parsed_results = cls._parse_serp_response(data)
+                
+                # 2. 寫入快取
+                if db and not parsed_results.get("error"):
+                    from app.models.db_models import SerpCache
+                    from datetime import datetime, timedelta
+                    if cache:
+                        cache.results = parsed_results
+                        cache.created_at = datetime.utcnow()
+                        cache.expires_at = datetime.utcnow() + timedelta(days=7)
+                    else:
+                        new_cache = SerpCache(
+                            keyword=keyword,
+                            results=parsed_results,
+                            expires_at=datetime.utcnow() + timedelta(days=7)
+                        )
+                        db.add(new_cache)
+                    db.commit()
+                
+                return parsed_results
                 
         except Exception as e:
             logger.warning("DataForSEO Exception", exc_info=True)
-            return {"results": [], "ai_overview": None, "error": str(e)}
+            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": str(e)}
 
     @classmethod
     def _parse_serp_response(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        """解析 DataForSEO 的回傳格式，提取有機搜尋與 AI Overview"""
+        """解析 DataForSEO 的回傳格式，提取有機搜尋、AI Overview、PAA 與 相關搜尋"""
         results = []
         ai_overview = None
+        paa = []
+        related_searches = []
         
         # DataForSEO 的 task 回傳結構
         tasks = data.get("tasks", [])
         if not tasks:
-            return {"results": [], "ai_overview": None, "error": "DataForSEO response missing tasks"}
+            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": "DataForSEO response missing tasks"}
             
         # 取得第一個 task 的結果
         task_result = tasks[0].get("result", [])
         if not task_result:
-            return {"results": [], "ai_overview": None, "error": "DataForSEO response missing results"}
+            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": "DataForSEO response missing results"}
             
         # 遍歷結果項項目
         items = task_result[0].get("items", [])
         
         rank = 1
         for item in items:
-            if item.get("type") == "organic":
+            item_type = item.get("type")
+            
+            if item_type == "organic":
                 results.append(SERPResult(
                     rank=rank,
                     url=item.get("url", ""),
@@ -159,10 +192,32 @@ class DataForSEOService:
                 rank += 1
                 
             # 處理 AI Overview
-            elif item.get("type") == "google_ai_overview":
+            elif item_type == "google_ai_overview":
                 ai_overview = item
+            
+            # 處理 People Also Ask (PAA)
+            elif item_type == "people_also_ask":
+                paa_items = item.get("items", [])
+                for p_item in paa_items:
+                    if p_item.get("title"):
+                        paa.append(p_item.get("title"))
+            
+            # 處理 Related Searches
+            elif item_type == "related_searches":
+                rel_items = item.get("items", [])
+                for r_item in rel_items:
+                    if isinstance(r_item, str):
+                        related_searches.append(r_item)
+                    elif isinstance(r_item, dict) and r_item.get("title"):
+                        related_searches.append(r_item.get("title"))
                 
-        return {"results": results, "ai_overview": ai_overview, "error": None}
+        return {
+            "results": results, 
+            "ai_overview": ai_overview, 
+            "paa": paa,
+            "related_searches": related_searches,
+            "error": None
+        }
 
     @classmethod
     async def get_ai_overview(
@@ -240,3 +295,92 @@ class DataForSEOService:
         except Exception:
             logger.warning("DataForSEO Keyword Data Exception", exc_info=True)
             return []
+
+    @classmethod
+    async def get_keyword_ideas(
+        cls, 
+        keyword: str, 
+        language_code: str = "zh_TW", 
+        location_code: int = 2158,
+        db: Optional[Session] = None,
+        login: Optional[str] = None,
+        password: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        獲取關鍵字建議與長尾詞 (Keyword Ideas)
+        包含快取邏輯：優先從資料庫讀取，失效或不存在才調用 API
+        """
+        # 1. 檢查快取 (若有提供 db session)
+        if db:
+            cache = db.query(KeywordCache).filter(
+                KeywordCache.keyword == keyword,
+                KeywordCache.location_code == location_code,
+                KeywordCache.language_code == language_code
+            ).first()
+            
+            if cache and not cache.is_expired:
+                logger.info(f"Using cached keyword ideas for: {keyword}")
+                return {
+                    "seed_keyword_data": cache.seed_data,
+                    "suggestions": cache.suggestions,
+                    "from_cache": True
+                }
+
+        # 2. 調用 API
+        url = f"{cls.BASE_URL}/keywords_data/google_ads/keyword_ideas/live"
+        post_data = [{
+            "keywords": [keyword],
+            "language_code": language_code,
+            "location_code": location_code,
+            "include_adult_keywords": False
+        }]
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url,
+                    json=post_data,
+                    headers=cls._get_auth_header(login, password),
+                    timeout=30.0
+                )
+                
+                if response.status_code != 200:
+                    return {"seed_keyword_data": None, "suggestions": [], "error": f"API Error: {response.status_code}"}
+                    
+                data = response.json()
+                tasks = data.get("tasks", [])
+                if not tasks or not tasks[0].get("result"):
+                    return {"seed_keyword_data": None, "suggestions": [], "error": "No results found"}
+                
+                result = tasks[0]["result"][0]
+                seed_data = result.get("seed_keyword_data")
+                suggestions = result.get("items", [])
+                
+                # 3. 寫入快取 (若有提供 db session)
+                if db:
+                    if cache:
+                        cache.seed_data = seed_data
+                        cache.suggestions = suggestions
+                        cache.created_at = datetime.utcnow()
+                        cache.expires_at = datetime.utcnow() + timedelta(days=30)
+                    else:
+                        new_cache = KeywordCache(
+                            keyword=keyword,
+                            location_code=location_code,
+                            language_code=language_code,
+                            seed_data=seed_data,
+                            suggestions=suggestions,
+                            expires_at=datetime.utcnow() + timedelta(days=30)
+                        )
+                        db.add(new_cache)
+                    db.commit()
+                
+                return {
+                    "seed_keyword_data": seed_data,
+                    "suggestions": suggestions,
+                    "from_cache": False
+                }
+                
+        except Exception as e:
+            logger.error(f"Keyword Ideas Exception: {str(e)}", exc_info=True)
+            return {"seed_keyword_data": None, "suggestions": [], "error": str(e)}

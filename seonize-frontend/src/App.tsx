@@ -3,6 +3,7 @@ import { MainLayout } from './components/layout';
 import {
   HeroPage,
   DashboardPage,
+  LoginPage,
   KeywordPage,
   ProjectNewPage,
   ProjectDetailPage,
@@ -20,6 +21,7 @@ function App() {
       <Routes>
         {/* Hero page without layout */}
         <Route path="/" element={<HeroPage />} />
+        <Route path="/login" element={<LoginPage />} />
 
         {/* Pages with sidebar layout */}
         <Route element={<MainLayout />}>
