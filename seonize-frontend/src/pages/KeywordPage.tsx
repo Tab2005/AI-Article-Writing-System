@@ -220,13 +220,13 @@ export const KeywordPage: React.FC = () => {
                     </div>
 
                     {/* Semantic Intent Section (PAA, Related Searches & AI Overview) */}
-                    {(paa.length > 0 || relatedSearches.length > 0 || aiOverview) && (
+                    {(paa.length > 0 || relatedSearches.length > 0 || aiOverview || (analysisResult && (analysisResult.keywords.secondary_keywords.length > 0 || analysisResult.keywords.lsi_keywords.length > 0))) && (
                         <div className="keyword-section keyword-section--intent">
                             <h3 className="keyword-section__title">語義意圖與熱門問題</h3>
                             <div className="intent-grid">
                                 {paa.length > 0 && (
                                     <div className="intent-group">
-                                        <div className="intent-group__header">People Also Ask</div>
+                                        <div className="intent-group__header">大家也問了 (People Also Ask)</div>
                                         <div className="paa-list">
                                             {paa.map((q, i) => (
                                                 <div key={i} className="paa-item">
@@ -250,12 +250,38 @@ export const KeywordPage: React.FC = () => {
                                 )}
                                 {relatedSearches.length > 0 && (
                                     <div className="intent-group">
-                                        <div className="intent-group__header">相關搜尋</div>
+                                        <div className="intent-group__header">相關搜尋 (Related Searches)</div>
                                         <div className="paa-list">
                                             {relatedSearches.map((s, i) => (
                                                 <div key={i} className="paa-item">
                                                     <span className="paa-item__icon" style={{ color: '#f59e0b' }}>🔗</span>
                                                     {s}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {analysisResult && analysisResult.keywords.secondary_keywords.length > 0 && (
+                                    <div className="intent-group">
+                                        <div className="intent-group__header">次要關鍵字 (系統提取)</div>
+                                        <div className="paa-list">
+                                            {analysisResult.keywords.secondary_keywords.map((kw, i) => (
+                                                <div key={i} className="paa-item">
+                                                    <span className="paa-item__icon" style={{ color: 'var(--color-primary)' }}>⭐</span>
+                                                    {kw}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {analysisResult && analysisResult.keywords.lsi_keywords.length > 0 && (
+                                    <div className="intent-group">
+                                        <div className="intent-group__header">LSI 關鍵字 (系統提取)</div>
+                                        <div className="paa-list">
+                                            {analysisResult.keywords.lsi_keywords.map((kw, i) => (
+                                                <div key={i} className="paa-item">
+                                                    <span className="paa-item__icon" style={{ color: 'var(--color-success)' }}>🧠</span>
+                                                    {kw}
                                                 </div>
                                             ))}
                                         </div>
@@ -274,37 +300,6 @@ export const KeywordPage: React.FC = () => {
                                 data={keywordIdeas.suggestions}
                                 loading={loading}
                             />
-                        </div>
-                    )}
-
-                    {/* Keywords Section */}
-                    {analysisResult && (
-                        <div className="keyword-section">
-                            <h3 className="keyword-section__title">延伸關鍵字 (系統提取)</h3>
-
-                            {/* Secondary Keywords */}
-                            {analysisResult.keywords.secondary_keywords.length > 0 && (
-                                <div className="keyword-group">
-                                    <div className="keyword-group__label">次要關鍵字</div>
-                                    <div className="keyword-tags">
-                                        {analysisResult.keywords.secondary_keywords.map((kw, i) => (
-                                            <span key={`secondary-${i}`} className="keyword-tag keyword-tag--secondary">{kw}</span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* LSI Keywords */}
-                            {analysisResult.keywords.lsi_keywords.length > 0 && (
-                                <div className="keyword-group">
-                                    <div className="keyword-group__label">LSI 關鍵字</div>
-                                    <div className="keyword-tags">
-                                        {analysisResult.keywords.lsi_keywords.map((kw, i) => (
-                                            <span key={`lsi-${i}`} className="keyword-tag keyword-tag--lsi">{kw}</span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     )}
 
