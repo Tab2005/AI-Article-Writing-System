@@ -48,8 +48,10 @@ class SERPService:
         current_time = time.time()
         if (cls._config_cache is not None and cls._cache_timestamp is not None and 
             current_time - cls._cache_timestamp < cls._cache_timeout):
+            logger.debug("SERPService: Using cached config")
             return cls._config_cache
         
+        logger.info("SERPService: Loading fresh config from Database")
         # 如果已經初始化過但資料庫連線失敗，返回快取的配置或預設配置
         if cls._initialized and cls._config_cache is not None:
             return cls._config_cache
@@ -103,7 +105,7 @@ class SERPService:
         cls._initialized = False
 
     @classmethod
-    async def search(cls, keyword: str, num_results: int = 10, country: str = "TW", language: str = "zh-TW") -> Dict[str, Any]:
+    async def search(cls, keyword: str, num_results: int = 10, country: str = "TW", language: str = "zh-TW", db: Optional[Any] = None) -> Dict[str, Any]:
         """執行 SERP 搜尋，回傳包含結果列表與可能的 AI Overview"""
         config = cls.get_config()
 
@@ -131,6 +133,7 @@ class SERPService:
                 language_code=language_code,
                 location_code=location_code,
                 serp_mode=config.dataforseo_serp_mode,
+                db=db,
             )
         if config.provider == SERPProvider.GOOGLE:
             if not (config.google_api_key and config.google_cx):

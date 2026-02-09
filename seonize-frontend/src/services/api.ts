@@ -64,6 +64,12 @@ export const researchApi = {
             '/api/research/crawl',
             { method: 'POST', body: { urls } }
         ),
+
+    keywordIdeas: (data: { keyword: string; country?: string; language?: string }) =>
+        request<import('../types').KeywordIdeasResponse>('/api/research/keyword-ideas', { method: 'POST', body: data }),
+
+    getHistory: () =>
+        request<import('../types').ResearchHistoryItem[]>('/api/research/history'),
 };
 
 // Analysis API

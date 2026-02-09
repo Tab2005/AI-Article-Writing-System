@@ -9,6 +9,7 @@ import httpx
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 from app.models.project import SERPResult
 
 router = APIRouter()
@@ -21,11 +22,22 @@ class ResearchRequest(BaseModel):
     num_results: int = 10
 
 
+class ResearchHistoryItem(BaseModel):
+    keyword: str
+    country: str
+    language: str
+    created_at: datetime
+    search_volume: Optional[int] = None
+    cpc: Optional[float] = None
+
+
 class ResearchResponse(BaseModel):
     keyword: str
     results: List[SERPResult]
     total_results: int
-    ai_overview: Optional[Dict[str, Any]] = None  # 新增 AI Overview 欄位
+    ai_overview: Optional[Dict[str, Any]] = None
+    paa: List[str] = []              # 新增 PAA 清單
+    related_searches: List[str] = [] # 新增相關搜尋清單
     error: Optional[str] = None
 
 
@@ -36,17 +48,25 @@ async def research_serp(request: ResearchRequest):
     第一階段：數據採集與研究
     """
     from app.services.serp_service import SERPService
+    from app.core.database import SessionLocal
 
-    # 使用 SERP 服務執行搜尋
-    search_data = await SERPService.search(
-        keyword=request.keyword,
-        num_results=request.num_results,
-        country=request.country,
-        language=request.language
-    )
+    db = SessionLocal()
+    try:
+        # 使用 SERP 服務執行搜尋
+        search_data = await SERPService.search(
+            keyword=request.keyword,
+            num_results=request.num_results,
+            country=request.country,
+            language=request.language,
+            db=db
+        )
+    finally:
+        db.close()
     
     results = search_data.get("results", [])
     ai_overview = search_data.get("ai_overview")
+    paa = search_data.get("paa", [])
+    related_searches = search_data.get("related_searches", [])
     error = search_data.get("error")
 
     return ResearchResponse(
@@ -54,8 +74,47 @@ async def research_serp(request: ResearchRequest):
         results=results,
         total_results=len(results),
         ai_overview=ai_overview,
+        paa=paa,
+        related_searches=related_searches,
         error=error,
     )
+
+
+class KeywordIdeasRequest(BaseModel):
+    keyword: str
+    country: str = "TW"
+    language: str = "zh-TW"
+
+
+@router.post("/keyword-ideas")
+async def get_keyword_ideas(request: KeywordIdeasRequest):
+    """
+    獲取關鍵字建議與數據 (Keyword Ideas)
+    支援資料庫快取
+    """
+    from app.services.dataforseo_service import DataForSEOService
+    from app.services.serp_service import SERPService, SERPProvider
+    from app.core.database import SessionLocal
+
+    config = SERPService.get_config()
+    
+    # 建立臨時 DB session
+    db = SessionLocal()
+    try:
+        language_code = DataForSEOService.resolve_language_code(request.language)
+        location_code = DataForSEOService.resolve_location_code(request.country)
+
+        ideas_data = await DataForSEOService.get_keyword_ideas(
+            keyword=request.keyword,
+            language_code=language_code,
+            location_code=location_code,
+            db=db,
+            login=config.dataforseo_login,
+            password=config.dataforseo_password
+        )
+        return ideas_data
+    finally:
+        db.close()
 
 
 class KeywordResearchRequest(BaseModel):
@@ -94,6 +153,37 @@ async def research_keywords(request: KeywordResearchRequest):
     )
 
     return {"results": results}
+
+
+@router.get("/history", response_model=List[ResearchHistoryItem])
+async def get_research_history():
+    """
+    獲取關鍵字研究歷史紀錄
+    """
+    from app.core.database import SessionLocal
+    from app.models.db_models import KeywordCache
+    
+    db = SessionLocal()
+    try:
+        # 獲取所有快取的關鍵字，按時間排序
+        records = db.query(KeywordCache).order_by(KeywordCache.created_at.desc()).all()
+        
+        history = []
+        for r in records:
+            search_volume = r.seed_data.get("search_volume") if r.seed_data else None
+            cpc = r.seed_data.get("cpc") if r.seed_data else None
+            
+            history.append(ResearchHistoryItem(
+                keyword=r.keyword,
+                country="TW", # 這裡可以根據 location_code 反查
+                language=r.language_code,
+                created_at=r.created_at,
+                search_volume=search_volume,
+                cpc=cpc
+            ))
+        return history
+    finally:
+        db.close()
 
 
 class CrawlRequest(BaseModel):

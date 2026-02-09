@@ -51,8 +51,8 @@ class Project(Base):
     eeat_score = Column(Float, nullable=True)
     
     # 時間戳記
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     def to_dict(self) -> dict:
         """轉換為字典"""
@@ -102,13 +102,13 @@ class Settings(Base):
         """設定值"""
         setting = db.query(cls).filter(cls.key == key).first()
         if setting:
-            # 如果是金鑰類，自動去前後空白
-            if "api_key" in key or "password" in key:
+            # 如果是金鑰、密碼或帳號，自動去前後空白
+            if any(k in key for k in ["api_key", "password", "login"]):
                 value = value.strip()
             setting.value = value
             setting.encrypted = encrypted
         else:
-            if "api_key" in key or "password" in key:
+            if any(k in key for k in ["api_key", "password", "login"]):
                 value = value.strip()
             setting = cls(key=key, value=value, encrypted=encrypted)
             db.add(setting)
@@ -125,14 +125,14 @@ class SerpCache(Base):
     country = Column(String(10), default="TW")
     language = Column(String(10), default="zh-TW")
     results = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
     expires_at = Column(DateTime, nullable=True)
 
     @property
     def is_expired(self) -> bool:
         if not self.expires_at:
             return True
-        return datetime.utcnow() > self.expires_at
+        return datetime.now() > self.expires_at
 
 class KeywordCache(Base):
     """關鍵字快取資料表，儲存 Keyword Ideas 研究結果"""
@@ -146,7 +146,7 @@ class KeywordCache(Base):
     seed_data = Column(JSON, nullable=True)     # 核心詞數據 {search_volume, cpc, ...}
     suggestions = Column(JSON, nullable=True)   # 長尾詞建議列表 [{keyword, search_volume, ...}]
     
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
     expires_at = Column(DateTime, nullable=True)
 
     @property

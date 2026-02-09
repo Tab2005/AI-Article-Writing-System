@@ -335,15 +335,20 @@ async def test_dataforseo_connection(request: TestDataForSEORequest, db: Session
 
     try:
         import httpx
-        import base64
+        from app.services.dataforseo_service import DataForSEOService
+        headers = DataForSEOService._get_auth_header(login, password)
         
-        auth_str = f"{login}:{password}"
-        encoded_auth = base64.b64encode(auth_str.encode("ascii")).decode("ascii")
-        
+        if not headers:
+             return TestConnectionResponse(
+                success=False,
+                message="帳號或密碼不能為空",
+                provider="dataforseo",
+            )
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 "https://api.dataforseo.com/v3/user_node/me",
-                headers={"Authorization": f"Basic {encoded_auth}"},
+                headers=headers,
                 timeout=10.0
             )
             

@@ -75,14 +75,21 @@ async def analyze_intent(request: AnalysisRequest):
     corpus = [request.keyword] + request.titles + request.content_samples
     corpus = [c for c in corpus if c and c.strip()]
 
+    stop_words = {request.keyword, "的", "是", "了", "和", "與", "及", "在", "也", "或", "為", "如何", "什麼", " ", "\n", "\t"}
+
     def jieba_tokenizer(text: str) -> List[str]:
-        return [t for t in jieba.lcut(text) if t.strip()]
+        tokens = jieba.lcut(text)
+        return [t for t in tokens if t.strip() and t not in stop_words]
 
-    stop_words = {request.keyword, "的", "是", "了", "和", "與", "及", "在", "也", "或", "為", "如何", "什麼"}
-
-    tfidf = TfidfVectorizer(tokenizer=jieba_tokenizer, stop_words=stop_words)
-    tfidf_matrix = tfidf.fit_transform(corpus) if corpus else None
-    feature_names = tfidf.get_feature_names_out().tolist() if corpus else []
+    tfidf = TfidfVectorizer(tokenizer=jieba_tokenizer, stop_words=None)
+    
+    try:
+        tfidf_matrix = tfidf.fit_transform(corpus) if corpus else None
+        feature_names = tfidf.get_feature_names_out().tolist() if (tfidf_matrix is not None and len(tfidf.vocabulary_) > 0) else []
+    except ValueError:
+        # 處理 vocabulary 為空的情況
+        tfidf_matrix = None
+        feature_names = []
 
     keyword_scores: Dict[str, float] = {}
     if tfidf_matrix is not None and feature_names:

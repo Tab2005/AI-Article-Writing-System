@@ -112,7 +112,30 @@ export interface ResearchResponse {
     results: SERPResult[];
     total_results: number;
     ai_overview?: Record<string, unknown> | null;
+    paa: string[];              // 新增 PAA 清單
+    related_searches: string[]; // 新增相關搜尋清單
     error?: string | null;
+}
+
+export interface KeywordIdea {
+    keyword: string;
+    search_volume: number;
+    cpc: number;
+    competition: string;
+    competition_index: number;
+}
+
+export interface KeywordIdeasResponse {
+    seed_keyword_data: {
+        keyword: string;
+        search_volume: number;
+        cpc: number;
+        competition: string;
+        competition_index: number;
+    } | null;
+    suggestions: KeywordIdea[];
+    from_cache: boolean;
+    error?: string;
 }
 
 export interface IntentResult {
@@ -125,6 +148,15 @@ export interface KeywordExtractionResult {
     secondary_keywords: string[];
     lsi_keywords: string[];
     keyword_weights: Record<string, number>;
+}
+
+export interface ResearchHistoryItem {
+    keyword: string;
+    country: string;
+    language: string;
+    created_at: string;
+    search_volume?: number;
+    cpc?: number;
 }
 
 export interface TitleSuggestion {

@@ -102,15 +102,16 @@
 .keyword-tag {
     display: inline-flex;
     align-items: center;
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius-full);
-    font-family: var(--font-display);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    cursor: pointer;
-    transition: all var(--transition-fast);
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: default;
+    transition: all 0.2s ease;
     white-space: nowrap;
-    flex-shrink: 0;
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--color-text-secondary);
+    border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .keyword-tag--secondary {
@@ -131,6 +132,52 @@
 
 .keyword-tag--lsi:hover {
     background: rgba(16, 185, 129, 0.2);
+}
+
+.keyword-tag--related {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.keyword-tag--related:hover {
+    background: rgba(245, 158, 11, 0.2);
+}
+
+/* Intent Sections */
+.intent-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+}
+
+.intent-group__header {
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.paa-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.paa-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    line-height: 1.5;
+}
+
+.paa-item__icon {
+    color: var(--color-primary);
+    font-weight: var(--font-bold);
 }
 
 /* Title Suggestions */

@@ -9,3 +9,4 @@ export { AnalysisPage } from './AnalysisPage';
 export { OutlinePage } from './OutlinePage';
 export { WritingPage } from './WritingPage';
 export { SettingsPage } from './SettingsPage';
+export { KeywordHistoryPage } from './KeywordHistoryPage';

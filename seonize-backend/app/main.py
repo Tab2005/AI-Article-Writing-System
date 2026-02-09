@@ -1,7 +1,15 @@
-"""
-Seonize Backend - FastAPI Application Entry Point
-數據驅動的 AI SEO 撰寫系統後端
-"""
+import logging
+import os
+
+# 配置日誌
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler("backend_diagnostic.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

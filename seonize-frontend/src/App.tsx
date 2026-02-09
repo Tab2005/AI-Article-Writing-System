@@ -12,6 +12,7 @@ import {
   OutlinePage,
   WritingPage,
   SettingsPage,
+  KeywordHistoryPage,
 } from './pages';
 import './index.css';
 
@@ -28,6 +29,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/keyword" element={<KeywordPage />} />
+          <Route path="/keyword/history" element={<KeywordHistoryPage />} />
           <Route path="/projects/new" element={<ProjectNewPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/analysis" element={<AnalysisPage />} />

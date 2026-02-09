@@ -1,6 +1,7 @@
 import logging
 import httpx
 import base64
+import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
@@ -39,16 +40,28 @@ class DataForSEOService:
         "ko-kr": "ko",
     }
 
+    _language_name_map = {
+        "zh_TW": "Chinese (Traditional)",
+        "zh-tw": "Chinese (Traditional)", # Add dash variant
+        "zh_HK": "Chinese (Traditional)",
+        "zh_CN": "Chinese (Simplified)",
+        "en": "English",
+        "ja": "Japanese",
+        "ko": "Korean",
+    }
+
     @classmethod
     def resolve_language_code(cls, language: str) -> str:
-        if not language:
-            return "zh_TW"
-        normalized = language.replace("_", "-").lower()
+        normalized = language.lower()
         if normalized in cls._language_map:
             return cls._language_map[normalized]
         if "-" in normalized:
             return normalized.split("-")[0]
         return normalized
+
+    @classmethod
+    def resolve_language_name(cls, language_code: str) -> str:
+        return cls._language_name_map.get(language_code, "English")
 
     @classmethod
     def resolve_location_code(cls, country: str) -> int:
@@ -59,15 +72,37 @@ class DataForSEOService:
     @classmethod
     def _get_auth_header(cls, login: Optional[str] = None, password: Optional[str] = None) -> Dict[str, str]:
         """產生 Base64 驗證標頭"""
-        # 優先使用傳入的憑證，其次使用設定檔
-        final_login = login or settings.DATAFORSEO_LOGIN
-        final_password = password or settings.DATAFORSEO_PASSWORD
+        l = (login or settings.DATAFORSEO_LOGIN or "").strip()
+        p = (password or settings.DATAFORSEO_PASSWORD or "").strip()
         
-        if not final_login or not final_password:
+        # 僅在偵錯模式上記錄關鍵資訊的長度與首尾字元
+        logger.debug(f"DataForSEOService Auth: login='{l[:2]}...{l[-2:] if len(l)>2 else ''}' (len={len(l)}), pass='{p[:2]}...{p[-2:] if len(p)>2 else ''}' (len={len(p)})")
+        
+        # 1. 檢測是否直接提供了完整的 HTTP Basic Auth 字串
+        if p.startswith("Basic "):
+            return {"Authorization": p}
+        if l.startswith("Basic "):
+            return {"Authorization": l}
+            
+        # 2. 檢測是否提供了已經 Base64 編碼過的 'login:password'
+        # 規律：長度較長、無空格、無冒號，且解碼後包含冒號
+        if ":" not in p and len(p) > 20:
+            try:
+                decoded = base64.b64decode(p).decode("utf-8")
+                if ":" in decoded:
+                    logger.info("DataForSEOService: Detected pre-encoded Base64 login:password in credential field")
+                    return {"Authorization": f"Basic {p}"}
+            except:
+                pass
+
+        # 3. 標準處理 (Email + API Password)
+        if not l or not p:
+            logger.warning("DataForSEOService: Login or Password is empty! Fallback check: Login=%s, Pass=%s", bool(l), bool(p))
             return {}
             
-        auth_str = f"{final_login}:{final_password}"
-        encoded_auth = base64.b64encode(auth_str.encode("ascii")).decode("ascii")
+        auth_str = f"{l}:{p}"
+        # 使用 utf-8 避免特殊字元問題
+        encoded_auth = base64.b64encode(auth_str.encode("utf-8")).decode("ascii")
         return {"Authorization": f"Basic {encoded_auth}"}
 
     @classmethod
@@ -109,15 +144,17 @@ class DataForSEOService:
             url = f"{cls.BASE_URL}/serp/google/ai_mode/live/advanced"
         
         # 準備請求數據
+        lang_name = cls.resolve_language_name(language_code)
         post_data = [{
             "keyword": keyword,
-            "language_code": language_code,
+            "language_name": lang_name,
             "location_code": location_code,
             "depth": num_results,
             "calculate_rectangles": False
         }]
         
         try:
+            logger.info("DataForSEO Request to %s: %s", url, post_data)
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     url,
@@ -127,10 +164,11 @@ class DataForSEOService:
                 )
                 
                 if response.status_code != 200:
-                    logger.warning("DataForSEO Error: HTTP %s", response.status_code)
+                    logger.warning("DataForSEO Error: HTTP %s Body: %s", response.status_code, response.text)
                     return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": f"DataForSEO Error: HTTP {response.status_code}"}
                 
                 data = response.json()
+                logger.info("DataForSEO Raw Response: %s", data)
                 parsed_results = cls._parse_serp_response(data)
                 
                 # 2. 寫入快取
@@ -167,12 +205,16 @@ class DataForSEOService:
         # DataForSEO 的 task 回傳結構
         tasks = data.get("tasks", [])
         if not tasks:
-            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": "DataForSEO response missing tasks"}
+            status_message = data.get("status_message", "Unknown error")
+            logger.warning("DataForSEO response missing tasks. Status: %s, Full Data: %s", status_message, data)
+            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": f"DataForSEO 錯誤: {status_message}"}
             
         # 取得第一個 task 的結果
         task_result = tasks[0].get("result", [])
         if not task_result:
-            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": "DataForSEO response missing results"}
+            status_message = tasks[0].get("status_message", "No result found")
+            logger.warning("DataForSEO task missing result. Status: %s, Task: %s", status_message, tasks[0])
+            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": f"DataForSEO 任務失敗: {status_message}"}
             
         # 遍歷結果項項目
         items = task_result[0].get("items", [])
@@ -188,7 +230,7 @@ class DataForSEOService:
                     title=item.get("title", ""),
                     snippet=item.get("description", ""),
                     headings=[] # DataForSEO Advanced 有時會提供更多，此處先留空
-                ))
+                ).model_dump())
                 rank += 1
                 
             # 處理 AI Overview
@@ -232,9 +274,10 @@ class DataForSEOService:
         專門獲取 Google AI Overview (SGE) 數據
         """
         url = f"{cls.BASE_URL}/serp/google/ai_overview/live/advanced"
+        lang_name = cls.resolve_language_name(language_code)
         post_data = [{
             "keyword": keyword,
-            "language_code": language_code,
+            "language_name": lang_name,
             "location_code": location_code
         }]
         
@@ -270,7 +313,7 @@ class DataForSEOService:
         url = f"{cls.BASE_URL}/keywords_data/google/search_volume/live"
         post_data = [{
             "keywords": keywords,
-            "language_code": language_code,
+            "language_code": language_code, # Keywords Data endpoint requires language_code
             "location_code": location_code
         }]
         
@@ -284,14 +327,19 @@ class DataForSEOService:
                 )
                 
                 if response.status_code != 200:
+                    logger.warning("DataForSEO Keyword Data HTTP Error: %s Body: %s", response.status_code, response.text)
                     return []
                     
                 data = response.json()
+                logger.info("DataForSEO Keyword Data Response: %s", data)
                 tasks = data.get("tasks", [])
-                if not tasks:
+                if not tasks or tasks[0].get("status_code", 0) >= 40000:
+                    status_msg = tasks[0].get("status_message") if tasks else "No tasks found"
+                    logger.warning("DataForSEO Keyword Data Task Error: %s", status_msg)
                     return []
                     
-                return tasks[0].get("result", [])
+                result = tasks[0].get("result", [])
+                return result
         except Exception:
             logger.warning("DataForSEO Keyword Data Exception", exc_info=True)
             return []
@@ -321,21 +369,23 @@ class DataForSEOService:
             if cache and not cache.is_expired:
                 logger.info(f"Using cached keyword ideas for: {keyword}")
                 return {
-                    "seed_keyword_data": cache.seed_data,
-                    "suggestions": cache.suggestions,
+                    "seed_keyword_data": cls._flatten_keyword_data(cache.seed_data),
+                    "suggestions": [cls._flatten_keyword_data(s) for s in cache.suggestions] if cache.suggestions else [],
                     "from_cache": True
                 }
 
         # 2. 調用 API
-        url = f"{cls.BASE_URL}/keywords_data/google_ads/keyword_ideas/live"
+        print(f"DEBUG: DataForSEO Keyword Ideas Params: Keyword={keyword}, LangCode={language_code}, Loc={location_code}")
+        url = f"{cls.BASE_URL}/keywords_data/google_ads/keywords_for_keywords/live"
         post_data = [{
             "keywords": [keyword],
-            "language_code": language_code,
+            "language_code": language_code, # Keywords Data endpoint requires language_code
             "location_code": location_code,
             "include_adult_keywords": False
         }]
         
         try:
+            logger.info("DataForSEO Keyword Ideas Request to %s: %s", url, post_data)
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     url,
@@ -344,25 +394,46 @@ class DataForSEOService:
                     timeout=30.0
                 )
                 
+                print(f"DEBUG: DataForSEO Keyword Ideas Status: {response.status_code}")
                 if response.status_code != 200:
+                    print(f"DEBUG: DataForSEO Keyword Ideas Error Body: {response.text}")
+                    logger.warning("DataForSEO Keyword Ideas HTTP Error: %s Body: %s", response.status_code, response.text)
                     return {"seed_keyword_data": None, "suggestions": [], "error": f"API Error: {response.status_code}"}
-                    
+                
                 data = response.json()
+                # 寫入偵錯檔案
+                with open("ideas_last_response.json", "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                
+                print(f"DEBUG: DataForSEO Keyword Ideas Response: {str(data)[:200]}...")
+                logger.info("DataForSEO Keyword Ideas Response: %s", data)
                 tasks = data.get("tasks", [])
-                if not tasks or not tasks[0].get("result"):
+                
+                if not tasks or tasks[0].get("status_code", 0) >= 40000:
+                    status_msg = tasks[0].get("status_message") if tasks else "No tasks found"
+                    logger.warning("DataForSEO Keyword Ideas Task Error: %s", status_msg)
+                    return {"seed_keyword_data": None, "suggestions": [], "error": status_msg}
+
+                if not tasks[0].get("result"):
                     return {"seed_keyword_data": None, "suggestions": [], "error": "No results found"}
                 
-                result = tasks[0]["result"][0]
-                seed_data = result.get("seed_keyword_data")
-                suggestions = result.get("items", [])
+                result_list = tasks[0]["result"]
+                # keywords_for_keywords 返回陣列，第一個通常是 seed
+                raw_seed_data = result_list[0]
+                raw_suggestions = result_list[1:] if len(result_list) > 1 else []
+                
+                # 扁平化數據以利前端使用
+                seed_data = cls._flatten_keyword_data(raw_seed_data) if raw_seed_data else None
+                suggestions = [cls._flatten_keyword_data(s) for s in raw_suggestions if s]
                 
                 # 3. 寫入快取 (若有提供 db session)
                 if db:
+                    logger.info("Saving Keyword Ideas to Cache for: %s", keyword)
                     if cache:
                         cache.seed_data = seed_data
                         cache.suggestions = suggestions
-                        cache.created_at = datetime.utcnow()
-                        cache.expires_at = datetime.utcnow() + timedelta(days=30)
+                        cache.created_at = datetime.now()
+                        cache.expires_at = datetime.now() + timedelta(days=30)
                     else:
                         new_cache = KeywordCache(
                             keyword=keyword,
@@ -370,10 +441,11 @@ class DataForSEOService:
                             language_code=language_code,
                             seed_data=seed_data,
                             suggestions=suggestions,
-                            expires_at=datetime.utcnow() + timedelta(days=30)
+                            expires_at=datetime.now() + timedelta(days=30)
                         )
                         db.add(new_cache)
                     db.commit()
+                    logger.info("Successfully committed Keyword Cache for: %s", keyword)
                 
                 return {
                     "seed_keyword_data": seed_data,
@@ -384,3 +456,42 @@ class DataForSEOService:
         except Exception as e:
             logger.error(f"Keyword Ideas Exception: {str(e)}", exc_info=True)
             return {"seed_keyword_data": None, "suggestions": [], "error": str(e)}
+
+    @classmethod
+    def _flatten_keyword_data(cls, item: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        將 DataForSEO 權重數據扁平化，提取關鍵指標到首層
+        """
+        if not item:
+            return {}
+            
+        # 優先從頂層獲取（Keywords Data Live 端點）
+        search_volume = item.get("search_volume")
+        cpc = item.get("cpc")
+        competition = item.get("competition")
+        competition_index = item.get("competition_index")
+        low_bid = item.get("low_top_of_page_bid")
+        high_bid = item.get("high_top_of_page_bid")
+        
+        # 如果頂層沒有，嘗試從內層獲取（某些 SERP 或 Labs 端點）
+        info = item.get("keyword_info", {})
+        if not info:
+            info = item.get("keyword_data", {})
+            
+        if info:
+            search_volume = search_volume or info.get("search_volume")
+            cpc = cpc or info.get("cpc")
+            competition = competition or info.get("competition")
+            competition_index = competition_index or info.get("competition_index")
+            low_bid = low_bid or info.get("low_top_of_page_bid")
+            high_bid = high_bid or info.get("high_top_of_page_bid")
+
+        return {
+            "keyword": item.get("keyword"),
+            "search_volume": search_volume,
+            "cpc": cpc,
+            "competition": competition,
+            "competition_index": competition_index,
+            "low_top_of_page_bid": low_bid,
+            "high_top_of_page_bid": high_bid,
+        }

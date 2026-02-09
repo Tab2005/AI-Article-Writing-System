@@ -1,0 +1,62 @@
+.keyword-history-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--color-bg-card);
+    padding: var(--space-6);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-border);
+}
+
+.history-header__title {
+    font-size: var(--text-xl);
+    font-weight: var(--font-bold);
+    color: var(--color-text);
+    margin-bottom: var(--space-1);
+}
+
+.history-header__desc {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.history-list-section {
+    background: var(--color-bg-card);
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-border);
+}
+
+.history-keyword {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.history-keyword__text {
+    font-weight: var(--font-medium);
+    color: var(--color-text);
+}
+
+.history-error {
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.keyword-history-page .data-table-row {
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.keyword-history-page .data-table-row:hover {
+    background: rgba(37, 99, 235, 0.03);
+}

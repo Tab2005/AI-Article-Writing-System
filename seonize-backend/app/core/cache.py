@@ -32,7 +32,7 @@ class InMemoryCache:
                 return None
             
             entry = self._cache[key]
-            if entry["expires_at"] and datetime.utcnow() > entry["expires_at"]:
+            if entry["expires_at"] and datetime.now() > entry["expires_at"]:
                 del self._cache[key]
                 return None
             
@@ -40,11 +40,11 @@ class InMemoryCache:
     
     async def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
         async with self._lock:
-            expires_at = datetime.utcnow() + timedelta(seconds=ttl) if ttl > 0 else None
+            expires_at = datetime.now() + timedelta(seconds=ttl) if ttl > 0 else None
             self._cache[key] = {
                 "value": value,
                 "expires_at": expires_at,
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(),
             }
             return True
     
