@@ -60,16 +60,19 @@ export const researchApi = {
         request<import('../types').ResearchResponse>('/api/research/serp', { method: 'POST', body: data }),
 
     crawl: (urls: string[]) =>
-        request<{ results: Array<{ url: string; title: string; headings: string[]; content: string; word_count: number }> }>(
+        request<import('../types').CrawlResponse>(
             '/api/research/crawl',
             { method: 'POST', body: { urls } }
         ),
 
-    keywordIdeas: (data: { keyword: string; country?: string; language?: string }) =>
+    keywordIdeas: (data: { keyword: string; country?: string; language?: string; force_refresh?: boolean }) =>
         request<import('../types').KeywordIdeasResponse>('/api/research/keyword-ideas', { method: 'POST', body: data }),
 
     getHistory: () =>
         request<import('../types').ResearchHistoryItem[]>('/api/research/history'),
+
+    deleteHistory: (recordId: number) =>
+        request<void>(`/api/research/history/${recordId}`, { method: 'DELETE' }),
 };
 
 // Analysis API

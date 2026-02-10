@@ -20,9 +20,11 @@ class ResearchRequest(BaseModel):
     country: str = "TW"
     language: str = "zh-TW"
     num_results: int = 10
+    force_refresh: bool = False
 
 
 class ResearchHistoryItem(BaseModel):
+    id: int
     keyword: str
     country: str
     language: str
@@ -38,6 +40,7 @@ class ResearchResponse(BaseModel):
     ai_overview: Optional[Dict[str, Any]] = None
     paa: List[str] = []              # 新增 PAA 清單
     related_searches: List[str] = [] # 新增相關搜尋清單
+    created_at: Optional[str] = None # 數據時間
     error: Optional[str] = None
 
 
@@ -58,7 +61,8 @@ async def research_serp(request: ResearchRequest):
             num_results=request.num_results,
             country=request.country,
             language=request.language,
-            db=db
+            db=db,
+            force_refresh=request.force_refresh
         )
     finally:
         db.close()
@@ -67,6 +71,7 @@ async def research_serp(request: ResearchRequest):
     ai_overview = search_data.get("ai_overview")
     paa = search_data.get("paa", [])
     related_searches = search_data.get("related_searches", [])
+    created_at = search_data.get("created_at")
     error = search_data.get("error")
 
     return ResearchResponse(
@@ -76,6 +81,7 @@ async def research_serp(request: ResearchRequest):
         ai_overview=ai_overview,
         paa=paa,
         related_searches=related_searches,
+        created_at=created_at,
         error=error,
     )
 
@@ -84,16 +90,17 @@ class KeywordIdeasRequest(BaseModel):
     keyword: str
     country: str = "TW"
     language: str = "zh-TW"
+    force_refresh: bool = False
 
 
 @router.post("/keyword-ideas")
 async def get_keyword_ideas(request: KeywordIdeasRequest):
     """
     獲取關鍵字建議與數據 (Keyword Ideas)
-    支援資料庫快取
+    支援資料庫快取與強制重新整理
     """
     from app.services.dataforseo_service import DataForSEOService
-    from app.services.serp_service import SERPService, SERPProvider
+    from app.services.serp_service import SERPService
     from app.core.database import SessionLocal
 
     config = SERPService.get_config()
@@ -110,7 +117,8 @@ async def get_keyword_ideas(request: KeywordIdeasRequest):
             location_code=location_code,
             db=db,
             login=config.dataforseo_login,
-            password=config.dataforseo_password
+            password=config.dataforseo_password,
+            force_refresh=request.force_refresh
         )
         return ideas_data
     finally:
@@ -174,6 +182,7 @@ async def get_research_history():
             cpc = r.seed_data.get("cpc") if r.seed_data else None
             
             history.append(ResearchHistoryItem(
+                id=r.id,
                 keyword=r.keyword,
                 country="TW", # 這裡可以根據 location_code 反查
                 language=r.language_code,
@@ -182,6 +191,30 @@ async def get_research_history():
                 cpc=cpc
             ))
         return history
+    finally:
+        db.close()
+
+
+@router.delete("/history/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_research_history(record_id: int):
+    """
+    刪除關鍵字研究歷史紀錄
+    """
+    from app.core.database import SessionLocal
+    from app.models.db_models import KeywordCache
+    
+    db = SessionLocal()
+    try:
+        record = db.query(KeywordCache).filter(KeywordCache.id == record_id).first()
+        if not record:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Research record {record_id} not found"
+            )
+        
+        db.delete(record)
+        db.commit()
+        return None
     finally:
         db.close()
 

@@ -8,25 +8,62 @@ import './KeywordHistoryPage.css';
 export const KeywordHistoryPage: React.FC = () => {
     const navigate = useNavigate();
     const [history, setHistory] = useState<ResearchHistoryItem[]>([]);
+    const [updating, setUpdating] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchHistory = async () => {
-            try {
-                setLoading(true);
-                const data = await researchApi.getHistory();
-                setHistory(data);
-            } catch (err) {
-                console.error('Failed to fetch research history:', err);
-                setError('無法取得歷史紀錄');
-            } finally {
-                setLoading(false);
-            }
-        };
+    const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; item: ResearchHistoryItem | null }>({
+        show: false,
+        item: null,
+    });
 
+    const fetchHistory = async () => {
+        try {
+            setLoading(true);
+            const data = await researchApi.getHistory();
+            setHistory(data);
+        } catch (err) {
+            console.error('Failed to fetch research history:', err);
+            setError('無法取得歷史紀錄');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchHistory();
     }, []);
+
+    const handleRefresh = async (keyword: string) => {
+        try {
+            setUpdating(keyword);
+            // 同步更新：數據指標 + SERP 排名
+            await Promise.all([
+                researchApi.keywordIdeas({ keyword, force_refresh: true }),
+                researchApi.serp({ keyword, force_refresh: true })
+            ]);
+
+            // 重新取得列表以顯示最新數據與日期
+            const data = await researchApi.getHistory();
+            setHistory(data);
+        } catch (err) {
+            console.error('Failed to refresh keyword data:', err);
+            alert(`更新失敗: ${err instanceof Error ? err.message : '未知錯誤'}`);
+        } finally {
+            setUpdating(null);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        try {
+            await researchApi.deleteHistory(id);
+            setHistory(prev => prev.filter(item => item.id !== id));
+            setDeleteConfirm({ show: false, item: null });
+        } catch (err) {
+            console.error('Failed to delete research record:', err);
+            alert(`刪除失敗: ${err instanceof Error ? err.message : '未知錯誤'}`);
+        }
+    };
 
     const columns = [
         {
@@ -63,13 +100,41 @@ export const KeywordHistoryPage: React.FC = () => {
             key: 'actions' as any,
             header: '操作',
             render: (_: any, row: ResearchHistoryItem) => (
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => navigate(`/keyword?q=${encodeURIComponent(row.keyword)}`)}
-                >
-                    查看詳情
-                </Button>
+                <div className="history-actions" style={{ display: 'flex', gap: '8px' }}>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/keyword?q=${encodeURIComponent(row.keyword)}`);
+                        }}
+                    >
+                        查看
+                    </Button>
+                    <Button
+                        variant="cta"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleRefresh(row.keyword);
+                        }}
+                        loading={updating === row.keyword}
+                        disabled={!!updating}
+                    >
+                        更新
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm({ show: true, item: row });
+                        }}
+                        style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                    >
+                        刪除
+                    </Button>
+                </div>
             )
         }
     ];
@@ -99,6 +164,53 @@ export const KeywordHistoryPage: React.FC = () => {
                     onRowClick={(row) => navigate(`/keyword?q=${encodeURIComponent(row.keyword)}`)}
                 />
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm.show && deleteConfirm.item && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                }}>
+                    <div className="modal-content" style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        padding: '24px',
+                        maxWidth: '400px',
+                        width: '90%',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                    }}>
+                        <h3 style={{ margin: '0 0 16px 0', color: 'var(--color-text)', fontSize: '1.25rem' }}>
+                            確認刪除紀錄
+                        </h3>
+                        <p style={{ margin: '0 0 24px 0', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                            您確定要刪除關鍵字「<strong>{deleteConfirm.item.keyword}</strong>」的研究紀錄嗎？此動作將無法復原。
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setDeleteConfirm({ show: false, item: null })}
+                            >
+                                取消
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => deleteConfirm.item && handleDelete(deleteConfirm.item.id)}
+                                style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                            >
+                                確認刪除
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

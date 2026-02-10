@@ -105,6 +105,7 @@ export interface ResearchRequest {
     country?: string;
     language?: string;
     num_results?: number;
+    force_refresh?: boolean;
 }
 
 export interface ResearchResponse {
@@ -114,6 +115,7 @@ export interface ResearchResponse {
     ai_overview?: Record<string, unknown> | null;
     paa: string[];              // 新增 PAA 清單
     related_searches: string[]; // 新增相關搜尋清單
+    created_at?: string | null; // 數據時間
     error?: string | null;
 }
 
@@ -151,6 +153,7 @@ export interface KeywordExtractionResult {
 }
 
 export interface ResearchHistoryItem {
+    id: number;
     keyword: string;
     country: string;
     language: string;
@@ -216,4 +219,16 @@ export interface DataTableProps<T> {
     data: T[];
     loading?: boolean;
     onRowClick?: (row: T) => void;
+}
+
+export interface CrawlResult {
+    url: string;
+    title: string;
+    headings: string[];
+    content: string;
+    word_count: number;
+}
+
+export interface CrawlResponse {
+    results: CrawlResult[];
 }

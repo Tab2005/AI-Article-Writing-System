@@ -117,23 +117,30 @@ class DataForSEOService:
         login: Optional[str] = None,
         password: Optional[str] = None,
         serp_mode: str = "google_organic",
+        force_refresh: bool = False,
     ) -> Dict[str, Any]:
         """
         獲取 Google SERP 結果，支援 AI Overviews (SGE)
-        包含快取邏輯：優先從 SerpCache 讀取
+        包含快取邏輯：優先從 SerpCache 讀取，除非強制刷新
         """
         # 1. 檢查快取
         if db:
             from app.models.db_models import SerpCache
             cache = db.query(SerpCache).filter(
                 SerpCache.keyword == keyword,
-                SerpCache.country == "TW", # 這裡暫定，實際可連動 location_code
+                SerpCache.country == "TW", # 這裡暫定
                 SerpCache.language == "zh-TW"
             ).first()
             
-            if cache and not cache.is_expired:
+            if cache and not force_refresh:
                 logger.info(f"Using cached SERP results for: {keyword}")
-                return cache.results
+                results_data = cache.results
+                # 將快取建立時間加入結果，以便前端顯示
+                if isinstance(results_data, dict):
+                    results_data["created_at"] = cache.created_at.isoformat() if cache.created_at else None
+                return results_data
+        else:
+            cache = None
 
         mode = (serp_mode or "google_organic").lower()
         if mode not in ["google_organic", "google_ai_mode"]:
@@ -170,6 +177,7 @@ class DataForSEOService:
                 data = response.json()
                 logger.info("DataForSEO Raw Response: %s", data)
                 parsed_results = cls._parse_serp_response(data)
+                parsed_results["created_at"] = datetime.utcnow().isoformat()
                 
                 # 2. 寫入快取
                 if db and not parsed_results.get("error"):
@@ -352,27 +360,38 @@ class DataForSEOService:
         location_code: int = 2158,
         db: Optional[Session] = None,
         login: Optional[str] = None,
-        password: Optional[str] = None
+        password: Optional[str] = None,
+        force_refresh: bool = False
     ) -> Dict[str, Any]:
         """
         獲取關鍵字建議與長尾詞 (Keyword Ideas)
         包含快取邏輯：優先從資料庫讀取，失效或不存在才調用 API
         """
-        # 1. 檢查快取 (若有提供 db session)
-        if db:
+        # 1. 檢查快取 (若有提供 db session 且非強制刷新)
+        if db and not force_refresh:
             cache = db.query(KeywordCache).filter(
                 KeywordCache.keyword == keyword,
                 KeywordCache.location_code == location_code,
                 KeywordCache.language_code == language_code
             ).first()
             
-            if cache and not cache.is_expired:
+            # 手動更新邏輯：除非強制刷新，否則即便是過期的也先回傳 (或是這裡可以取消過期檢查)
+            if cache:
                 logger.info(f"Using cached keyword ideas for: {keyword}")
                 return {
                     "seed_keyword_data": cls._flatten_keyword_data(cache.seed_data),
                     "suggestions": [cls._flatten_keyword_data(s) for s in cache.suggestions] if cache.suggestions else [],
                     "from_cache": True
                 }
+        elif db and force_refresh:
+            # 如果是強制刷新，先查出舊快取物件以便更新
+            cache = db.query(KeywordCache).filter(
+                KeywordCache.keyword == keyword,
+                KeywordCache.location_code == location_code,
+                KeywordCache.language_code == language_code
+            ).first()
+        else:
+            cache = None
 
         # 2. 調用 API
         print(f"DEBUG: DataForSEO Keyword Ideas Params: Keyword={keyword}, LangCode={language_code}, Loc={location_code}")

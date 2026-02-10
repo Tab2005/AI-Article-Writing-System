@@ -19,16 +19,17 @@ export const KeywordPage: React.FC = () => {
     const [paa, setPaa] = useState<string[]>([]);
     const [relatedSearches, setRelatedSearches] = useState<string[]>([]);
     const [aiOverview, setAiOverview] = useState<any | null>(null);
+    const [lastCreatedAt, setLastCreatedAt] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
 
-    // 自動觸研：如果 URL 有搜尋參數則自動執行
+    // 自動觸研：如果 URL 有搜尋參數則自動執行 (預設使用快取)
     React.useEffect(() => {
         if (initialKeyword) {
-            handleResearch();
+            handleResearch(false);
         }
     }, [initialKeyword]);
 
-    const handleResearch = async () => {
+    const handleResearch = async (forceRefresh: boolean = false) => {
         if (!keyword.trim()) return;
 
         setLoading(true);
@@ -39,8 +40,8 @@ export const KeywordPage: React.FC = () => {
         try {
             // 第一階段：數據採集 (SERP & Keyword Ideas)
             const [serpRes, ideasRes] = await Promise.all([
-                researchApi.serp({ keyword, num_results: 10 }),
-                researchApi.keywordIdeas({ keyword })
+                researchApi.serp({ keyword, num_results: 10, force_refresh: forceRefresh }),
+                researchApi.keywordIdeas({ keyword, force_refresh: forceRefresh })
             ]);
 
             serpData = serpRes;
@@ -48,6 +49,7 @@ export const KeywordPage: React.FC = () => {
             setPaa(serpRes.paa || []);
             setRelatedSearches(serpRes.related_searches || []);
             setAiOverview(serpRes.ai_overview);
+            setLastCreatedAt(serpRes.created_at || null);
             setKeywordIdeas(ideasRes);
 
             if (serpRes.error) {
@@ -113,18 +115,20 @@ export const KeywordPage: React.FC = () => {
     ];
 
     const suggestionColumns = [
-        { key: 'keyword', header: '關鍵字' },
+        { key: 'keyword', header: '關鍵字', sortable: true },
         {
             key: 'search_volume',
             header: '搜尋量',
+            sortable: true,
             render: (val: any) => val?.toLocaleString() || '-'
         },
         {
             key: 'cpc',
             header: '平均 CPC',
+            sortable: true,
             render: (val: any) => val ? `$${val.toFixed(2)}` : '-'
         },
-        { key: 'competition', header: '競爭程度' },
+        { key: 'competition', header: '競爭程度', sortable: true },
     ];
 
     const intentLabels: Record<string, { label: string; color: string }> = {
@@ -132,6 +136,14 @@ export const KeywordPage: React.FC = () => {
         commercial: { label: '商業型', color: 'var(--color-cta)' },
         navigational: { label: '導航型', color: 'var(--color-success)' },
         transactional: { label: '交易型', color: '#8B5CF6' },
+    };
+
+    const isDataExpired = () => {
+        if (!lastCreatedAt) return false;
+        const createdDate = new Date(lastCreatedAt);
+        const now = new Date();
+        const diffDays = Math.ceil((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays > 7;
     };
 
     return (
@@ -160,13 +172,27 @@ export const KeywordPage: React.FC = () => {
                     />
                     <Button
                         variant="cta"
-                        onClick={handleResearch}
+                        onClick={() => handleResearch(false)}
                         loading={loading}
                         disabled={!keyword.trim()}
                     >
                         開始研究
                     </Button>
                 </div>
+                {lastCreatedAt && (
+                    <div className="data-freshness" style={{ marginTop: '12px', fontSize: '0.875rem', color: isDataExpired() ? '#f59e0b' : 'var(--color-text-secondary)' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        數據抓取時間：{new Date(lastCreatedAt).toLocaleString('zh-TW')}
+                        {isDataExpired() && (
+                            <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+                                (建議前往「歷史紀錄」更新數據以獲取最新結果)
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Analysis Results */}
