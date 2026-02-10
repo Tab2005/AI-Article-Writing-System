@@ -77,10 +77,21 @@ Seonize 是一款「數據驅動」的 AI SEO 撰寫系統。不同於一般的 
 * **公式**: Score \= Σ (Title\_Keywords \* Weight) \+ Page\_Structure\_Signals  
 * **範例**: 標題含「推薦」且頁面含大量 Link \-\> 重點標記為 Commercial。
 
-### **5.2 關鍵字提取演算法 (Keyword Extraction)**
+### **5.2 關鍵字提取演算法 (Keyword Extraction Component)**
 
-* **技術**: TF-IDF (Term Frequency-Inverse Document Frequency)。  
-* **目的**: 找出「該主題專屬」而非「全網路通用」的詞彙。
+*   **次要關鍵字 (Secondary Keywords)**：
+    *   **機制**：對 SERP Top 10 標題進行詞頻統計，提取能代表競品切入點的特徵修飾詞（如：公司、比較、評價）。
+    *   **技術**：jieba 斷詞 + 詞頻過濾。
+*   **LSI 關鍵字 (Latent Semantic Indexing)**：
+    *   **機制**：從搜尋結果摘要 (Snippets) 中提取強相關背景詞。
+    *   **技術**：TF-IDF (詞頻-逆文件頻率)，找出主題專屬詞。
+
+### **5.3 關鍵字應用與價值**
+
+*   **內容架構**：提供 H2/H3 副標題的切入點建議（例如：費用、流程）。
+*   **語義深度**：透過嵌入 LSI 關鍵字，提高搜尋引擎對文章「專業度」與「主題涵蓋面」的評分。
+*   **AI 寫作引導**：作為内容大綱生成與撰寫階段的關鍵參考數據，強制要求 AI 將這些詞融入生成內容中。
+
 
 ## **6\. 技術棧 (Tech Stack) 建議**
 
