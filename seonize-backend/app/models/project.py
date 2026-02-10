@@ -113,3 +113,4 @@ class ProjectUpdate(BaseModel):
     style: Optional[WritingStyle] = None
     outline: Optional[OutlineData] = None
     optimization_mode: Optional[OptimizationMode] = None
+    candidate_titles: Optional[List[str]] = None

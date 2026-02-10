@@ -98,6 +98,7 @@ export interface ProjectUpdate {
     style?: WritingStyle;
     outline?: OutlineData;
     optimization_mode?: OptimizationMode;
+    candidate_titles?: string[];
 }
 
 export interface ResearchRequest {
@@ -166,6 +167,17 @@ export interface TitleSuggestion {
     title: string;
     ctr_score: number;
     intent_match: boolean;
+}
+
+export interface AITitleSuggestion {
+    title: string;
+    strategy: string;
+    reason: string;
+}
+
+export interface TitleGenerationResponse {
+    keyword: string;
+    suggestions: AITitleSuggestion[];
 }
 
 export interface AnalysisResponse {

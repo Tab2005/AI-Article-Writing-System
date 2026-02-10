@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard } from '../components/ui';
-import { researchApi, analysisApi } from '../services/api';
-import type { SERPResult, AnalysisResponse, KeywordIdeasResponse } from '../types';
+import { researchApi, analysisApi, projectsApi } from '../services/api';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import type { SERPResult, AnalysisResponse, KeywordIdeasResponse, AITitleSuggestion } from '../types';
 import './KeywordPage.css';
 
 export const KeywordPage: React.FC = () => {
@@ -20,6 +20,9 @@ export const KeywordPage: React.FC = () => {
     const [relatedSearches, setRelatedSearches] = useState<string[]>([]);
     const [aiOverview, setAiOverview] = useState<any | null>(null);
     const [lastCreatedAt, setLastCreatedAt] = useState<string | null>(null);
+    const [aiSuggestions, setAiSuggestions] = useState<AITitleSuggestion[]>([]);
+    const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
+    const [isCreatingProject, setIsCreatingProject] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
 
     // 自動觸研：如果 URL 有搜尋參數則自動執行 (預設使用快取)
@@ -85,31 +88,107 @@ export const KeywordPage: React.FC = () => {
         }
     };
 
-    const handleCreateProject = () => {
-        if (!analysisResult) return;
+    const handleGenerateAITitles = async () => {
+        if (!keyword.trim() || serpResults.length === 0) return;
 
-        const projectData = {
-            keyword,
-            intent: analysisResult.intent_analysis.intent,
-            suggested_style: analysisResult.suggested_style,
-            keywords: analysisResult.keywords,
-            title_suggestions: analysisResult.title_suggestions,
-            serp_results: serpResults,
-        };
+        setIsGeneratingTitles(true);
+        try {
+            const res = await researchApi.generateTitles({
+                keyword,
+                intent: analysisResult?.intent_analysis.intent || 'informational'
+            });
+            setAiSuggestions(res.suggestions);
+        } catch (error: any) {
+            console.error('Failed to generate AI titles:', error);
 
-        navigate('/projects/new', { state: projectData });
+            // 嘗試從錯誤回應中提取詳細訊息
+            let errorMessage = '標題生成失敗，請稍後再試';
+            if (error.response?.data?.detail) {
+                errorMessage = error.response.data.detail;
+            } else if (error.message) {
+                errorMessage = `標題生成失敗：${error.message}`;
+            }
+
+            alert(errorMessage);
+        } finally {
+            setIsGeneratingTitles(false);
+        }
     };
+
+    const handleUseTitle = async (selectedTitle: string) => {
+        if (!keyword.trim()) return;
+
+        setIsCreatingProject(true);
+        try {
+            // 1. 建立基礎專案 (使用 GEO 模式)
+            const newProject = await projectsApi.create({
+                primary_keyword: keyword,
+                optimization_mode: 'geo' as any,
+                country: 'TW',
+                language: 'zh-TW'
+            });
+
+            // 2. 更新專案詳情：意圖、所選標題、所有候選標題
+            await projectsApi.update(newProject.project_id, {
+                selected_title: selectedTitle,
+                intent: (analysisResult?.intent_analysis.intent as any) || 'informational',
+                candidate_titles: aiSuggestions.map((s: AITitleSuggestion) => s.title),
+                optimization_mode: 'geo' as any
+            });
+
+            // 3. 跳轉至該專案的細節頁面 (目前跳轉至大綱生成或專案主頁)
+            navigate(`/projects/${newProject.project_id}`);
+        } catch (error) {
+            console.error('Failed to create project and apply title:', error);
+            alert('專案建立失敗，請稍後再試');
+        } finally {
+            setIsCreatingProject(false);
+        }
+    };
+
 
     const serpColumns = [
         { key: 'rank', header: '排名', width: '60px' },
         {
             key: 'title',
             header: '標題',
-            render: (value: unknown, row: SERPResult) => (
-                <a href={row.url} target="_blank" rel="noopener noreferrer" className="serp-link">
-                    {String(value)}
-                </a>
-            ),
+        },
+        {
+            key: 'url',
+            header: '網址',
+            width: '200px',
+            render: (value: unknown) => {
+                const url = String(value);
+                try {
+                    const domain = new URL(url).hostname.replace('www.', '');
+                    return (
+                        <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="serp-url"
+                            style={{
+                                fontSize: '0.875rem',
+                                color: 'var(--color-text-secondary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                textDecoration: 'none'
+                            }}
+                            title={url}
+                        >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                <polyline points="15 3 21 3 21 9" />
+                                <line x1="10" y1="14" x2="21" y2="3" />
+                            </svg>
+                            {domain}
+                        </a>
+                    );
+                } catch {
+                    return <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>{url}</span>;
+                }
+            },
         },
         { key: 'snippet', header: '摘要' },
     ];
@@ -161,7 +240,7 @@ export const KeywordPage: React.FC = () => {
                     <Input
                         placeholder="輸入關鍵字..."
                         value={keyword}
-                        onChange={(e) => setKeyword(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKeyword(e.target.value)}
                         fullWidth
                         icon={
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -195,9 +274,10 @@ export const KeywordPage: React.FC = () => {
                 )}
             </div>
 
-            {/* Analysis Results */}
-            {(analysisResult || keywordIdeas) && (
+            {/* Analysis Results Container */}
+            {(analysisResult || keywordIdeas || serpResults.length > 0) && (
                 <div className="keyword-analysis">
+                    {/* KPI Grid */}
                     <div className="analysis-kpi-grid">
                         <KPICard
                             title="預估月搜尋量"
@@ -245,8 +325,8 @@ export const KeywordPage: React.FC = () => {
                         />
                     </div>
 
-                    {/* Semantic Intent Section (PAA, Related Searches & AI Overview) */}
-                    {(paa.length > 0 || relatedSearches.length > 0 || aiOverview || (analysisResult && (analysisResult.keywords.secondary_keywords.length > 0 || analysisResult.keywords.lsi_keywords.length > 0))) && (
+                    {/* Semantic Intent Section */}
+                    {(paa.length > 0 || relatedSearches.length > 0 || aiOverview || analysisResult) && (
                         <div className="keyword-section keyword-section--intent">
                             <h3 className="keyword-section__title">語義意圖與熱門問題</h3>
                             <div className="intent-grid">
@@ -254,7 +334,7 @@ export const KeywordPage: React.FC = () => {
                                     <div className="intent-group">
                                         <div className="intent-group__header">大家也問了 (People Also Ask)</div>
                                         <div className="paa-list">
-                                            {paa.map((q, i) => (
+                                            {paa.map((q: string, i: number) => (
                                                 <div key={i} className="paa-item">
                                                     <span className="paa-item__icon">?</span>
                                                     {q}
@@ -263,51 +343,26 @@ export const KeywordPage: React.FC = () => {
                                         </div>
                                     </div>
                                 )}
-                                {aiOverview && (
-                                    <div className="intent-group">
-                                        <div className="intent-group__header">AI 總結 (AI Overview)</div>
-                                        <div className="paa-list">
-                                            <div className="paa-item">
-                                                <span className="paa-item__icon" style={{ color: '#8B5CF6' }}>✨</span>
-                                                {aiOverview.description || aiOverview.snippet || "已擷取 Google AI 總結內容"}
-                                            </div>
+                                <div className="intent-group">
+                                    <div className="intent-group__header">AI 總結 (AI Overview)</div>
+                                    <div className="paa-list">
+                                        <div className="paa-item" style={{ opacity: aiOverview ? 1 : 0.7 }}>
+                                            <span className="paa-item__icon" style={{ color: aiOverview ? '#8B5CF6' : 'var(--color-text-secondary)' }}>✨</span>
+                                            {aiOverview
+                                                ? (aiOverview.description || aiOverview.snippet || "已擷取 Google AI 總結內容")
+                                                : <span style={{ fontStyle: 'italic', color: 'var(--color-text-secondary)' }}>此關鍵字目前暫無 Google AI 總結資料</span>
+                                            }
                                         </div>
                                     </div>
-                                )}
+                                </div>
                                 {relatedSearches.length > 0 && (
                                     <div className="intent-group">
                                         <div className="intent-group__header">相關搜尋 (Related Searches)</div>
                                         <div className="paa-list">
-                                            {relatedSearches.map((s, i) => (
+                                            {relatedSearches.map((s: string, i: number) => (
                                                 <div key={i} className="paa-item">
                                                     <span className="paa-item__icon" style={{ color: '#f59e0b' }}>🔗</span>
                                                     {s}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {analysisResult && analysisResult.keywords.secondary_keywords.length > 0 && (
-                                    <div className="intent-group">
-                                        <div className="intent-group__header">次要關鍵字 (系統提取)</div>
-                                        <div className="paa-list">
-                                            {analysisResult.keywords.secondary_keywords.map((kw, i) => (
-                                                <div key={i} className="paa-item">
-                                                    <span className="paa-item__icon" style={{ color: 'var(--color-primary)' }}>⭐</span>
-                                                    {kw}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {analysisResult && analysisResult.keywords.lsi_keywords.length > 0 && (
-                                    <div className="intent-group">
-                                        <div className="intent-group__header">LSI 關鍵字 (系統提取)</div>
-                                        <div className="paa-list">
-                                            {analysisResult.keywords.lsi_keywords.map((kw, i) => (
-                                                <div key={i} className="paa-item">
-                                                    <span className="paa-item__icon" style={{ color: 'var(--color-success)' }}>🧠</span>
-                                                    {kw}
                                                 </div>
                                             ))}
                                         </div>
@@ -329,58 +384,79 @@ export const KeywordPage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Title Suggestions */}
-                    {analysisResult && (
-                        <div className="keyword-section">
-                            <h3 className="keyword-section__title">標題建議</h3>
-                            <div className="title-suggestions">
-                                {analysisResult.title_suggestions.map((suggestion, i) => (
-                                    <div key={i} className="title-suggestion">
-                                        <div className="title-suggestion__rank">{i + 1}</div>
-                                        <div className="title-suggestion__content">
-                                            <div className="title-suggestion__text">{suggestion.title}</div>
-                                            <div className="title-suggestion__meta">
-                                                <span className="title-suggestion__score">
-                                                    CTR 預測: {Math.round(suggestion.ctr_score * 100)}%
-                                                </span>
-                                                {suggestion.intent_match && (
-                                                    <span className="title-suggestion__match">✓ 意圖匹配</span>
-                                                )}
-                                            </div>
+                    {/* AI Title Magic Section */}
+                    <div className="keyword-section">
+                        <div className="section-header-row">
+                            <h3 className="keyword-section__title">AI 標題魔術師 (基於競品分析)</h3>
+                            {aiSuggestions.length > 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleGenerateAITitles}
+                                    loading={isGeneratingTitles}
+                                    icon={<span style={{ color: 'var(--color-primary)' }}>✨</span>}
+                                >
+                                    重新生成
+                                </Button>
+                            )}
+                        </div>
+
+                        {aiSuggestions.length > 0 ? (
+                            <div className="ai-title-grid">
+                                {aiSuggestions.map((item: AITitleSuggestion, i: number) => (
+                                    <div key={i} className="ai-title-card">
+                                        <div className="ai-title-card__badge">{item.strategy}</div>
+                                        <div className="ai-title-card__text">{item.title}</div>
+                                        <div className="ai-title-card__reason">{item.reason}</div>
+                                        <div className="ai-title-card__actions">
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(item.title);
+                                                    alert('標題已複製！');
+                                                }}
+                                            >
+                                                複製
+                                            </Button>
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
+                                                loading={isCreatingProject}
+                                                onClick={() => handleUseTitle(item.title)}
+                                            >
+                                                選用
+                                            </Button>
                                         </div>
-                                        <Button variant="secondary" size="sm">選用</Button>
                                     </div>
                                 ))}
                             </div>
+                        ) : (
+                            <div className="ai-title-empty">
+                                <p style={{ marginBottom: '16px' }}>透過分析前 10 名標題，為您產出更具競爭力的 H1 建議</p>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleGenerateAITitles}
+                                    loading={isGeneratingTitles}
+                                    icon={<span>✨</span>}
+                                >
+                                    立即產生標題
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* SERP Results */}
+                    {serpResults.length > 0 && (
+                        <div className="keyword-section">
+                            <h3 className="keyword-section__title">SERP 競品分析 (Top 10)</h3>
+                            <DataTable
+                                columns={serpColumns as any}
+                                data={serpResults}
+                                loading={loading}
+                            />
                         </div>
                     )}
-
-                    {/* Create Project Button */}
-                    <div className="keyword-section">
-                        <Button
-                            variant="primary"
-                            size="lg"
-                            onClick={handleCreateProject}
-                            className="create-project-btn"
-                        >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 5v14M5 12h14" />
-                            </svg>
-                            創建專案
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* SERP Results */}
-            {serpResults.length > 0 && (
-                <div className="keyword-section">
-                    <h3 className="keyword-section__title">SERP 競品分析 (Top 10)</h3>
-                    <DataTable
-                        columns={serpColumns as any}
-                        data={serpResults}
-                        loading={loading}
-                    />
                 </div>
             )}
         </div>

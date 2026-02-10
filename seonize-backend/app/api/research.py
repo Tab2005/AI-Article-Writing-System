@@ -44,6 +44,22 @@ class ResearchResponse(BaseModel):
     error: Optional[str] = None
 
 
+class TitleSuggestion(BaseModel):
+    title: str
+    strategy: str
+    reason: str
+
+
+class TitleGenerationRequest(BaseModel):
+    keyword: str
+    intent: str = "informational"
+
+
+class TitleGenerationResponse(BaseModel):
+    keyword: str
+    suggestions: List[TitleSuggestion]
+
+
 @router.post("/serp", response_model=ResearchResponse)
 async def research_serp(request: ResearchRequest):
     """
@@ -283,3 +299,107 @@ async def crawl_pages(request: CrawlRequest):
         results = await asyncio.gather(*tasks)
 
     return CrawlResponse(results=results)
+
+
+@router.post("/generate-titles", response_model=TitleGenerationResponse)
+async def generate_titles(request: TitleGenerationRequest):
+    """
+    基於 SERP 競品標題生成 AI 建議標題
+    """
+    from app.services.ai_service import AIService
+    from app.core.database import SessionLocal
+    from app.models.db_models import SerpCache
+    import logging
+
+    logger = logging.getLogger(__name__)
+    db = SessionLocal()
+    titles = []
+    try:
+        # 從快取取得 SERP 標題（使用多重查詢策略）
+        logger.info(f"Searching for keyword: '{request.keyword}' (length: {len(request.keyword)})")
+        
+        # 策略 1: 精確匹配
+        cache = db.query(SerpCache).filter(
+            SerpCache.keyword == request.keyword
+        ).order_by(SerpCache.created_at.desc()).first()
+        
+        # 策略 2: 如果精確匹配失敗,嘗試去除空格後匹配
+        if not cache:
+            keyword_stripped = request.keyword.strip()
+            logger.info(f"Exact match failed, trying stripped keyword: '{keyword_stripped}'")
+            cache = db.query(SerpCache).filter(
+                SerpCache.keyword == keyword_stripped
+        ).order_by(SerpCache.created_at.desc()).first()
+        
+        # 策略 3: 列出所有可用的關鍵字供診斷
+        if not cache:
+            all_keywords = db.query(SerpCache.keyword).distinct().limit(20).all()
+            available_keywords = [k[0] for k in all_keywords]
+            logger.warning(f"No cache found. Available keywords in database: {available_keywords}")
+        
+        logger.info(f"Cache query result: found={cache is not None}")
+        
+        if cache and cache.results:
+            logger.info(f"Cache results type: {type(cache.results)}")
+            logger.info(f"Cache results keys (if dict): {cache.results.keys() if isinstance(cache.results, dict) else 'N/A'}")
+            
+            # 提取標題 - 支援多種資料結構
+            # 1. results 是 dict,包含 "results" key (最常見)
+            if isinstance(cache.results, dict):
+                if "results" in cache.results:
+                    results_list = cache.results.get("results", [])
+                    logger.info(f"Found 'results' key in dict, list length: {len(results_list)}")
+                    titles = [res.get("title") for res in results_list if isinstance(res, dict) and res.get("title")]
+                else:
+                    # 可能整個 dict 就是一筆結果
+                    logger.info("No 'results' key found, treating entire dict as single result")
+                    if cache.results.get("title"):
+                        titles = [cache.results.get("title")]
+            # 2. 直接在 results 中的 list
+            elif isinstance(cache.results, list):
+                logger.info(f"Cache results is a list, length: {len(cache.results)}")
+                titles = [res.get("title") for res in cache.results if isinstance(res, dict) and res.get("title")]
+            
+            logger.info(f"Extracted {len(titles)} titles from cache")
+        
+        if not titles:
+            # 如果沒有快取標題,返回錯誤或嘗試抓取（此處選擇返回錯誤引導使用者先研究）
+            logger.warning(f"No SERP titles found for keyword: {request.keyword}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"找不到關鍵字「{request.keyword}」的 SERP 數據,請先執行搜尋研究。"
+            )
+
+        logger.info(f"Generating AI titles for keyword: {request.keyword}, intent: {request.intent}, titles count: {len(titles)}")
+        
+        suggestions = await AIService.generate_ai_titles(
+            keyword=request.keyword,
+            titles=titles,
+            intent=request.intent
+        )
+        
+        logger.info(f"Successfully generated {len(suggestions)} title suggestions")
+        
+        return TitleGenerationResponse(
+            keyword=request.keyword,
+            suggestions=[TitleSuggestion(**s) for s in suggestions]
+        )
+    except HTTPException:
+        # 重新拋出 HTTP 異常
+        raise
+    except RuntimeError as e:
+        # AI Service 配置錯誤
+        logger.error(f"AI Service configuration error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI 服務配置錯誤：{str(e)}。請檢查系統設定中的 AI API 金鑰是否正確配置。"
+        )
+    except Exception as e:
+        # 其他未預期的錯誤
+        logger.error(f"Unexpected error in generate_titles: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"標題生成失敗：{str(e)}。請稍後再試或聯繫系統管理員。"
+        )
+    finally:
+        db.close()

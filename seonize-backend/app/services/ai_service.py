@@ -30,8 +30,34 @@ class AIService:
     
     @classmethod
     def get_config(cls) -> AIConfig:
-        """取得目前設定"""
+        """取得目前設定 - 優先從資料庫讀取,其次從環境變數"""
         if cls._config is None:
+            # 嘗試從資料庫載入設定
+            try:
+                from app.core.database import SessionLocal
+                from app.models.db_models import Settings
+                
+                db = SessionLocal()
+                try:
+                    provider = Settings.get_value(db, "ai_provider", None)
+                    api_key = Settings.get_value(db, "ai_api_key", None)
+                    model = Settings.get_value(db, "ai_model", None)
+                    
+                    # 如果資料庫中有設定,使用資料庫設定
+                    if provider and api_key:
+                        cls._config = AIConfig(
+                            provider=AIProvider(provider),
+                            api_key=api_key,
+                            model=model or "gemini-2.0-flash",
+                        )
+                        return cls._config
+                finally:
+                    db.close()
+            except Exception as e:
+                # 如果資料庫讀取失敗,記錄錯誤但繼續使用環境變數
+                import logging
+                logging.warning(f"Failed to load AI config from database: {e}")
+            
             # 從環境變數載入預設設定
             cls._config = AIConfig(
                 provider=AIProvider(os.getenv("AI_PROVIDER", "gemini")),
@@ -65,10 +91,10 @@ class AIService:
                     "gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini",
                     # Gemini 系列
                     "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-flash-image",
-                    # 其他模型
-                    "deepseek-v3.2-exp", "glm-4.6", "llama-3.3-70b", "gpt-oss-120b", "qwen-3-32",
+                    # 其他系列
+                    "deepseek-v3.2-exp", "glm-4.6", "llama-3.3-70b", "gpt-oss-120b", "qwen-3-32"
                 ],
-                "description": "Zeabur 提供的 AI 代理服務（多模型支援）",
+                "description": "Zeabur 提供的 AI 閘道服務 (支援多種先進模型)"
             },
             {
                 "id": AIProvider.OPENAI,
@@ -109,6 +135,16 @@ class AIService:
         if config.provider == AIProvider.GEMINI:
             from app.services.gemini_client import GeminiClient
             client = GeminiClient(config.api_key)
+            return await client.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                model=config.model,
+                temperature=temperature or config.temperature,
+                max_tokens=max_tokens or config.max_tokens,
+            )
+        elif config.provider == AIProvider.ZEABUR:
+            from app.services.zeabur_client import ZeaburClient
+            client = ZeaburClient(config.api_key)
             return await client.generate(
                 prompt=prompt,
                 system_prompt=system_prompt,
@@ -241,3 +277,54 @@ SERP 標題：
                 "embedded_keywords": [],
                 "summary": "",
             }
+    @classmethod
+    async def generate_ai_titles(cls, keyword: str, titles: list[str], intent: str = "informational") -> list[dict]:
+        """基於 SERP 競品標題與 GEO 策略生成 AI 建議標題"""
+        prompt = f"""你是一位資深的 SEO 與 GEO (生成式引擎優化) 專家。你的任務是分析競爭對手標題，並產出 5 個具備高點擊率且極易被 AI 搜尋引擎 (如 ChatGPT, SearchGPT, Gemini) 引用為摘要的標題。
+
+# 輸入數據
+- 目前年份：2026 年
+- 核心關鍵字：{keyword}
+- 預估搜尋意圖：{intent}
+- 競爭對手標題 (SERP Top 10)：
+{chr(10).join(f'- {t}' for t in titles[:10])}
+
+# 標題優化策略 (基於 GEO 模板)
+請從以下策略中挑選 5 個不同的方向來產出標題：
+1. **定義意圖 (Definitional)**：針對「是什麼」的搜尋。格式：「什麼是 [關鍵字]？」或「[關鍵字] 的定義」。
+2. **清單意圖 (Listicle)**：強調條列式內容。格式：「[數字] 個 [關鍵字] 推薦清單」、「[數字] 大重點」。
+3. **教學意圖 (Procedural)**：針對操作流程。格式：「如何 [達成目標]？」、「[關鍵字] 步驟指南」。
+4. **比較意圖 (Comparison)**：協助使用者決策。格式：「[A] vs [B] 完整比較」、「為什麼選擇 [關鍵字]」。
+5. **權威/趨勢型 (Authority/Trends)**：強調最新與深度。格式：「2026 [關鍵字] 完整指南」、「深度解析 [關鍵字] 的原理」。
+
+# 任務要求
+- 必須自然包含核心關鍵字。
+- 標題長度控制在 25-30 個中文字之間。
+- **時效性限制：若標題提及年份，必須使用 2026 年，嚴格禁止出現 2024 或 2025。**
+- 嚴格禁止與現有標題重複。
+- 每個標題必須標註其對應的策略類型。
+
+# 輸出格式
+請直接輸出 JSON 陣列，每個物件包含以下欄位：
+- title: 建議的標題文字
+- strategy: 策略類型 (請使用：定義型、清單型、教學型、比較型、趨勢型)
+- reason: 說明該標題如何利用 GEO 邏輯（如：觸發清單摘要、強化定義摘要等）
+"""
+        
+        try:
+            result = await cls.generate_content(prompt, temperature=0.8)
+            # 解析 JSON 
+            import json
+            import re
+            json_match = re.search(r'\[[\s\S]*\]', result)
+            if json_match:
+                return json.loads(json_match.group())
+            
+            # 備用方案：如果 JSON 解析失敗
+            return [
+                {"title": f"什麼是 {keyword}？2026 最完整定義與基礎指南", "strategy": "定義型", "reason": "觸發 AI 定義摘要"},
+                {"title": f"如何優化 {keyword}？從入門到精通的 5 個教學步驟", "strategy": "教學型", "reason": "符合操作流程意圖"},
+                {"title": f"2026 年必看 7 大 {keyword} 推薦清單與實測評比", "strategy": "清單型", "reason": "清單格式極易被 AI 抓取"},
+            ]
+        except Exception as e:
+            return [{"title": f"生成失敗: {str(e)}", "strategy": "錯誤", "reason": "系統發生異常"}]

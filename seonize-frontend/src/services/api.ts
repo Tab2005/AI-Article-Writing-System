@@ -73,6 +73,9 @@ export const researchApi = {
 
     deleteHistory: (recordId: number) =>
         request<void>(`/api/research/history/${recordId}`, { method: 'DELETE' }),
+
+    generateTitles: (data: { keyword: string; intent?: string }) =>
+        request<import('../types').TitleGenerationResponse>('/api/research/generate-titles', { method: 'POST', body: data }),
 };
 
 // Analysis API

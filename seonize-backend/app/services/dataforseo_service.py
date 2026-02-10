@@ -123,19 +123,17 @@ class DataForSEOService:
         獲取 Google SERP 結果，支援 AI Overviews (SGE)
         包含快取邏輯：優先從 SerpCache 讀取，除非強制刷新
         """
-        # 1. 檢查快取
+        # 1. 檢查快取（僅依關鍵字查詢,不限制國家/語言以提高相容性）
         if db:
             from app.models.db_models import SerpCache
             cache = db.query(SerpCache).filter(
-                SerpCache.keyword == keyword,
-                SerpCache.country == "TW", # 這裡暫定
-                SerpCache.language == "zh-TW"
-            ).first()
+                SerpCache.keyword == keyword
+            ).order_by(SerpCache.created_at.desc()).first()
             
             if cache and not force_refresh:
                 logger.info(f"Using cached SERP results for: {keyword}")
                 results_data = cache.results
-                # 將快取建立時間加入結果，以便前端顯示
+                # 將快取建立時間加入結果,以便前端顯示
                 if isinstance(results_data, dict):
                     results_data["created_at"] = cache.created_at.isoformat() if cache.created_at else None
                 return results_data
@@ -182,7 +180,6 @@ class DataForSEOService:
                 # 2. 寫入快取
                 if db and not parsed_results.get("error"):
                     from app.models.db_models import SerpCache
-                    from datetime import datetime, timedelta
                     if cache:
                         cache.results = parsed_results
                         cache.created_at = datetime.utcnow()
@@ -190,6 +187,8 @@ class DataForSEOService:
                     else:
                         new_cache = SerpCache(
                             keyword=keyword,
+                            country="TW",  # 新增國家欄位
+                            language="zh-TW",  # 新增語言欄位
                             results=parsed_results,
                             expires_at=datetime.utcnow() + timedelta(days=7)
                         )

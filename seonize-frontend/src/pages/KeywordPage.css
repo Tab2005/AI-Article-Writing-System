@@ -259,6 +259,103 @@
     text-decoration: underline;
 }
 
+/* AI Magic Section */
+.keyword-section--ai-magic {
+    /* 使用與一般區塊相同的背景與邊框 */
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    box-shadow: none;
+}
+
+.section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+
+.ai-title-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+}
+
+.ai-title-card {
+    position: relative;
+    padding: var(--space-5);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.ai-title-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-primary);
+}
+
+.ai-title-card__badge {
+    display: inline-flex;
+    padding: 2px 8px;
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: var(--font-bold);
+    border-radius: 4px;
+    width: fit-content;
+    text-transform: uppercase;
+}
+
+.ai-title-card__text {
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--color-text);
+    line-height: 1.4;
+}
+
+.ai-title-card__reason {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    font-style: italic;
+    flex-grow: 1;
+}
+
+.ai-title-card__actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.ai-title-empty {
+    padding: var(--space-8);
+    text-align: center;
+    color: var(--color-text-secondary);
+    background: rgba(148, 163, 184, 0.05);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    font-style: italic;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .section-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-3);
+    }
+
+    .ai-title-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .keyword-search__form {
