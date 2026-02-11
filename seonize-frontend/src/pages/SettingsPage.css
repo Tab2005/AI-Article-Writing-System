@@ -123,7 +123,7 @@
     .system-info-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .settings-sections-grid {
         grid-template-columns: 1fr;
     }
@@ -151,4 +151,43 @@
     background: rgba(239, 68, 68, 0.1);
     color: var(--color-error);
     border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.field-label-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.system-badge {
+    padding: 2px 8px;
+    background: var(--color-primary);
+    color: white;
+    font-size: 10px;
+    font-weight: var(--font-bold);
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 2px 4px rgba(var(--color-primary-rgb), 0.2);
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 禁用狀態的 Input 樣式優化 */
+.input:disabled,
+.select:disabled {
+    cursor: not-allowed;
+    background-color: var(--color-bg-subtle);
+    opacity: 0.8;
 }

@@ -93,7 +93,44 @@ class Settings(Base):
 
     @classmethod
     def get_value(cls, db, key: str, default: str = None) -> str:
-        """取得設定值"""
+        """取得設定值，優先度：環境變數 (config.py) > 資料庫"""
+        from app.core.config import settings
+        
+        # 建立資料庫 Key 與環境變數物件屬性的映射
+        env_mapping = {
+            "ai_provider": "AI_PROVIDER",
+            "ai_model": "AI_MODEL",
+            "dataforseo_login": "DATAFORSEO_LOGIN",
+            "dataforseo_password": "DATAFORSEO_PASSWORD",
+        }
+        
+        # 處理 AI API Keys 的動態映射
+        current_provider = None
+        if key == "ai_api_key":
+            # 優先從環境變數獲取目前 provider
+            current_provider = os.getenv("AI_PROVIDER")
+            if not current_provider:
+                # 其次從資料庫獲取
+                setting_obj = db.query(cls).filter(cls.key == "ai_provider").first()
+                current_provider = setting_obj.value if setting_obj else "gemini"
+            
+            key_map = {
+                "gemini": "GEMINI_API_KEY",
+                "openai": "OPENAI_API_KEY",
+                "zeabur": "ZEABUR_API_KEY"
+            }
+            env_attr = key_map.get(current_provider, "GEMINI_API_KEY")
+            env_val = getattr(settings, env_attr, None)
+            if env_val:
+                return env_val
+        
+        # 處理一般映射
+        if key in env_mapping:
+            env_val = getattr(settings, env_mapping[key], None)
+            if env_val: # pydantic settings 預設可能是空字串，算作未設置
+                return env_val
+
+        # 從資料庫讀取
         setting = db.query(cls).filter(cls.key == key).first()
         if not setting or setting.value is None:
             return default

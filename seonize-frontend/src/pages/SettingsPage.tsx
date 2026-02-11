@@ -9,6 +9,7 @@ interface SettingsData {
     dataforseo_login: string;
     dataforseo_password: string;
     dataforseo_serp_mode: string;
+    system_provided?: string[];
 }
 
 interface AIProvider {
@@ -316,9 +317,15 @@ export const SettingsPage: React.FC = () => {
 
                     <div className="settings-form">
                         <Select
-                            label="AI 提供者"
+                            label={
+                                <div className="field-label-wrapper">
+                                    AI 提供者
+                                    {settings.system_provided?.includes('ai_provider') && <span className="system-badge">環境變數鎖定</span>}
+                                </div>
+                            }
                             options={providers.map(p => ({ value: p.id, label: p.name }))}
                             value={settings.ai_provider}
+                            disabled={settings.system_provided?.includes('ai_provider')}
                             onChange={(e) => setSettings({
                                 ...settings,
                                 ai_provider: e.target.value,
@@ -327,17 +334,29 @@ export const SettingsPage: React.FC = () => {
                             fullWidth
                         />
                         <Input
-                            label="API Key"
+                            label={
+                                <div className="field-label-wrapper">
+                                    API Key
+                                    {settings.system_provided?.includes('ai_api_key') && <span className="system-badge">環境變數鎖定</span>}
+                                </div>
+                            }
                             type="password"
-                            placeholder={`輸入 ${selectedProvider?.name || 'AI'} API Key...`}
+                            placeholder={settings.system_provided?.includes('ai_api_key') ? '已透過環境變數配置' : `輸入 ${selectedProvider?.name || 'AI'} API Key...`}
                             value={settings.ai_api_key}
+                            disabled={settings.system_provided?.includes('ai_api_key')}
                             onChange={(e) => setSettings({ ...settings, ai_api_key: e.target.value })}
                             fullWidth
                         />
                         <Select
-                            label="模型"
+                            label={
+                                <div className="field-label-wrapper">
+                                    模型
+                                    {settings.system_provided?.includes('ai_model') && <span className="system-badge">環境變數鎖定</span>}
+                                </div>
+                            }
                             options={modelOptions}
                             value={settings.ai_model}
+                            disabled={settings.system_provided?.includes('ai_model')}
                             onChange={(e) => setSettings({ ...settings, ai_model: e.target.value })}
                             fullWidth
                         />
@@ -394,17 +413,29 @@ export const SettingsPage: React.FC = () => {
                             fullWidth
                         />
                         <Input
-                            label="Login (Email)"
-                            placeholder="輸入 DataForSEO 帳號..."
+                            label={
+                                <div className="field-label-wrapper">
+                                    Login (Email)
+                                    {settings.system_provided?.includes('dataforseo_login') && <span className="system-badge">環境變數鎖定</span>}
+                                </div>
+                            }
+                            placeholder={settings.system_provided?.includes('dataforseo_login') ? '已透過環境變數配置' : "輸入 DataForSEO 帳號..."}
                             value={settings.dataforseo_login}
+                            disabled={settings.system_provided?.includes('dataforseo_login')}
                             onChange={(e) => setSettings({ ...settings, dataforseo_login: e.target.value })}
                             fullWidth
                         />
                         <Input
-                            label="API Password"
+                            label={
+                                <div className="field-label-wrapper">
+                                    API Password
+                                    {settings.system_provided?.includes('dataforseo_password') && <span className="system-badge">環境變數鎖定</span>}
+                                </div>
+                            }
                             type="password"
-                            placeholder="輸入 API 密碼..."
+                            placeholder={settings.system_provided?.includes('dataforseo_password') ? '已透過環境變數配置' : "輸入 API 密碼..."}
                             value={settings.dataforseo_password}
+                            disabled={settings.system_provided?.includes('dataforseo_password')}
                             onChange={(e) => setSettings({ ...settings, dataforseo_password: e.target.value })}
                             fullWidth
                         />

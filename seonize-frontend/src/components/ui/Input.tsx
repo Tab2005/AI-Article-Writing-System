@@ -2,7 +2,7 @@ import React, { useId } from 'react';
 import './Input.css';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-    label?: string;
+    label?: React.ReactNode;
     error?: string;
     hint?: string;
     icon?: React.ReactNode;
@@ -44,7 +44,7 @@ export const Input: React.FC<InputProps> = ({
 };
 
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-    label?: string;
+    label?: React.ReactNode;
     error?: string;
     hint?: string;
     fullWidth?: boolean;
@@ -83,7 +83,7 @@ export const Textarea: React.FC<TextareaProps> = ({
 };
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-    label?: string;
+    label?: React.ReactNode;
     error?: string;
     options: Array<{ value: string; label: string }>;
     fullWidth?: boolean;
