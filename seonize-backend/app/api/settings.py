@@ -28,6 +28,7 @@ class SettingsResponse(BaseModel):
     ai_provider: str = "gemini"
     ai_api_key: Optional[str] = None
     ai_model: str = "gemini-2.0-flash"
+    ai_title_prompt: Optional[str] = None
     dataforseo_login: Optional[str] = None
     dataforseo_password: Optional[str] = None
     dataforseo_serp_mode: Optional[str] = None
@@ -37,6 +38,7 @@ class UpdateSettingsRequest(BaseModel):
     ai_provider: Optional[str] = None
     ai_api_key: Optional[str] = None
     ai_model: Optional[str] = None
+    ai_title_prompt: Optional[str] = None
     dataforseo_login: Optional[str] = None
     dataforseo_password: Optional[str] = None
     dataforseo_serp_mode: Optional[str] = None
@@ -82,7 +84,7 @@ async def get_settings(db: Session = Depends(get_db)):
     
     # 從資料庫讀取設定
     keys = [
-        "ai_provider", "ai_api_key", "ai_model", 
+        "ai_provider", "ai_api_key", "ai_model", "ai_title_prompt",
         "dataforseo_login", "dataforseo_password", "dataforseo_serp_mode"
     ]
     for key in keys:
@@ -98,6 +100,7 @@ async def get_settings(db: Session = Depends(get_db)):
         ai_provider=settings.get("ai_provider", "gemini"),
         ai_api_key=settings.get("ai_api_key"),
         ai_model=settings.get("ai_model", "gemini-2.0-flash"),
+        ai_title_prompt=settings.get("ai_title_prompt"),
         dataforseo_login=settings.get("dataforseo_login"),
         dataforseo_password=settings.get("dataforseo_password"),
         dataforseo_serp_mode=settings.get("dataforseo_serp_mode"),

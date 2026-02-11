@@ -55,6 +55,13 @@ export const KeywordPage: React.FC = () => {
             setLastCreatedAt(serpRes.created_at || null);
             setKeywordIdeas(ideasRes);
 
+            // 如果快取中有已生成的 AI 標題，自動填入
+            if (ideasRes?.ai_suggestions && ideasRes.ai_suggestions.length > 0) {
+                setAiSuggestions(ideasRes.ai_suggestions);
+            } else {
+                setAiSuggestions([]); // 否則清空舊的建議
+            }
+
             if (serpRes.error) {
                 setMessage(`SERP 取得部分失敗：${serpRes.error}`);
             } else if (ideasRes?.error) {
@@ -128,11 +135,16 @@ export const KeywordPage: React.FC = () => {
                 language: 'zh-TW'
             });
 
-            // 2. 更新專案詳情：意圖、所選標題、所有候選標題
+            // 2. 更新專案詳情：意圖、所選標題、所有候選標題、以及研究數據 (PAA, 相關搜尋等)
             await projectsApi.update(newProject.project_id, {
                 selected_title: selectedTitle,
                 intent: (analysisResult?.intent_analysis.intent as any) || 'informational',
                 candidate_titles: aiSuggestions.map((s: AITitleSuggestion) => s.title),
+                research_data: {
+                    paa: paa,
+                    related_searches: relatedSearches,
+                    ai_overview: aiOverview
+                },
                 optimization_mode: 'geo' as any
             });
 

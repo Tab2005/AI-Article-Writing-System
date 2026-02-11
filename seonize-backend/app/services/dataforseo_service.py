@@ -380,6 +380,7 @@ class DataForSEOService:
                 return {
                     "seed_keyword_data": cls._flatten_keyword_data(cache.seed_data),
                     "suggestions": [cls._flatten_keyword_data(s) for s in cache.suggestions] if cache.suggestions else [],
+                    "ai_suggestions": cache.ai_suggestions or [], # 新增支援持久化的標題
                     "from_cache": True
                 }
         elif db and force_refresh:

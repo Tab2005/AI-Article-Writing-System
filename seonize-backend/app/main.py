@@ -14,7 +14,7 @@ logging.basicConfig(
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.api import projects, research, analysis, writing
+from app.api import projects, research, analysis, settings, prompts, writing
 from app.api import settings as settings_router
 from app.core.config import settings
 from app.core.database import init_db
@@ -60,6 +60,7 @@ app.include_router(research.router, prefix="/api/research", tags=["Research"])
 app.include_router(analysis.router, prefix="/api/analysis", tags=["Analysis"])
 app.include_router(writing.router, prefix="/api/writing", tags=["Writing"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["Settings"])
+app.include_router(prompts.router, prefix="/api/prompts", tags=["Prompts"])
 
 
 @app.get("/")

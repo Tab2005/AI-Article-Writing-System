@@ -13,6 +13,7 @@ import {
   WritingPage,
   SettingsPage,
   KeywordHistoryPage,
+  PromptPage,
 } from './pages';
 import './index.css';
 
@@ -35,6 +36,7 @@ function App() {
           <Route path="/analysis" element={<AnalysisPage />} />
           <Route path="/outline" element={<OutlinePage />} />
           <Route path="/writing" element={<WritingPage />} />
+          <Route path="/prompts" element={<PromptPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

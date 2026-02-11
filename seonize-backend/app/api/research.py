@@ -378,6 +378,16 @@ async def generate_titles(request: TitleGenerationRequest):
             intent=request.intent
         )
         
+        # 將生成結果持久化回 KeywordCache (覆蓋舊有建議)
+        from app.models.db_models import KeywordCache
+        kw_cache = db.query(KeywordCache).filter(
+            KeywordCache.keyword == request.keyword
+        ).first()
+        if kw_cache:
+            kw_cache.ai_suggestions = suggestions
+            db.commit()
+            logger.info(f"Persisted {len(suggestions)} suggestions to KeywordCache for: {request.keyword}")
+
         logger.info(f"Successfully generated {len(suggestions)} title suggestions")
         
         return TitleGenerationResponse(

@@ -137,6 +137,7 @@ async def analyze_intent(request: AnalysisRequest):
 
 
 class OutlineRequest(BaseModel):
+    project_id: str                      # 新增：關聯的專案 ID
     keyword: str
     intent: SearchIntent
     selected_keywords: List[str]
@@ -159,34 +160,70 @@ class OutlineResponse(BaseModel):
 @router.post("/outline", response_model=OutlineResponse)
 async def generate_outline(request: OutlineRequest):
     """
-    生成知識圖譜大綱
-    第三階段：知識圖譜大綱規劃
+    生成文章大綱 - 語義數據驅動版（整合指令倉庫）
     """
-    import uuid
+    from app.services.ai_service import AIService
+    from app.core.database import SessionLocal
+    from app.models.db_models import Project, PromptTemplate
     
-    # 根據意圖生成邏輯鏈條
-    logic_chains = {
-        SearchIntent.INFORMATIONAL: ["定義說明", "原理解析", "步驟教學", "注意事項", "常見問題"],
-        SearchIntent.COMMERCIAL: ["產品概述", "功能比較", "優缺點分析", "使用心得", "購買建議"],
-        SearchIntent.TRANSACTIONAL: ["產品介紹", "使用方法", "價格方案", "購買流程", "售後服務"],
-        SearchIntent.NAVIGATIONAL: ["官方資訊", "功能介紹", "使用指南", "聯繫方式"],
-    }
-    
-    chain = logic_chains.get(request.intent, logic_chains[SearchIntent.INFORMATIONAL])
-    
-    sections = [
-        OutlineSection(
-            id=str(uuid.uuid4()),
-            heading=f"{section}：{request.keyword}",
-            level=2,
-            description=f"關於{request.keyword}的{section}說明",
-            keywords=request.selected_keywords[:2] if request.selected_keywords else []
+    db = SessionLocal()
+    research_data = {}
+    try:
+        # 1. 嘗試載入專案中的研究數據 (PAA, 相關搜尋)
+        db_project = db.query(Project).filter(Project.id == request.project_id).first()
+        if db_project and db_project.research_data:
+            research_data = db_project.research_data
+        
+        # 2. 從指令倉庫載入 Prompt Template
+        prompt_template = db.query(PromptTemplate).filter(
+            PromptTemplate.category == "outline_generation",
+            PromptTemplate.is_active == True
+        ).first()
+        
+        if not prompt_template:
+            # 備用：使用預設 prompt
+            prompt_content = None
+        else:
+            prompt_content = prompt_template.content
+            
+        # 3. 調用 AI 產出大綱（傳入 prompt_content）
+        ai_result = await AIService.generate_outline(
+            keyword=request.keyword,
+            intent=request.intent,
+            keywords=request.selected_keywords,
+            research_data=research_data,
+            custom_prompt=prompt_content
         )
-        for section in chain
-    ]
-    
-    return OutlineResponse(
-        h1=f"2026 {request.keyword}完整指南",
-        sections=sections,
-        logic_chain=chain
-    )
+        
+        # 偵錯：列印 AI 回傳結果
+        print(f"DEBUG: AI Outline Result: {ai_result}")
+        
+        # 4. 處理 AI 回傳結果
+        h1 = ai_result.get("h1", f"2026 {request.keyword}完整指南")
+        sections = []
+        import uuid
+        for idx, s in enumerate(ai_result.get("sections", [])):
+            sections.append(OutlineSection(
+                id=str(uuid.uuid4()),
+                heading=s.get("heading", f"章節 {idx+1}"),
+                level=s.get("level", 2),
+                description=s.get("description", ""),
+                keywords=s.get("keywords", [])
+            ))
+            
+        return OutlineResponse(
+            h1=h1,
+            sections=sections,
+            logic_chain=["AI 語義分佈", "PAA 織入", "GEO 優化結構", "✓ 使用指令倉庫模板"]
+        )
+    except Exception as e:
+        import logging
+        logging.error(f"Outline generation failed: {e}")
+        # 備用機制 (保證 API 不會直接掛掉)
+        return OutlineResponse(
+            h1=f"2026 {request.keyword}完整指南",
+            sections=[],
+            logic_chain=[f"生成失敗：{str(e)}"]
+        )
+    finally:
+        db.close()

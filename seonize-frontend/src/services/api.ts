@@ -1,7 +1,17 @@
-/**
- * Seonize Frontend - API Service
- * Handles all backend API communications
- */
+import type {
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectState,
+    ResearchRequest,
+    ResearchResponse,
+    KeywordIdeasResponse,
+    ResearchHistoryItem,
+    TitleGenerationResponse,
+    AnalysisResponse,
+    WritingResponse,
+    SEOCheckResponse,
+    WritingSection
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -38,17 +48,17 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
 // Projects API
 export const projectsApi = {
-    create: (data: import('../types').ProjectCreate) =>
-        request<import('../types').ProjectState>('/api/projects/', { method: 'POST', body: data }),
+    create: (data: ProjectCreate) =>
+        request<ProjectState>('/api/projects/', { method: 'POST', body: data }),
 
     list: () =>
-        request<import('../types').ProjectState[]>('/api/projects/'),
+        request<ProjectState[]>('/api/projects/'),
 
     get: (projectId: string) =>
-        request<import('../types').ProjectState>(`/api/projects/${projectId}`),
+        request<ProjectState>(`/api/projects/${projectId}`),
 
-    update: (projectId: string, data: import('../types').ProjectUpdate) =>
-        request<import('../types').ProjectState>(`/api/projects/${projectId}`, { method: 'PATCH', body: data }),
+    update: (projectId: string, data: ProjectUpdate) =>
+        request<ProjectState>(`/api/projects/${projectId}`, { method: 'PATCH', body: data }),
 
     delete: (projectId: string) =>
         request<void>(`/api/projects/${projectId}`, { method: 'DELETE' }),
@@ -56,34 +66,34 @@ export const projectsApi = {
 
 // Research API
 export const researchApi = {
-    serp: (data: import('../types').ResearchRequest) =>
-        request<import('../types').ResearchResponse>('/api/research/serp', { method: 'POST', body: data }),
+    serp: (data: ResearchRequest) =>
+        request<ResearchResponse>('/api/research/serp', { method: 'POST', body: data }),
 
     crawl: (urls: string[]) =>
-        request<import('../types').CrawlResponse>(
+        request<{ results: any[] }>(
             '/api/research/crawl',
             { method: 'POST', body: { urls } }
         ),
 
     keywordIdeas: (data: { keyword: string; country?: string; language?: string; force_refresh?: boolean }) =>
-        request<import('../types').KeywordIdeasResponse>('/api/research/keyword-ideas', { method: 'POST', body: data }),
+        request<KeywordIdeasResponse>('/api/research/keyword-ideas', { method: 'POST', body: data }),
 
     getHistory: () =>
-        request<import('../types').ResearchHistoryItem[]>('/api/research/history'),
+        request<ResearchHistoryItem[]>('/api/research/history'),
 
     deleteHistory: (recordId: number) =>
         request<void>(`/api/research/history/${recordId}`, { method: 'DELETE' }),
 
     generateTitles: (data: { keyword: string; intent?: string }) =>
-        request<import('../types').TitleGenerationResponse>('/api/research/generate-titles', { method: 'POST', body: data }),
+        request<TitleGenerationResponse>('/api/research/generate-titles', { method: 'POST', body: data }),
 };
 
 // Analysis API
 export const analysisApi = {
     analyzeIntent: (data: { keyword: string; titles: string[]; content_samples?: string[] }) =>
-        request<import('../types').AnalysisResponse>('/api/analysis/intent', { method: 'POST', body: data }),
+        request<AnalysisResponse>('/api/analysis/intent', { method: 'POST', body: data }),
 
-    generateOutline: (data: { keyword: string; intent: string; selected_keywords: string[] }) =>
+    generateOutline: (data: { project_id: string; keyword: string; intent: string; selected_keywords: string[] }) =>
         request<{ h1: string; sections: Array<{ id: string; heading: string; level: number; description: string; keywords: string[] }>; logic_chain: string[] }>(
             '/api/analysis/outline',
             { method: 'POST', body: data }
@@ -92,17 +102,25 @@ export const analysisApi = {
 
 // Writing API
 export const writingApi = {
-    generateSection: (data: { project_id: string; section: import('../types').WritingSection; optimization_mode?: string; ai_model?: string }) =>
-        request<import('../types').WritingResponse>('/api/writing/generate-section', { method: 'POST', body: data }),
+    generateSection: (data: {
+        project_id: string;
+        h1?: string;
+        section: WritingSection;
+        optimization_mode?: string;
+        ai_model?: string;
+        target_word_count?: number;
+        keyword_density?: number;
+    }) =>
+        request<WritingResponse>('/api/writing/generate-section', { method: 'POST', body: data }),
 
-    generateFull: (data: { project_id: string; h1: string; sections: import('../types').WritingSection[]; optimization_mode?: string }) =>
+    generateFull: (data: { project_id: string; h1: string; sections: WritingSection[]; optimization_mode?: string }) =>
         request<{ title: string; content: string; word_count: number; keyword_density: Record<string, number>; meta_title: string; meta_description: string }>(
             '/api/writing/generate-full',
             { method: 'POST', body: data }
         ),
 
     seoCheck: (data: { content: string; primary_keyword: string; secondary_keywords?: string[] }) =>
-        request<import('../types').SEOCheckResponse>('/api/writing/seo-check', { method: 'POST', body: data }),
+        request<SEOCheckResponse>('/api/writing/seo-check', { method: 'POST', body: data }),
 };
 
 // Health check

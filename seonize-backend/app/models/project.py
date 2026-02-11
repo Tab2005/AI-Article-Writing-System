@@ -4,7 +4,7 @@ Seonize Backend - Pydantic Models for Project State
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from enum import Enum
 from datetime import datetime
 import uuid
@@ -78,6 +78,7 @@ class ProjectState(BaseModel):
     
     # SERP Data
     serp_results: List[SERPResult] = Field(default_factory=list)
+    research_data: Optional[Dict[str, Any]] = Field(default=None, description="研究數據 (PAA, 相關搜尋, etc.)")
     
     # Keywords
     keywords: KeywordData = Field(default_factory=KeywordData)
@@ -114,3 +115,4 @@ class ProjectUpdate(BaseModel):
     outline: Optional[OutlineData] = None
     optimization_mode: Optional[OptimizationMode] = None
     candidate_titles: Optional[List[str]] = None
+    research_data: Optional[Dict[str, Any]] = None

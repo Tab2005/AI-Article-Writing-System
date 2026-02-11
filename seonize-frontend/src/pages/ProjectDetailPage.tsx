@@ -34,6 +34,8 @@ export const ProjectDetailPage: React.FC = () => {
     useEffect(() => {
         if (projectId) {
             loadProject();
+            // 存儲當前專案 ID 到 session，方便從側邊欄點擊分析頁面時能找回上下文
+            sessionStorage.setItem('lastProjectId', projectId);
         }
     }, [projectId, loadProject]);
 
@@ -218,14 +220,35 @@ export const ProjectDetailPage: React.FC = () => {
                         <div className="setting-item">
                             <label className="setting-label">選擇標題</label>
                             {editing ? (
-                                <Input
-                                    value={project.selected_title || ''}
-                                    onChange={(e) => setProject(prev => prev ? {
-                                        ...prev,
-                                        selected_title: e.target.value
-                                    } : null)}
-                                    placeholder="輸入文章標題"
-                                />
+                                <>
+                                    <Input
+                                        value={project.selected_title || ''}
+                                        onChange={(e) => setProject(prev => prev ? {
+                                            ...prev,
+                                            selected_title: e.target.value
+                                        } : null)}
+                                        placeholder="輸入文章標題"
+                                        fullWidth
+                                    />
+                                    {project.candidate_titles && project.candidate_titles.length > 0 && (
+                                        <div className="candidate-titles-list">
+                                            <p className="candidate-titles-title">AI 建議候選標題 (點擊切換)：</p>
+                                            {project.candidate_titles.map((title, index) => (
+                                                <button
+                                                    key={index}
+                                                    type="button"
+                                                    className={`candidate-title-item ${project.selected_title === title ? 'candidate-title-item--active' : ''}`}
+                                                    onClick={() => setProject(prev => prev ? {
+                                                        ...prev,
+                                                        selected_title: title
+                                                    } : null)}
+                                                >
+                                                    {title}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
                             ) : (
                                 <div className="setting-value">
                                     {project.selected_title || '未設定'}
@@ -236,7 +259,10 @@ export const ProjectDetailPage: React.FC = () => {
 
                     {editing && (
                         <div className="edit-actions">
-                            <Button variant="secondary" onClick={() => setEditing(false)}>
+                            <Button variant="secondary" onClick={() => {
+                                setEditing(false);
+                                loadProject(); // 取消編輯時重載以還原數值
+                            }}>
                                 取消
                             </Button>
                             <Button variant="primary" onClick={handleSave}>
@@ -253,13 +279,14 @@ export const ProjectDetailPage: React.FC = () => {
                         <div className="workflow-step">
                             <div className="workflow-step__icon">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="11" cy="11" r="8" />
-                                    <path d="m21 21-4.3-4.3" />
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path d="m20.2 10.3-1.4-1.4" />
                                 </svg>
                             </div>
                             <div className="workflow-step__content">
-                                <h3 className="workflow-step__title">關鍵字分析</h3>
-                                <p className="workflow-step__desc">分析關鍵字意圖和競爭對手</p>
+                                <h3 className="workflow-step__title">意圖分析引擎</h3>
+                                <p className="workflow-step__desc">AI 診斷搜尋意圖並自動匹配風格</p>
                                 <Button variant="secondary" size="sm" onClick={handleStartAnalysis}>
                                     開始分析
                                 </Button>

@@ -87,6 +87,15 @@ const navItems: NavItem[] = [
         ),
     },
     {
+        path: '/prompts',
+        label: '指令倉庫',
+        icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 8V20.9932C21 21.5501 20.5552 22 20.0066 22H3.9934C3.44111 22 3 21.556 3 20.9932V8H21ZM21 4V6H3V4C3 3.456 3.44111 3 3.9934 3H20.0066C20.5552 3 21 3.4501 21 4ZM10 11V13H14V11H10Z" />
+            </svg>
+        ),
+    },
+    {
         path: '/settings',
         label: '系統設定',
         icon: (

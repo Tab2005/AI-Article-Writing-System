@@ -36,6 +36,7 @@ class Project(Base):
     
     # 關鍵字
     keywords = Column(JSON, default=dict)  # {secondary: [], lsi: [], density: {}}
+    research_data = Column(JSON, nullable=True) # 儲存 PAA, 相關搜尋, AI Overview 等研究數據
     
     # 大綱
     outline = Column(JSON, nullable=True)  # {h1: "", sections: []}
@@ -67,6 +68,7 @@ class Project(Base):
             "candidate_titles": self.candidate_titles or [],
             "selected_title": self.selected_title,
             "keywords": self.keywords or {"secondary": [], "lsi": []},
+            "research_data": self.research_data or {"paa": [], "related_searches": [], "ai_overview": None},
             "outline": self.outline,
             "full_content": self.full_content or "",
             "meta_title": self.meta_title,
@@ -145,6 +147,7 @@ class KeywordCache(Base):
     
     seed_data = Column(JSON, nullable=True)     # 核心詞數據 {search_volume, cpc, ...}
     suggestions = Column(JSON, nullable=True)   # 長尾詞建議列表 [{keyword, search_volume, ...}]
+    ai_suggestions = Column(JSON, nullable=True) # AI 產出的 5 個標題建議列表
     
     created_at = Column(DateTime, default=datetime.now)
     expires_at = Column(DateTime, nullable=True)
@@ -154,3 +157,26 @@ class KeywordCache(Base):
         if not self.expires_at:
             return False # 預設不逾期
         return datetime.utcnow() > self.expires_at
+
+class PromptTemplate(Base):
+    """指令模板資料表"""
+    __tablename__ = "prompt_templates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    category = Column(String(50), nullable=False, index=True) # title_generation, outline_generation, etc.
+    name = Column(String(100), nullable=False)
+    content = Column(Text, nullable=False)
+    is_active = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "category": self.category,
+            "name": self.name,
+            "content": self.content,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }

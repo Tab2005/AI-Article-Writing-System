@@ -206,32 +206,71 @@ SERP 標題：
             return {"intent": "informational", "confidence": 0.5, "signals": [str(e)], "suggested_style": "專業教育風"}
     
     @classmethod
-    async def generate_outline(cls, keyword: str, intent: str, keywords: list[str]) -> dict:
-        """生成文章大綱"""
-        prompt = f"""為以下關鍵字生成 SEO 文章大綱。
+    async def generate_outline(cls, keyword: str, intent: str, keywords: list[str], research_data: dict = None, custom_prompt: str = None) -> dict:
+        """基於語義數據生成 AI 驅動的文章大綱（支援自訂 Prompt）"""
+        
+        paa = research_data.get("paa", []) if research_data else []
+        related = research_data.get("related_searches", []) if research_data else []
+        ai_overview = research_data.get("ai_overview", {}) if research_data else {}
+        
+        # 如果有提供自訂 Prompt，使用它；否則使用預設
+        if custom_prompt:
+            prompt = custom_prompt.format(
+                keyword=keyword,
+                intent=intent,
+                keywords=', '.join(keywords),
+                paa=chr(10).join(f'  - {p}' for p in paa[:5]) if paa else '無',
+                related_searches=', '.join(related[:8]) if related else '無',
+                ai_overview=ai_overview.get('description') or ai_overview.get('snippet') or '無' if isinstance(ai_overview, dict) else '無'
+            )
+        else:
+            # 預設提示詞（保持向後兼容）
+            prompt = f"""你是一位資深的 SEO 內容建築師，擅長運用知識圖譜與語義搜尋技術。
+請為核心關鍵字「{keyword}」生成一篇內容深度領先競爭對手、具備極高 GEO (生成式引擎優化) 潛力的文章大綱。
 
-主關鍵字：{keyword}
-搜尋意圖：{intent}
-延伸關鍵字：{', '.join(keywords)}
+# 背景資訊
+- 核心關鍵字：{keyword}
+- 搜尋意圖：{intent}
+- 推薦延伸詞：{', '.join(keywords)}
 
-請生成包含 H1 和多個 H2/H3 章節的大綱，每個章節要包含：
-- heading: 標題文字
-- level: 2 或 3 (H2/H3)
-- keywords: 該章節要嵌入的關鍵字
+# 實時搜尋數據 (極重要)
+我們從 Google 實時搜尋中獲取了以下關鍵數據，請將這些內容織入大綱結構：
+- **使用者常問問題 (PAA)**：{chr(10).join(f'  - {p}' for p in paa[:5]) if paa else '無'}
+- **相關搜尋詞**：{', '.join(related[:8]) if related else '無'}
+- **AI 總結特徵**：{ai_overview.get('description') or ai_overview.get('snippet') or '無' if isinstance(ai_overview, dict) else '無'}
 
-請以 JSON 格式回覆。
+# 大綱生成規則
+1. **問題驅動**：請優先將上述 PAA 問題轉化為適當的 H2 或 H3 標題，這對於獲得 AI 搜尋引擎的引用至關重要。
+2. **語義覆蓋**：利用相關搜尋詞來細分章節，確保覆蓋該關鍵字的完整知識場景。
+3. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
+4. **輸出格式**：必須輸出純 JSON 物件。
+
+# 輸出 JSON 結構
+{{
+    "h1": "吸引人的 GEO 優化標題",
+    "sections": [
+        {{
+            "heading": "章節標題文字",
+            "level": 2,
+            "description": "該章節的撰寫重點 (30 字內)",
+            "keywords": ["推薦關鍵字1", "推薦關鍵字2"]
+        }}
+    ]
+}}
 """
         
         try:
-            result = await cls.generate_content(prompt)
+            result = await cls.generate_content(prompt, temperature=0.7)
             import json
             import re
             json_match = re.search(r'\{[\s\S]*\}', result)
             if json_match:
                 return json.loads(json_match.group())
-            return {"h1": f"{keyword}完整指南", "sections": []}
-        except Exception:
-            return {"h1": f"{keyword}完整指南", "sections": []}
+            return {"h1": f"2026 {keyword}完整指南", "sections": []}
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to generate AI outline: {e}")
+            return {"h1": f"2026 {keyword}完整指南", "sections": []}
     
     @classmethod
     async def generate_section_content(
@@ -240,23 +279,41 @@ SERP 標題：
         keywords: list[str],
         previous_summary: str = "",
         optimization_mode: str = "seo",
+        target_word_count: int = 400,
+        keyword_density: float = 2.0,
+        h1: str = "",
+        custom_prompt: str = None
     ) -> dict:
         """生成單一章節內容"""
-        mode_instructions = {
-            "seo": "注重關鍵字自然嵌入，保持 1.5-2.5% 關鍵字密度",
-            "aeo": "使用問答格式，提供簡潔直接的答案，適合語音搜尋",
-            "geo": "添加權威引用和數據來源，強化 E-E-A-T 信號",
-            "hybrid": "結合 SEO 關鍵字優化、AEO 問答格式、GEO 權威性",
-        }
         
-        prompt = f"""撰寫文章章節。
+        # 如果有提供自訂 Prompt，使用它；否則使用預設
+        if custom_prompt:
+            prompt = custom_prompt.format(
+                keyword=h1 or heading, # 備位
+                intent=optimization_mode, # 簡化傳入
+                h1=h1,
+                heading=heading,
+                keywords=', '.join(keywords),
+                previous_summary=previous_summary or '這是文章開頭',
+                target_word_count=target_word_count,
+                keyword_density=keyword_density
+            )
+        else:
+            mode_instructions = {
+                "seo": "注重關鍵字自然嵌入，保持 1.5-2.5% 關鍵字密度",
+                "aeo": "使用問答格式，提供簡潔直接的答案，適合語音搜尋",
+                "geo": "添加權威引用和數據來源，強化 E-E-A-T 信號",
+                "hybrid": "結合 SEO 關鍵字優化、AEO 問答格式、GEO 權威性",
+            }
+            
+            prompt = f"""撰寫文章章節。
 
 章節標題：{heading}
 必須嵌入的關鍵字：{', '.join(keywords)}
 前文摘要：{previous_summary or '這是文章開頭'}
 優化模式：{mode_instructions.get(optimization_mode, mode_instructions['seo'])}
 
-請以 Markdown 格式撰寫約 300-500 字的章節內容。
+請以 Markdown 格式撰寫約 {target_word_count} 字的章節內容，並確保關鍵字密度約 {keyword_density}%。
 """
         
         try:
@@ -270,6 +327,8 @@ SERP 標題：
                 "summary": f"介紹了{heading}的核心概念",
             }
         except Exception as e:
+            import logging
+            logging.error(f"Failed to generate section content: {e}")
             return {
                 "heading": heading,
                 "content": f"## {heading}\n\n生成內容時發生錯誤：{str(e)}",
@@ -280,7 +339,52 @@ SERP 標題：
     @classmethod
     async def generate_ai_titles(cls, keyword: str, titles: list[str], intent: str = "informational") -> list[dict]:
         """基於 SERP 競品標題與 GEO 策略生成 AI 建議標題"""
-        prompt = f"""你是一位資深的 SEO 與 GEO (生成式引擎優化) 專家。你的任務是分析競爭對手標題，並產出 5 個具備高點擊率且極易被 AI 搜尋引擎 (如 ChatGPT, SearchGPT, Gemini) 引用為摘要的標題。
+        
+        # 1. 優先從新模板系統讀取啟用的模板
+        custom_prompt = None
+        try:
+            from app.core.database import SessionLocal
+            from app.models.db_models import PromptTemplate
+            db = SessionLocal()
+            try:
+                active_template = db.query(PromptTemplate).filter(
+                    PromptTemplate.category == "title_generation",
+                    PromptTemplate.is_active == True
+                ).first()
+                if active_template:
+                    custom_prompt = active_template.content
+            finally:
+                db.close()
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to load active prompt template: {e}")
+
+        # 2. 備用：從舊設定讀取 (保持相容性)
+        if not custom_prompt:
+            try:
+                from app.core.database import SessionLocal
+                from app.models.db_models import Settings
+                db = SessionLocal()
+                try:
+                    custom_prompt = Settings.get_value(db, "ai_title_prompt", None)
+                finally:
+                    db.close()
+            except Exception as e:
+                import logging
+                logging.warning(f"Failed to load legacy ai_title_prompt: {e}")
+
+        if custom_prompt:
+            # 使用者自定義指令 (支援變數替換)
+            prompt = custom_prompt.replace("{keyword}", keyword).replace("{intent}", intent)
+            # 注入競爭對手標題
+            competitor_list = chr(10).join(f'- {t}' for t in titles[:10])
+            prompt = prompt.replace("{titles}", competitor_list)
+            # 如果使用者沒放變數，則貼在後面 (保險做法)
+            if "{titles}" not in custom_prompt:
+                prompt += f"\n\n# 競爭對手標題 (SERP Top 10)：\n{competitor_list}"
+        else:
+            # 系統預設指令
+            prompt = f"""你是一位資深的 SEO 與 GEO (生成式引擎優化) 專家。你的任務是分析競爭對手標題，並產出 5 個具備高點擊率且極易被 AI 搜尋引擎 (如 ChatGPT, SearchGPT, Gemini) 引用為摘要的標題。
 
 # 輸入數據
 - 目前年份：2026 年

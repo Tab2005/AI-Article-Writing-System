@@ -74,7 +74,7 @@ def get_db_context():
 
 def init_db():
     """初始化資料庫 - 建立所有表格"""
-    from app.models.db_models import Project, Settings  # noqa
+    from app.models.db_models import Project, Settings, PromptTemplate, SerpCache, KeywordCache  # noqa
     Base.metadata.create_all(bind=engine)
     print(f"Database initialized: {DATABASE_URL}")
 

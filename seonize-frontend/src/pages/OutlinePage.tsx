@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui';
+import { analysisApi, projectsApi } from '../services/api';
 import './OutlinePage.css';
 
 interface OutlineItem {
@@ -7,23 +9,126 @@ interface OutlineItem {
     heading: string;
     level: number;
     keywords: string[];
+    description?: string;
 }
 
 export const OutlinePage: React.FC = () => {
-    const [outline, setOutline] = useState<OutlineItem[]>([
-        { id: '1', heading: '什麼是 SEO？基礎概念解析', level: 2, keywords: ['SEO', '搜尋引擎優化'] },
-        { id: '2', heading: 'SEO 的重要性', level: 2, keywords: ['SEO 重要性'] },
-        { id: '3', heading: '為什麼企業需要 SEO？', level: 3, keywords: ['企業 SEO'] },
-        { id: '4', heading: 'SEO 與付費廣告的差異', level: 3, keywords: ['SEO vs 廣告'] },
-        { id: '5', heading: '2026 年最新 SEO 技巧', level: 2, keywords: ['SEO 技巧'] },
-        { id: '6', heading: '關鍵字研究方法', level: 3, keywords: ['關鍵字研究'] },
-        { id: '7', heading: '內容優化策略', level: 3, keywords: ['內容優化'] },
-        { id: '8', heading: '技術 SEO 檢查清單', level: 3, keywords: ['技術 SEO'] },
-        { id: '9', heading: '常見問題 FAQ', level: 2, keywords: ['SEO FAQ'] },
-    ]);
+    const location = useLocation();
+    const navigate = useNavigate();
+    const projectId = location.state?.projectId || sessionStorage.getItem('lastProjectId');
+
+    const [outline, setOutline] = useState<OutlineItem[]>([]);
+    const [h1, setH1] = useState<string>('');
+    const [logicChain, setLogicChain] = useState<string[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const [draggedItem, setDraggedItem] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
+
+    // 載入專案與現有大綱
+    const loadProject = useCallback(async () => {
+        if (!projectId) {
+            setError('找不到專案 ID，請從專案頁面進入');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            const project = await projectsApi.get(projectId);
+
+            // 如果專案已有大綱，載入它
+            if (project.outline && project.outline.sections && project.outline.sections.length > 0) {
+                setH1(project.outline.h1 || project.selected_title || '');
+                setOutline(project.outline.sections || []);
+                setLogicChain(['✓ 已載入專案大綱']);
+            } else {
+                // 沒有現有大綱，但載入專案已選定的標題
+                setH1(project.selected_title || '');
+                setOutline([]);
+                setLogicChain([]);
+            }
+        } catch (err: any) {
+            console.error('載入專案失敗:', err);
+            setError(err.message || '無法載入專案資料');
+        } finally {
+            setLoading(false);
+        }
+    }, [projectId]);
+
+    // AI 生成大綱
+    const generateOutline = useCallback(async () => {
+        if (!projectId) {
+            setError('找不到專案 ID，請從專案頁面進入');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            // 1. 先獲取專案資訊 (為了關鍵字)
+            const project = await projectsApi.get(projectId);
+
+            // 2. 調用 AI 生成大綱 (後端會自動讀取 research_data)
+            const res = await analysisApi.generateOutline({
+                project_id: projectId,
+                keyword: project.primary_keyword,
+                intent: project.intent as any || 'informational',
+                selected_keywords: project.keywords?.secondary || []
+            });
+
+            setH1(res.h1);
+            setOutline(res.sections);
+            setLogicChain(res.logic_chain);
+        } catch (err: any) {
+            console.error('生成大綱失敗:', err);
+            setError(err.message || '無法生成大綱');
+        } finally {
+            setLoading(false);
+        }
+    }, [projectId]);
+
+    // 儲存大綱到專案
+    const saveOutline = useCallback(async () => {
+        if (!projectId) {
+            setError('找不到專案 ID');
+            return;
+        }
+
+        try {
+            setSaving(true);
+            setError(null);
+
+            // 確保所有 sections 都有 children 屬性以符合 OutlineSection 型別
+            const sectionsWithChildren = outline.map(item => ({
+                ...item,
+                children: []
+            }));
+
+            await projectsApi.update(projectId, {
+                outline: {
+                    h1: h1,
+                    sections: sectionsWithChildren
+                }
+            });
+
+            alert('大綱已成功儲存！');
+        } catch (err: any) {
+            console.error('儲存大綱失敗:', err);
+            setError(err.message || '無法儲存大綱');
+        } finally {
+            setSaving(false);
+        }
+    }, [projectId, h1, outline]);
+
+    useEffect(() => {
+        // 進入頁面時載入專案與現有大綱
+        loadProject();
+    }, [loadProject]);
 
     const handleDragStart = (id: string) => {
         setDraggedItem(id);
@@ -76,38 +181,79 @@ export const OutlinePage: React.FC = () => {
         setOutline(outline.filter(item => item.id !== id));
     };
 
+    if (loading) {
+        return (
+            <div className="outline-page">
+                <div className="loading-state">
+                    <div className="spinner"></div>
+                    <p>AI 正在分析研究數據並生成大綱中...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="outline-page">
+                <div className="error-state">
+                    <p>{error}</p>
+                    <Button onClick={() => navigate('/projects')}>返回專案</Button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="outline-page">
             <div className="outline-header">
                 <div>
+                    <h1 className="outline-h1">{h1 || '尚未生成標題'}</h1>
                     <h2 className="outline-header__title">互動式大綱編輯器</h2>
                     <p className="outline-header__desc">
-                        拖拽排序 H2/H3 結構，編輯標題文字，規劃知識圖譜
+                        {outline.length > 0
+                            ? '拖拽排序 H2/H3 結構，編輯標題文字，已為您自動織入 PAA 與相關搜尋'
+                            : '點擊「AI 生成大綱」按鈕，讓 AI 根據關鍵字研究數據為您建立專業大綱'}
                     </p>
                 </div>
                 <div className="outline-header__actions">
-                    <Button variant="secondary" onClick={handleAddSection}>
-                        + 新增章節
+                    <Button
+                        variant="secondary"
+                        onClick={generateOutline}
+                        disabled={loading}
+                    >
+                        {loading ? '⏳ AI 生成中...' : '🤖 AI 生成大綱'}
                     </Button>
-                    <Button variant="cta">生成內容</Button>
+                    {outline.length > 0 && (
+                        <>
+                            <Button variant="secondary" onClick={handleAddSection}>
+                                + 新增章節
+                            </Button>
+                            <Button
+                                variant="cta"
+                                onClick={saveOutline}
+                                disabled={saving}
+                            >
+                                {saving ? '儲存中...' : '💾 儲存大綱'}
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
             {/* Logic Chain */}
-            <div className="logic-chain">
-                <h3 className="logic-chain__title">邏輯鏈條</h3>
-                <div className="logic-chain__flow">
-                    <span className="logic-chain__step">定義說明</span>
-                    <span className="logic-chain__arrow">→</span>
-                    <span className="logic-chain__step">原理解析</span>
-                    <span className="logic-chain__arrow">→</span>
-                    <span className="logic-chain__step">步驟教學</span>
-                    <span className="logic-chain__arrow">→</span>
-                    <span className="logic-chain__step">注意事項</span>
-                    <span className="logic-chain__arrow">→</span>
-                    <span className="logic-chain__step">常見問題</span>
+            {logicChain.length > 0 && (
+                <div className="logic-chain">
+                    <h3 className="logic-chain__title">GEO 優化邏輯鏈條</h3>
+                    <div className="logic-chain__flow">
+                        {logicChain.map((step, idx) => (
+                            <React.Fragment key={idx}>
+                                <span className="logic-chain__step">{step}</span>
+                                {idx < logicChain.length - 1 && <span className="logic-chain__arrow">→</span>}
+                            </React.Fragment>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Outline Editor */}
             <div className="outline-editor">

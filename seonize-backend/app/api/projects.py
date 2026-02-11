@@ -18,16 +18,17 @@ def db_to_project_state(db_project: Project) -> ProjectState:
     """將資料庫模型轉換為 ProjectState"""
     return ProjectState(
         project_id=db_project.id,
-        created_at=db_project.created_at.isoformat() if db_project.created_at else datetime.now().isoformat(),
-        updated_at=db_project.updated_at.isoformat() if db_project.updated_at else datetime.now().isoformat(),
+        created_at=db_project.created_at,
+        updated_at=db_project.updated_at,
         primary_keyword=db_project.primary_keyword,
         country=db_project.country,
         language=db_project.language,
         intent=db_project.intent,
         style=db_project.style,
         optimization_mode=db_project.optimization_mode,
-        serp_results=[],  # TODO: 從其他表獲取
+        serp_results=[],
         keywords=db_project.keywords or {"secondary": [], "lsi": []},
+        research_data=db_project.research_data or {"paa": [], "related_searches": [], "ai_overview": None},
         candidate_titles=db_project.candidate_titles or [],
         selected_title=db_project.selected_title,
         outline=db_project.outline,

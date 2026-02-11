@@ -21,9 +21,12 @@ class WritingSection(BaseModel):
 
 class WritingRequest(BaseModel):
     project_id: str
+    h1: str = ""                         # 新增：整體文章標題
     section: WritingSection
     optimization_mode: OptimizationMode = OptimizationMode.SEO
-    ai_model: str = "gemini"  # gemini or openai
+    ai_model: str = "gemini"              # gemini or openai
+    target_word_count: int = 400         # 新增：目標字數
+    keyword_density: float = 2.0         # 新增：目標關鍵字密度
 
 
 class WritingResponse(BaseModel):
@@ -37,23 +40,42 @@ class WritingResponse(BaseModel):
 @router.post("/generate-section", response_model=WritingResponse)
 async def generate_section(request: WritingRequest):
     """
-    生成單一章節內容
-    第四階段：分段迭代撰寫
+    生成單一章節內容 - 整合指令倉庫
     """
-    result = await AIService.generate_section_content(
-        heading=request.section.heading,
-        keywords=request.section.keywords,
-        previous_summary=request.section.previous_summary,
-        optimization_mode=request.optimization_mode,
-    )
+    from app.core.database import SessionLocal
+    from app.models.db_models import PromptTemplate
+    
+    db = SessionLocal()
+    prompt_content = None
+    try:
+        # 從指令倉庫載入 Prompt Template
+        template = db.query(PromptTemplate).filter(
+            PromptTemplate.category == "content_writing",
+            PromptTemplate.is_active == True
+        ).first()
+        if template:
+            prompt_content = template.content
+            
+        result = await AIService.generate_section_content(
+            heading=request.section.heading,
+            keywords=request.section.keywords,
+            previous_summary=request.section.previous_summary,
+            optimization_mode=request.optimization_mode.value,
+            target_word_count=request.target_word_count,
+            keyword_density=request.keyword_density,
+            h1=request.h1,
+            custom_prompt=prompt_content
+        )
 
-    return WritingResponse(
-        heading=result["heading"],
-        content=result["content"],
-        word_count=result["word_count"],
-        embedded_keywords=result["embedded_keywords"],
-        summary=result["summary"],
-    )
+        return WritingResponse(
+            heading=result["heading"],
+            content=result["content"],
+            word_count=result["word_count"],
+            embedded_keywords=result["embedded_keywords"],
+            summary=result["summary"],
+        )
+    finally:
+        db.close()
 
 
 class FullArticleRequest(BaseModel):

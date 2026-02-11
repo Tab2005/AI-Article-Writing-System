@@ -81,6 +81,7 @@ export interface ProjectState {
     meta_description?: string;
     word_count: number;
     keyword_density: Record<string, number>;
+    research_data?: Record<string, any>;
     eeat_score?: number;
 }
 
@@ -99,6 +100,7 @@ export interface ProjectUpdate {
     outline?: OutlineData;
     optimization_mode?: OptimizationMode;
     candidate_titles?: string[];
+    research_data?: Record<string, any>;
 }
 
 export interface ResearchRequest {
@@ -137,6 +139,7 @@ export interface KeywordIdeasResponse {
         competition_index: number;
     } | null;
     suggestions: KeywordIdea[];
+    ai_suggestions?: AITitleSuggestion[]; // 新增：已生成的 AI 標題建議
     from_cache: boolean;
     error?: string;
 }
