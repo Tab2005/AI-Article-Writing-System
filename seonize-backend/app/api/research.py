@@ -127,7 +127,8 @@ async def get_keyword_ideas(request: KeywordIdeasRequest):
         language_code = DataForSEOService.resolve_language_code(request.language)
         location_code = DataForSEOService.resolve_location_code(request.country)
 
-        ideas_data = await DataForSEOService.get_keyword_ideas(
+        # 併發執行關鍵字建議獲取與 Google Ads 狀態檢查
+        ideas_task = DataForSEOService.get_keyword_ideas(
             keyword=request.keyword,
             language_code=language_code,
             location_code=location_code,
@@ -136,6 +137,18 @@ async def get_keyword_ideas(request: KeywordIdeasRequest):
             password=config.dataforseo_password,
             force_refresh=request.force_refresh
         )
+        
+        status_task = DataForSEOService.get_google_ads_status(
+            login=config.dataforseo_login,
+            password=config.dataforseo_password
+        )
+        
+        ideas_data, ads_status = await asyncio.gather(ideas_task, status_task)
+        
+        # 整合狀態數據
+        if isinstance(ideas_data, dict):
+            ideas_data["google_ads_status"] = ads_status
+            
         return ideas_data
     finally:
         db.close()

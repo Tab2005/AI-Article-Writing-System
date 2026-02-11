@@ -477,6 +477,45 @@ class DataForSEOService:
             return {"seed_keyword_data": None, "suggestions": [], "error": str(e)}
 
     @classmethod
+    async def get_google_ads_status(
+        cls, 
+        login: Optional[str] = None, 
+        password: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        獲取 Google Ads 數據更新狀態
+        對接 /keywords_data/google_ads/status 端點
+        """
+        url = f"{cls.BASE_URL}/keywords_data/google_ads/status"
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    url,
+                    headers=cls._get_auth_header(login, password),
+                    timeout=15.0
+                )
+                
+                if response.status_code != 200:
+                    logger.warning("DataForSEO Status Error: HTTP %s Body: %s", response.status_code, response.text)
+                    return {}
+                
+                data = response.json()
+                tasks = data.get("tasks", [])
+                if not tasks or not tasks[0].get("result"):
+                    return {}
+                
+                result = tasks[0]["result"][0]
+                return {
+                    "actual_data": result.get("actual_data"),
+                    "date_update": result.get("date_update"),
+                    "last_year": result.get("last_year_in_monthly_searches"),
+                    "last_month": result.get("last_month_in_monthly_searches")
+                }
+        except Exception as e:
+            logger.warning("DataForSEO Status Exception: %s", str(e))
+            return {}
+
+    @classmethod
     def _flatten_keyword_data(cls, item: Dict[str, Any]) -> Dict[str, Any]:
         """
         將 DataForSEO 權重數據扁平化，提取關鍵指標到首層

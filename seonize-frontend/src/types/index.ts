@@ -141,6 +141,12 @@ export interface KeywordIdeasResponse {
     suggestions: KeywordIdea[];
     ai_suggestions?: AITitleSuggestion[]; // 新增：已生成的 AI 標題建議
     from_cache: boolean;
+    google_ads_status?: {
+        actual_data: boolean;
+        date_update: string;
+        last_year: number;
+        last_month: number;
+    };
     error?: string;
 }
 

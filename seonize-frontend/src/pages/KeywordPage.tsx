@@ -271,16 +271,25 @@ export const KeywordPage: React.FC = () => {
                     </Button>
                 </div>
                 {lastCreatedAt && (
-                    <div className="data-freshness" style={{ marginTop: '12px', fontSize: '0.875rem', color: isDataExpired() ? '#f59e0b' : 'var(--color-text-secondary)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        數據抓取時間：{new Date(lastCreatedAt).toLocaleString('zh-TW')}
-                        {isDataExpired() && (
-                            <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
-                                (建議前往「歷史紀錄」更新數據以獲取最新結果)
-                            </span>
+                    <div className="data-freshness-row">
+                        <div className="data-freshness" style={{ fontSize: '0.875rem', color: isDataExpired() ? '#f59e0b' : 'var(--color-text-secondary)' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            數據抓取時間：{new Date(lastCreatedAt).toLocaleString('zh-TW')}
+                            {isDataExpired() && (
+                                <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+                                    (建議更新數據以獲取最新結果)
+                                </span>
+                            )}
+                        </div>
+
+                        {keywordIdeas?.google_ads_status && (
+                            <div className="ads-status-badge" title={`最後更新：${keywordIdeas.google_ads_status.date_update}`}>
+                                <span className="ads-status-badge__dot" style={{ backgroundColor: keywordIdeas.google_ads_status.actual_data ? '#10b981' : '#f59e0b' }}></span>
+                                Google Ads 數據狀態：{keywordIdeas.google_ads_status.last_year}/{keywordIdeas.google_ads_status.last_month} {keywordIdeas.google_ads_status.actual_data ? '(已更新)' : '(發佈中)'}
+                            </div>
                         )}
                     </div>
                 )}
