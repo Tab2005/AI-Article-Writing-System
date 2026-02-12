@@ -43,6 +43,7 @@ export const PromptPage: React.FC = () => {
     // 每個 category 的編輯狀態
     const [activePrompts, setActivePrompts] = useState<Record<string, string>>({});
     const [newTemplateNames, setNewTemplateNames] = useState<Record<string, string>>({});
+    const [loadedTemplates, setLoadedTemplates] = useState<Record<string, PromptTemplate | null>>({});
     const [savingCategory, setSavingCategory] = useState<string | null>(null);
 
     useEffect(() => {
@@ -115,6 +116,43 @@ export const PromptPage: React.FC = () => {
             setTimeout(() => setMessage(null), 3000);
         }
     };
+    const handleUpdateExisting = async (category: string) => {
+        const template = loadedTemplates[category];
+        if (!template) return;
+
+        const newName = newTemplateNames[category];
+        const newContent = activePrompts[category];
+
+        if (!newName?.trim()) {
+            setMessage({ type: 'error', text: '模板名稱不能為空' });
+            setTimeout(() => setMessage(null), 3000);
+            return;
+        }
+
+        setSavingCategory(category);
+        try {
+            const response = await fetch(`${API_URL}/api/prompts/templates/${template.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: newName,
+                    content: newContent,
+                }),
+            });
+
+            if (response.ok) {
+                setMessage({ type: 'success', text: `模板「${newName}」已更新！` });
+                loadTemplates();
+            } else {
+                setMessage({ type: 'error', text: '更新失敗' });
+            }
+        } catch {
+            setMessage({ type: 'error', text: '連線錯誤' });
+        } finally {
+            setSavingCategory(null);
+            setTimeout(() => setMessage(null), 3000);
+        }
+    };
 
     const handleActivate = async (id: number) => {
         try {
@@ -154,6 +192,8 @@ export const PromptPage: React.FC = () => {
 
     const handleLoadTemplate = (category: string, template: PromptTemplate) => {
         setActivePrompts({ ...activePrompts, [category]: template.content });
+        setNewTemplateNames({ ...newTemplateNames, [category]: template.name });
+        setLoadedTemplates({ ...loadedTemplates, [category]: template });
         setMessage({ type: 'success', text: `已載入模板：${template.name}` });
         setTimeout(() => setMessage(null), 2000);
     };
@@ -259,22 +299,36 @@ export const PromptPage: React.FC = () => {
                                         : "支援 {keyword}, {intent}, {keywords}, {paa}, {related_searches}, {ai_overview} 變數。"}
                                 />
 
-                                {/* Save as new Template */}
+                                {/* Save Actions */}
                                 <div className="prompt-card__new-template">
                                     <Input
-                                        placeholder="新模板名稱 (如: 爆款風格)"
+                                        placeholder="模板名稱 (編輯或新建立)"
                                         value={newTemplateNames[category] || ''}
                                         onChange={(e) => setNewTemplateNames({ ...newTemplateNames, [category]: e.target.value })}
                                         fullWidth
                                     />
-                                    <Button
-                                        variant="cta"
-                                        onClick={() => handleSaveAsNew(category)}
-                                        loading={savingCategory === category}
-                                        disabled={!activePrompts[category] || !newTemplateNames[category]}
-                                    >
-                                        另存為模板
-                                    </Button>
+                                    <div className="prompt-card__actions-row">
+                                        {loadedTemplates[category] && (
+                                            <Button
+                                                variant="secondary"
+                                                onClick={() => handleUpdateExisting(category)}
+                                                loading={savingCategory === category}
+                                                disabled={!activePrompts[category]}
+                                                fullWidth
+                                            >
+                                                儲存變更
+                                            </Button>
+                                        )}
+                                        <Button
+                                            variant="cta"
+                                            onClick={() => handleSaveAsNew(category)}
+                                            loading={savingCategory === category}
+                                            disabled={!activePrompts[category] || !newTemplateNames[category]}
+                                            fullWidth
+                                        >
+                                            另存為模板
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
