@@ -29,6 +29,7 @@ export const WritingPage: React.FC = () => {
     const [targetTotalWords, setTargetTotalWords] = useState(2000);
     const [keywordDensity, setKeywordDensity] = useState(2.0);
     const [optimizationMode, setOptimizationMode] = useState<OptimizationMode>('seo');
+    const [previewMode, setPreviewMode] = useState<'render' | 'markdown'>('render');
 
     // 載入專案資料
     const loadProject = useCallback(async () => {
@@ -86,8 +87,6 @@ export const WritingPage: React.FC = () => {
         const sectionIndex = sections.findIndex(s => s.id === sectionId);
         if (sectionIndex === -1) return;
 
-        const section = sections[sectionIndex];
-
         // 更新狀態為生成中
         const newSections = [...sections];
         newSections[sectionIndex].status = 'generating';
@@ -101,54 +100,80 @@ export const WritingPage: React.FC = () => {
                 project_id: projectId,
                 h1: project.selected_title || project.outline?.h1 || '',
                 section: {
-                    heading: section.heading,
-                    level: section.level,
-                    keywords: section.keywords,
+                    heading: sections[sectionIndex].heading,
+                    level: sections[sectionIndex].level,
+                    keywords: sections[sectionIndex].keywords,
                     previous_summary: previousSummary
                 },
                 optimization_mode: optimizationMode,
-                target_word_count: Math.round(targetTotalWords / sections.length),
+                target_word_count: Math.round(targetTotalWords / (sections.length || 1)),
                 keyword_density: keywordDensity
             });
 
-            const updatedSections = [...sections];
-            updatedSections[sectionIndex] = {
-                ...updatedSections[sectionIndex],
-                content: res.content,
-                status: 'done'
-            };
-            setSections(updatedSections);
+            // 這裡直接更新狀態，確保後續 save 抓到最新內容
+            setSections(prev => {
+                const updated = [...prev];
+                updated[sectionIndex] = {
+                    ...updated[sectionIndex],
+                    content: res.content,
+                    status: 'done'
+                };
+                return updated;
+            });
 
-            // 自動儲存到專案 (可選)
-            saveToProject();
+            // 重要：生成完畢後立即觸發自動儲存 (非同步不阻塞 UI)
+            setTimeout(() => saveToProject(), 500);
 
         } catch (err) {
             console.error('生成失敗:', err);
-            const updatedSections = [...sections];
-            updatedSections[sectionIndex].status = 'error';
-            setSections(updatedSections);
+            setSections(prev => {
+                const updated = [...prev];
+                updated[sectionIndex].status = 'error';
+                return updated;
+            });
         }
     };
 
     const saveToProject = async () => {
-        if (!projectId || !project) return;
+        if (!projectId || !project || sections.length === 0) return;
 
         try {
-            // 構建結構化大綱 (這裡需要將平坦化列表轉回巢狀結構，或者簡化儲存)
-            // 為了簡便，我們先儲存到專案的 full_content
-            /*
-            const fullContent = currentSections.map(s => {
-                const prefix = '#'.repeat(s.level);
-                return `${prefix} ${s.heading}\n\n${s.content}`;
-            }).join('\n\n');
-            */
+            // 1. 遞迴更新大綱結構中的內容
+            const updateOutlineContent = (items: OutlineSection[]): OutlineSection[] => {
+                return items.map(item => {
+                    const matched = sections.find(s => s.id === item.id);
+                    return {
+                        ...item,
+                        content: matched ? matched.content : item.content,
+                        children: item.children ? updateOutlineContent(item.children) : []
+                    };
+                });
+            };
 
+            const updatedOutline = {
+                ...project.outline!,
+                sections: updateOutlineContent(project.outline!.sections)
+            };
+
+            // 2. 構建全文 Markdown
+            const fullContent = sections
+                .filter(s => s.content)
+                .map(s => {
+                    const prefix = '#'.repeat(s.level);
+                    return `${prefix} ${s.heading}\n\n${s.content}`;
+                })
+                .join('\n\n');
+
+            // 3. 呼叫 API 更新資料庫
             await projectsApi.update(projectId, {
-                // 這裡可以選擇更新 outline.sections 中的 content
-                // 或者更新專案的總內容
+                outline: updatedOutline,
+                full_content: fullContent,
+                word_count: fullContent.length
             });
 
-            // 註：實際開發中應寫一個巢狀轉化函數來更新 project.outline
+            // 更新本地 project 狀態，防止被舊狀態覆蓋
+            setProject(prev => prev ? { ...prev, outline: updatedOutline, full_content: fullContent } : null);
+
         } catch (err) {
             console.error('儲存失敗:', err);
         }
@@ -158,20 +183,46 @@ export const WritingPage: React.FC = () => {
         sections.find(s => s.id === activeSectionId),
         [sections, activeSectionId]);
 
+    const allTargetKeywords = useMemo(() => {
+        if (!project) return [];
+        const kws = new Set<string>();
+        if (project.primary_keyword) kws.add(project.primary_keyword);
+        if (project.keywords?.secondary) project.keywords.secondary.forEach(k => kws.add(k));
+        if (project.keywords?.lsi) project.keywords.lsi.forEach(k => kws.add(k));
+
+        // 從大綱章節中收集所有分配的關鍵字
+        const collectFromOutline = (items: OutlineSection[]) => {
+            items.forEach(item => {
+                if (item.keywords) item.keywords.forEach(k => kws.add(k));
+                if (item.children) collectFromOutline(item.children);
+            });
+        };
+        if (project.outline?.sections) collectFromOutline(project.outline.sections);
+
+        return Array.from(kws).filter(k => k && typeof k === 'string' && k.trim() !== '');
+    }, [project]);
+
+    const keywordCoverageCount = useMemo(() => {
+        if (allTargetKeywords.length === 0 || sections.length === 0) return 0;
+        const fullText = sections.map(s => s.content).join(' ').toLowerCase();
+        return allTargetKeywords.filter(kw => fullText.includes(kw.toLowerCase())).length;
+    }, [allTargetKeywords, sections]);
+
     const totalWordCount = useMemo(() =>
         sections.reduce((acc, s) => acc + (s.content?.length || 0), 0),
         [sections]);
 
     const highlightKeywords = (content: string) => {
-        if (!project || !content) return content;
-        const mainKw = project.primary_keyword;
-        const secondaryKws = project.keywords?.secondary || [];
-        const allKws = [mainKw, ...secondaryKws].filter(k => k && typeof k === 'string' && k.length > 0);
+        if (!content || allTargetKeywords.length === 0) return content;
 
         let highlighted = content;
-        allKws.forEach(kw => {
+        // 按照長標題到短標題排序，避免短關鍵字先被替換導致長關鍵字失效
+        const sortedKws = [...allTargetKeywords].sort((a, b) => b.length - a.length);
+
+        sortedKws.forEach(kw => {
             try {
-                const regex = new RegExp(`(${kw})`, 'gi');
+                // 排除已經在 HTML 標籤內的替換 (簡化處理)
+                const regex = new RegExp(`(${kw})(?![^<]*>|[^<>]*<\/mark>)`, 'gi');
                 highlighted = highlighted.replace(regex, '<mark class="keyword-highlight">$1</mark>');
             } catch (e) {
                 console.warn('Regex error for keyword:', kw);
@@ -269,7 +320,7 @@ export const WritingPage: React.FC = () => {
                 />
                 <KPICard
                     title="關鍵字覆蓋"
-                    value={project?.keywords?.secondary?.length || 0}
+                    value={`${keywordCoverageCount} / ${allTargetKeywords.length}`}
                     suffix="組"
                     icon={<span style={{ fontSize: '20px' }}>📍</span>}
                 />
@@ -325,8 +376,18 @@ export const WritingPage: React.FC = () => {
                                 </Button>
                             )}
                             <div className="writing-preview__mode">
-                                <button className="preview-mode-btn preview-mode-btn--active">渲染</button>
-                                <button className="preview-mode-btn">原始碼</button>
+                                <button
+                                    className={`preview-mode-btn ${previewMode === 'render' ? 'preview-mode-btn--active' : ''}`}
+                                    onClick={() => setPreviewMode('render')}
+                                >
+                                    渲染
+                                </button>
+                                <button
+                                    className={`preview-mode-btn ${previewMode === 'markdown' ? 'preview-mode-btn--active' : ''}`}
+                                    onClick={() => setPreviewMode('markdown')}
+                                >
+                                    原始碼
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -334,10 +395,16 @@ export const WritingPage: React.FC = () => {
                     <div className="writing-preview__content">
                         {activeSection ? (
                             activeSection.content ? (
-                                <div
-                                    className="markdown-body"
-                                    dangerouslySetInnerHTML={{ __html: highlightKeywords(activeSection.content) }}
-                                />
+                                previewMode === 'render' ? (
+                                    <div
+                                        className="markdown-body"
+                                        dangerouslySetInnerHTML={{ __html: highlightKeywords(activeSection.content) }}
+                                    />
+                                ) : (
+                                    <pre className="source-code-view">
+                                        {activeSection.content}
+                                    </pre>
+                                )
                             ) : (
                                 <div className="writing-empty-state">
                                     <p>此章節尚未生成內容</p>

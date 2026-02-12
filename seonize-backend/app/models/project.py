@@ -116,3 +116,5 @@ class ProjectUpdate(BaseModel):
     optimization_mode: Optional[OptimizationMode] = None
     candidate_titles: Optional[List[str]] = None
     research_data: Optional[Dict[str, Any]] = None
+    full_content: Optional[str] = None
+    word_count: Optional[int] = None

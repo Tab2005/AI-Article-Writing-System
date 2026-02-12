@@ -229,6 +229,20 @@ export const KeywordPage: React.FC = () => {
         transactional: { label: '交易型', color: '#8B5CF6' },
     };
 
+    const strategyLabels: Record<string, string> = {
+        'DEFINITIONAL': '定義型',
+        'LISTICLE': '清單型',
+        'PROCEDURAL': '教學型',
+        'COMPARISON': '比較型',
+        'AUTHORITY/TRENDS': '趨勢/權威型',
+        '定義型': '定義型',
+        '清單型': '清單型',
+        '教學型': '教學型',
+        '比較型': '比較型',
+        '趨勢型': '趨勢型',
+        '趨勢/權威型': '趨勢/權威型',
+    };
+
     const isDataExpired = () => {
         if (!lastCreatedAt) return false;
         const createdDate = new Date(lastCreatedAt);
@@ -426,7 +440,9 @@ export const KeywordPage: React.FC = () => {
                             <div className="ai-title-grid">
                                 {aiSuggestions.map((item: AITitleSuggestion, i: number) => (
                                     <div key={i} className="ai-title-card">
-                                        <div className="ai-title-card__badge">{item.strategy}</div>
+                                        <div className="ai-title-card__badge">
+                                            {strategyLabels[item.strategy.toUpperCase()] || strategyLabels[item.strategy] || item.strategy}
+                                        </div>
                                         <div className="ai-title-card__text">{item.title}</div>
                                         <div className="ai-title-card__reason">{item.reason}</div>
                                         <div className="ai-title-card__actions">

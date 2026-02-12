@@ -101,6 +101,8 @@ export interface ProjectUpdate {
     optimization_mode?: OptimizationMode;
     candidate_titles?: string[];
     research_data?: Record<string, any>;
+    full_content?: string;
+    word_count?: number;
 }
 
 export interface ResearchRequest {

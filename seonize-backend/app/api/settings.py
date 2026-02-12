@@ -91,30 +91,9 @@ async def get_settings(db: Session = Depends(get_db)):
         "dataforseo_login", "dataforseo_password", "dataforseo_serp_mode"
     ]
     
-    # 檢查是否直接由系統提供的環境變數映射
-    from app.core import config
-    env_keys = {
-        "ai_provider": "AI_PROVIDER",
-        "ai_model": "AI_MODEL",
-        "dataforseo_login": "DATAFORSEO_LOGIN",
-        "dataforseo_password": "DATAFORSEO_PASSWORD",
-    }
-    
     for key in keys:
         value = Settings.get_value(db, key)
         
-        # 標註是否由環境變數提供
-        if key in env_keys and getattr(config.settings, env_keys[key], None):
-            system_provided.append(key)
-        elif key == "ai_api_key":
-            # API Key 的判斷較複雜，看目前 provider 對應的 ENV 是否有值
-            from app.models.db_models import os as system_os
-            provider = Settings.get_value(db, "ai_provider", "gemini")
-            env_map = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "zeabur": "ZEABUR_API_KEY"}
-            env_attr = env_map.get(provider, "GEMINI_API_KEY")
-            if getattr(config.settings, env_attr, None):
-                system_provided.append(key)
-
         if value:
             # API Key/Password 類型需要遮蔽
             if ("api_key" in key or "password" in key) and value:

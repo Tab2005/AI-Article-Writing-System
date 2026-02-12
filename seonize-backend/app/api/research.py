@@ -46,8 +46,8 @@ class ResearchResponse(BaseModel):
 
 class TitleSuggestion(BaseModel):
     title: str
-    strategy: str
-    reason: str
+    strategy: Optional[str] = "一般型"
+    reason: Optional[str] = "提升點擊率"
 
 
 class TitleGenerationRequest(BaseModel):

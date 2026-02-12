@@ -93,6 +93,15 @@ Seonize 是一款「數據驅動」的 AI SEO 撰寫系統。不同於一般的 
 *   **AI 寫作引導**：作為内容大綱生成與撰寫階段的關鍵參考數據，強制要求 AI 將這些詞融入生成內容中。
 
 
+### **5.4 SEO 指標監測：動態關鍵字覆蓋率 (Dynamic Keyword Coverage)**
+
+*   **指標公式**：Coverage % = (已出現在內容中的目標關鍵字組數 / 總目標關鍵字清單) * 100%
+*   **清單組成**：整合核心關鍵字 (Primary)、次要關鍵字 (Secondary)、LSI 關鍵字以及大綱分配詞 (Outline Keywords)。
+*   **實作機制**：
+    *   **實時掃描**：前端每渲染一次內容，即執行一次 O(n*m) 的正則比對，計算原文中獨立出現的目標詞組。
+    *   **高亮配合**：比對成功的詞組會被封裝在 `<mark class="keyword-highlight">` 標籤中，具象化 SEO 達成度。
+*   **業務價值**：作為內容生成的質量門檻（Quality Gate），確保 AI 產出的內容不只是文筆流暢，更具備完整的知識圖譜涵蓋度。
+
 ## **6\. 技術棧 (Tech Stack) 建議**
 
 * **Backend**: Python (FastAPI / Pydantic)  

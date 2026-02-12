@@ -339,6 +339,21 @@
     border-radius: var(--radius-sm);
 }
 
+/* Source Code View */
+.source-code-view {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--color-text-secondary);
+    background: rgba(var(--color-bg-secondary-rgb), 0.3);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    margin: 0;
+}
+
 /* SEO Check */
 .seo-check {
     background: var(--color-bg-card);
