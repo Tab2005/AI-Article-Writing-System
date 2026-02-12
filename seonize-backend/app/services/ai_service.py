@@ -282,7 +282,8 @@ SERP 標題：
         target_word_count: int = 400,
         keyword_density: float = 2.0,
         h1: str = "",
-        custom_prompt: str = None
+        custom_prompt: str = None,
+        research_context: str = ""
     ) -> dict:
         """生成單一章節內容"""
         
@@ -296,24 +297,30 @@ SERP 標題：
                 keywords=', '.join(keywords),
                 previous_summary=previous_summary or '這是文章開頭',
                 target_word_count=target_word_count,
-                keyword_density=keyword_density
+                keyword_density=keyword_density,
+                research_context=research_context or '暫無可用研究數據'
             )
         else:
             mode_instructions = {
                 "seo": "注重關鍵字自然嵌入，保持 1.5-2.5% 關鍵字密度",
                 "aeo": "使用問答格式，提供簡潔直接的答案，適合語音搜尋",
-                "geo": "添加權威引用和數據來源，強化 E-E-A-T 信號",
+                "geo": "添加權威引用（如：『根據搜尋結果指出...』、『常見問題中提到...』）和數據來源，強化 E-E-A-T 信號",
                 "hybrid": "結合 SEO 關鍵字優化、AEO 問答格式、GEO 權威性",
             }
             
+            research_block = f"\n相關研究數據與參考資料：\n{research_context}\n" if research_context else ""
+            
             prompt = f"""撰寫文章章節。
 
+文章標題：{h1}
 章節標題：{heading}
 必須嵌入的關鍵字：{', '.join(keywords)}
 前文摘要：{previous_summary or '這是文章開頭'}
-優化模式：{mode_instructions.get(optimization_mode, mode_instructions['seo'])}
+{research_block}
+優化模式指南：{mode_instructions.get(optimization_mode, mode_instructions['seo'])}
 
 請以 Markdown 格式撰寫約 {target_word_count} 字的章節內容，並確保關鍵字密度約 {keyword_density}%。
+若有研究數據提供，請在文中以自然的方式進行「引述」或「參考」，以增加內容的權威度。
 """
         
         try:

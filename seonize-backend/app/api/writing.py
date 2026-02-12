@@ -47,7 +47,22 @@ async def generate_section(request: WritingRequest):
     
     db = SessionLocal()
     prompt_content = None
+    research_context = ""
     try:
+        # 從資料庫獲取專案的研究數據與背景
+        from app.models.db_models import Project
+        db_project = db.query(Project).filter(Project.id == request.project_id).first()
+        if db_project and db_project.research_data:
+            rd = db_project.research_data
+            parts = []
+            if rd.get('paa'):
+                parts.append("常見問題 (PAA): " + "; ".join(rd['paa'][:5]))
+            if rd.get('related_searches'):
+                parts.append("相關搜尋: " + ", ".join(rd['related_searches'][:5]))
+            if rd.get('ai_overview'):
+                parts.append("AI 概覽重點: " + str(rd['ai_overview'])[:500])
+            research_context = "\n".join(parts)
+
         # 從指令倉庫載入 Prompt Template
         template = db.query(PromptTemplate).filter(
             PromptTemplate.category == "content_writing",
@@ -64,7 +79,8 @@ async def generate_section(request: WritingRequest):
             target_word_count=request.target_word_count,
             keyword_density=request.keyword_density,
             h1=request.h1,
-            custom_prompt=prompt_content
+            custom_prompt=prompt_content,
+            research_context=research_context
         )
 
         return WritingResponse(
@@ -170,14 +186,21 @@ async def check_seo(request: SEOCheckRequest):
         kw_count = content.lower().count(kw.lower())
         keyword_density[kw] = round((kw_count / max(word_count, 1)) * 100, 2)
     
-    # Mock E-E-A-T signals detection
+    # Mock E-E-A-T signals detection - 加強偵測邏輯
     eeat_signals = []
-    if "專家" in content or "經驗" in content:
-        eeat_signals.append("Experience 信號偵測到")
-    if "研究" in content or "數據" in content:
-        eeat_signals.append("Expertise 信號偵測到")
-    if "來源" in content or "引用" in content:
-        eeat_signals.append("Authoritativeness 信號偵測到")
+    content_lower = content.lower()
+    
+    # 經驗與專業 (Experience/Expertise)
+    if any(kw in content_lower for kw in ["專家", "經驗", "實測", "親身", "筆者", "觀點"]):
+        eeat_signals.append("Experience/Expertise (經驗與專業信號)")
+        
+    # 權威性 (Authoritativeness)
+    if any(kw in content_lower for kw in ["研究", "數據", "調查", "報告", "根據", "指出", "顯示", "學術"]):
+        eeat_signals.append("Authoritativeness (權威與引述信號)")
+        
+    # 信任度 (Trustworthiness)
+    if any(kw in content_lower for kw in ["來源", "引用", "參考資料", "連結", "官方"]):
+        eeat_signals.append("Trustworthiness (信任與來源信號)")
     
     suggestions = []
     if density < 1.0:
@@ -186,8 +209,8 @@ async def check_seo(request: SEOCheckRequest):
         suggestions.append(f"主關鍵字密度過高，建議適度減少")
     if word_count < 1500:
         suggestions.append("建議將文章字數增加至 1500 字以上以提升 SEO 效果")
-    if not eeat_signals:
-        suggestions.append("建議添加更多 E-E-A-T 信號（專業經驗、數據引用等）")
+    if len(eeat_signals) < 2:
+        suggestions.append("建議強化 E-E-A-T 信號：增加具體數據引用 (如「根據...指出」) 或專家評論語氣")
     
     return SEOCheckResponse(
         word_count=word_count,
