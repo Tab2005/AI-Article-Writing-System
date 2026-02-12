@@ -10,10 +10,11 @@
 graph TD
     A[使用者輸入關鍵字] --> B{檢查資料庫快取}
     
-    subgraph "第一階段：關鍵字擴充 (Google Keywords API)"
+subgraph "第一階段：數據採集與時效性檢查"
     B -- 快取失效/不存在 --> C1[調用 Keyword Ideas API]
     C1 --> D1[提取主要關鍵字數據]
     C1 --> E1[獲取相關長尾詞清單]
+    B --> S1[並發調用 Google Ads Status API]
     D1 & E1 --> F1[更新 KeywordCache 資料表]
     B -- 快取有效 --> G1[從資料庫讀取 KeywordCache]
     end
@@ -26,7 +27,7 @@ graph TD
     B -- 快取有效 --> G2[從資料庫讀取 SerpCache]
     end
     
-    F1 & G1 & F2 & G2 --> H[整合數據並回傳前端]
+    F1 & G1 & F2 & G2 & S1 --> H[整合數據並回傳前端]
 ```
 
 ---

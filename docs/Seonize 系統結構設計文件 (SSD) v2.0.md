@@ -14,7 +14,7 @@ Seonize 是一款「數據驅動」的 AI SEO 撰寫系統。不同於一般的 
    * **互動式大綱編輯器**: 視覺化呈現 H2 與 H3 結構，支援拖拽排序、標題文字編輯及邏輯鏈條提示。  
    * **分段撰寫實時預覽器**: 採用雙欄式設計，左側顯示生成進度，右側即時渲染 Markdown 文章內容，並標註已嵌入的關鍵字。  
 2. **業務邏輯層 (Backend)**: 採用 FastAPI 作為核心，管理 State 物件。  
-3. **大數據研究層 (Research Engine)**: 串接 Google Search API、網頁爬蟲。  
+3. **大數據研究層 (Research Engine)**: 串接 Google Search API、網頁爬蟲、以及 Google Ads 數據狀態檢查 (Data Status Check)。  
 4. **AI 策略層 (Intelligence Engine)**: 意圖分析器、關鍵字提取器 (TF-IDF)、邏輯 Prompt 工廠。  
 5. **內容生成層 (Writing Engine)**: 分段撰寫器 (Iteration Controller)。
 
