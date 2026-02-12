@@ -316,53 +316,6 @@ export const DashboardPage: React.FC = () => {
                     emptyMessage="尚無專案"
                 />
             </div>
-
-            {/* Quick Actions */}
-            <div className="dashboard-actions">
-                <h3 className="dashboard-actions__title">快速操作</h3>
-                <div className="dashboard-actions__grid">
-                    <button className="quick-action-card">
-                        <div className="quick-action-card__icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="11" cy="11" r="8" />
-                                <path d="m21 21-4.3-4.3" />
-                            </svg>
-                        </div>
-                        <span className="quick-action-card__label">關鍵字研究</span>
-                    </button>
-                    <button className="quick-action-card">
-                        <div className="quick-action-card__icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                            </svg>
-                        </div>
-                        <span className="quick-action-card__label">意圖分析</span>
-                    </button>
-                    <button className="quick-action-card">
-                        <div className="quick-action-card__icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="8" x2="21" y1="6" y2="6" />
-                                <line x1="8" x2="21" y1="12" y2="12" />
-                                <line x1="8" x2="21" y1="18" y2="18" />
-                                <line x1="3" x2="3.01" y1="6" y2="6" />
-                                <line x1="3" x2="3.01" y1="12" y2="12" />
-                                <line x1="3" x2="3.01" y1="18" y2="18" />
-                            </svg>
-                        </div>
-                        <span className="quick-action-card__label">大綱生成</span>
-                    </button>
-                    <button className="quick-action-card">
-                        <div className="quick-action-card__icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
-                            </svg>
-                        </div>
-                        <span className="quick-action-card__label">內容撰寫</span>
-                    </button>
-                </div>
-            </div>
         </div >
     );
 };
