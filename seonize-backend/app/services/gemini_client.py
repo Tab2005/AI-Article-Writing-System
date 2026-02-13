@@ -106,10 +106,37 @@ class GeminiClient:
                 system_instruction=system_prompt,
             )
             
-            response = gemini_model.generate_content(prompt, stream=True)
+            # 修正：使用 to_thread 避免阻塞事件循環
+            # 由於 genai 的串流是同步的，我們需要將其包裝到線程中
+            import queue
+            import threading
             
-            for chunk in response:
-                if chunk.text:
-                    yield chunk.text
+            chunk_queue = queue.Queue()
+            error_holder = []
+            
+            def _stream_in_thread():
+                try:
+                    response = gemini_model.generate_content(prompt, stream=True)
+                    for chunk in response:
+                        if chunk.text:
+                            chunk_queue.put(chunk.text)
+                    chunk_queue.put(None)  # Sentinel to signal completion
+                except Exception as e:
+                    error_holder.append(e)
+                    chunk_queue.put(None)
+            
+            thread = threading.Thread(target=_stream_in_thread, daemon=True)
+            thread.start()
+            
+            while True:
+                # 使用 to_thread 避免阻塞地從 queue 取得資料
+                chunk = await asyncio.to_thread(chunk_queue.get)
+                if chunk is None:
+                    break
+                yield chunk
+            
+            if error_holder:
+                raise error_holder[0]
+                
         except Exception as e:
             yield f"Error: {e}"

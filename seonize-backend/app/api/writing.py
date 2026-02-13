@@ -11,8 +11,6 @@ from app.services.ai_service import AIService
 from app.core.auth import get_current_admin
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-
-from app.core.database import get_db
 import re
 
 router = APIRouter(dependencies=[Depends(get_current_admin)])

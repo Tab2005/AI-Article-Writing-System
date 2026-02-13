@@ -7,7 +7,6 @@ import os
 import logging
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)

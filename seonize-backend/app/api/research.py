@@ -430,5 +430,3 @@ async def generate_titles(request: TitleGenerationRequest, db: Session = Depends
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"標題生成失敗：{str(e)}。請稍後再試或聯繫系統管理員。"
         )
-    finally:
-        db.close()

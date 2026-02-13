@@ -13,6 +13,7 @@ from app.core.auth import get_current_admin
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -112,9 +113,11 @@ async def analyze_intent(request: AnalysisRequest):
         keyword_weights=keyword_scores,
     )
     
-    # Generate title suggestions
+    # Generate title suggestions with dynamic year
+    from datetime import datetime
+    current_year = datetime.now().year
     title_templates = [
-        f"2026 {request.keyword}完整指南：從入門到精通",
+        f"{current_year} {request.keyword}完整指南：從入門到精通",
         f"{request.keyword}必看！專家教你 5 個關鍵技巧",
         f"【深度解析】{request.keyword}的 10 個常見問題",
         f"{request.keyword}怎麼做？一篇文章告訴你所有答案",
@@ -203,10 +206,10 @@ async def generate_outline(request: OutlineRequest, db: Session = Depends(get_db
         logger.debug(f"AI Outline Result: {ai_result}")
         
         # 4. 處理 AI 回傳結果
-        h1 = ai_result.get("h1", f"2026 {request.keyword}完整指南")
+        from datetime import datetime
+        h1 = ai_result.get("h1", f"{datetime.now().year} {request.keyword}完整指南")
         sections = []
-        import uuid
-        for idx, s in enumerate(ai_result.get("sections", [])):
+        for idx, s in enumerate(ai_result.get("sections", []))::
             sections.append(OutlineSection(
                 id=str(uuid.uuid4()),
                 heading=s.get("heading", f"章節 {idx+1}"),
@@ -221,13 +224,11 @@ async def generate_outline(request: OutlineRequest, db: Session = Depends(get_db
             logic_chain=["AI 語義分佈", "PAA 織入", "GEO 優化結構", "✓ 使用指令倉庫模板"]
         )
     except Exception as e:
-        import logging
-        logging.error(f"Outline generation failed: {e}")
+        logger.error(f"Outline generation failed: {e}")
         # 備用機制 (保證 API 不會直接掛掉)
+        from datetime import datetime
         return OutlineResponse(
-            h1=f"2026 {request.keyword}完整指南",
+            h1=f"{datetime.now().year} {request.keyword}完整指南",
             sections=[],
             logic_chain=[f"生成失敗：{str(e)}"]
         )
-    finally:
-        db.close()
