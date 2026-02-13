@@ -4,6 +4,8 @@ SERP 研究 API
 """
 
 from fastapi import APIRouter, HTTPException, status, Depends
+from sqlalchemy.orm import Session
+from app.core.database import get_db
 import asyncio
 import httpx
 from bs4 import BeautifulSoup
@@ -12,6 +14,9 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from app.models.project import SERPResult
 from app.core.auth import get_current_admin
+from app.services.serp_service import SERPService
+from app.services.dataforseo_service import DataForSEOService
+from app.services.ai_service import AIService
 
 router = APIRouter(dependencies=[Depends(get_current_admin)])
 
@@ -63,27 +68,20 @@ class TitleGenerationResponse(BaseModel):
 
 
 @router.post("/serp", response_model=ResearchResponse)
-async def research_serp(request: ResearchRequest):
+async def research_serp(request: ResearchRequest, db: Session = Depends(get_db)):
     """
     執行 SERP 研究 - 獲取 Google Top 10 搜尋結果
     第一階段：數據採集與研究
     """
-    from app.services.serp_service import SERPService
-    from app.core.database import SessionLocal
-
-    db = SessionLocal()
-    try:
-        # 使用 SERP 服務執行搜尋
-        search_data = await SERPService.search(
-            keyword=request.keyword,
-            num_results=request.num_results,
-            country=request.country,
-            language=request.language,
-            db=db,
-            force_refresh=request.force_refresh
-        )
-    finally:
-        db.close()
+    # 使用 SERP 服務執行搜尋
+    search_data = await SERPService.search(
+        keyword=request.keyword,
+        num_results=request.num_results,
+        country=request.country,
+        language=request.language,
+        db=db,
+        force_refresh=request.force_refresh
+    )
     
     results = search_data.get("results", [])
     ai_overview = search_data.get("ai_overview")
@@ -114,48 +112,39 @@ class KeywordIdeasRequest(BaseModel):
 
 
 @router.post("/keyword-ideas")
-async def get_keyword_ideas(request: KeywordIdeasRequest):
+async def get_keyword_ideas(request: KeywordIdeasRequest, db: Session = Depends(get_db)):
     """
     獲取關鍵字建議與數據 (Keyword Ideas)
     支援資料庫快取與強制重新整理
     """
-    from app.services.dataforseo_service import DataForSEOService
-    from app.services.serp_service import SERPService
-    from app.core.database import SessionLocal
-
     config = SERPService.get_config()
     
-    # 建立臨時 DB session
-    db = SessionLocal()
-    try:
-        language_code = DataForSEOService.resolve_language_code(request.language)
-        location_code = DataForSEOService.resolve_location_code(request.country)
+    language_code = DataForSEOService.resolve_language_code(request.language)
+    location_code = DataForSEOService.resolve_location_code(request.country)
 
-        # 併發執行關鍵字建議獲取與 Google Ads 狀態檢查
-        ideas_task = DataForSEOService.get_keyword_ideas(
-            keyword=request.keyword,
-            language_code=language_code,
-            location_code=location_code,
-            db=db,
-            login=config.dataforseo_login,
-            password=config.dataforseo_password,
-            force_refresh=request.force_refresh
-        )
+    # 併發執行關鍵字建議獲取與 Google Ads 狀態檢查
+    ideas_task = DataForSEOService.get_keyword_ideas(
+        keyword=request.keyword,
+        language_code=language_code,
+        location_code=location_code,
+        db=db,
+        login=config.dataforseo_login,
+        password=config.dataforseo_password,
+        force_refresh=request.force_refresh
+    )
+    
+    status_task = DataForSEOService.get_google_ads_status(
+        login=config.dataforseo_login,
+        password=config.dataforseo_password
+    )
+    
+    ideas_data, ads_status = await asyncio.gather(ideas_task, status_task)
+    
+    # 整合狀態數據
+    if isinstance(ideas_data, dict):
+        ideas_data["google_ads_status"] = ads_status
         
-        status_task = DataForSEOService.get_google_ads_status(
-            login=config.dataforseo_login,
-            password=config.dataforseo_password
-        )
-        
-        ideas_data, ads_status = await asyncio.gather(ideas_task, status_task)
-        
-        # 整合狀態數據
-        if isinstance(ideas_data, dict):
-            ideas_data["google_ads_status"] = ads_status
-            
-        return ideas_data
-    finally:
-        db.close()
+    return ideas_data
 
 
 class KeywordResearchRequest(BaseModel):
@@ -197,59 +186,49 @@ async def research_keywords(request: KeywordResearchRequest):
 
 
 @router.get("/history", response_model=List[ResearchHistoryItem])
-async def get_research_history():
+async def get_research_history(db: Session = Depends(get_db)):
     """
     獲取關鍵字研究歷史紀錄
     """
-    from app.core.database import SessionLocal
     from app.models.db_models import KeywordCache
     
-    db = SessionLocal()
-    try:
-        # 獲取所有快取的關鍵字，按時間排序
-        records = db.query(KeywordCache).order_by(KeywordCache.created_at.desc()).all()
+    # 獲取所有快取的關鍵字，按時間排序
+    records = db.query(KeywordCache).order_by(KeywordCache.created_at.desc()).all()
+    
+    history = []
+    for r in records:
+        search_volume = r.seed_data.get("search_volume") if r.seed_data else None
+        cpc = r.seed_data.get("cpc") if r.seed_data else None
         
-        history = []
-        for r in records:
-            search_volume = r.seed_data.get("search_volume") if r.seed_data else None
-            cpc = r.seed_data.get("cpc") if r.seed_data else None
-            
-            history.append(ResearchHistoryItem(
-                id=r.id,
-                keyword=r.keyword,
-                country="TW", # 這裡可以根據 location_code 反查
-                language=r.language_code,
-                created_at=r.created_at,
-                search_volume=search_volume,
-                cpc=cpc
-            ))
-        return history
-    finally:
-        db.close()
+        history.append(ResearchHistoryItem(
+            id=r.id,
+            keyword=r.keyword,
+            country="TW", # 這裡可以根據 location_code 反查
+            language=r.language_code,
+            created_at=r.created_at,
+            search_volume=search_volume,
+            cpc=cpc
+        ))
+    return history
 
 
 @router.delete("/history/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_research_history(record_id: int):
+async def delete_research_history(record_id: int, db: Session = Depends(get_db)):
     """
     刪除關鍵字研究歷史紀錄
     """
-    from app.core.database import SessionLocal
     from app.models.db_models import KeywordCache
     
-    db = SessionLocal()
-    try:
-        record = db.query(KeywordCache).filter(KeywordCache.id == record_id).first()
-        if not record:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Research record {record_id} not found"
-            )
-        
-        db.delete(record)
-        db.commit()
-        return None
-    finally:
-        db.close()
+    record = db.query(KeywordCache).filter(KeywordCache.id == record_id).first()
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Research record {record_id} not found"
+        )
+    
+    db.delete(record)
+    db.commit()
+    return None
 
 
 class CrawlRequest(BaseModel):
@@ -319,17 +298,14 @@ async def crawl_pages(request: CrawlRequest):
 
 
 @router.post("/generate-titles", response_model=TitleGenerationResponse)
-async def generate_titles(request: TitleGenerationRequest):
+async def generate_titles(request: TitleGenerationRequest, db: Session = Depends(get_db)):
     """
     基於 SERP 競品標題生成 AI 建議標題
     """
-    from app.services.ai_service import AIService
-    from app.core.database import SessionLocal
     from app.models.db_models import SerpCache
     import logging
 
     logger = logging.getLogger(__name__)
-    db = SessionLocal()
     titles = []
     try:
         # 從快取取得 SERP 標題（使用多重查詢策略）

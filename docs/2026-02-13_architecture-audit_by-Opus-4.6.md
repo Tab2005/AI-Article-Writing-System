@@ -55,7 +55,7 @@ async def update_settings(request: UpdateSettingsRequest, db: Session = Depends(
 
 ---
 
-### C-2. API Key / 密碼以明文儲存在資料庫
+### C-2. API Key / 密碼以明文儲存在資料庫 ✅ [已修復]
 
 **位置**: `db_models.py` > `Settings` 模型  
 **風險**: 資料庫洩漏即等同所有第三方服務金鑰洩漏
@@ -97,7 +97,7 @@ from app.core.config import settings as app_settings
 
 ## 🟠 重要問題 (High)
 
-### H-1. DB Session 管理不一致 — 部分 API 手動建立 Session
+### H-1. DB Session 管理不一致 — 部分 API 手動建立 Session ✅ [已修復]
 
 **位置**: `research.py`, `writing.py`, `analysis.py` (大部分端點)  
 **風險**: Session 洩漏、Transaction 不一致
@@ -141,7 +141,7 @@ scikit-learn         # analysis.py 中的 TF-IDF
 
 ---
 
-### H-3. `DataForSEOService` 超過 700 行 — God Object 反模式
+### H-3. `DataForSEOService` 超過 700 行 — God Object 反模式 ✅ [已修復]
 
 **位置**: `services/dataforseo_service.py` (710 行)  
 **風險**: 難以維護、測試和擴展
@@ -451,7 +451,7 @@ async def fetch_page(client: httpx.AsyncClient, url: str):
 | # | 項目 | 優先級 |
 |---|------|:------:|
 | 1 | 加入 API 認證 middleware (JWT / API Key) | ✅ |
-| 2 | 實作 Settings 值加密儲存 | 🟠 |
+| 2 | 實作 Settings 值加密儲存 | ✅ |
 | 3 | 修復 `main.py` 命名衝突 | ✅ |
 | 4 | 更新 `requirements.txt`，鎖定版本 | ✅ |
 
@@ -459,8 +459,8 @@ async def fetch_page(client: httpx.AsyncClient, url: str):
 
 | # | 項目 | 優先級 |
 |---|------|:------:|
-| 5 | 統一 DB Session 管理為 Depends(get_db) | 🟠 |
-| 6 | 拆分 `DataForSEOService` | 🟠 |
+| 5 | 統一 DB Session 管理為 Dependency Injection | ✅ |
+| 6 | 拆分 `DataForSEOService` | ✅ |
 | 7 | 修復 Gemini blocking I/O | 🟠 |
 | 8 | 修復 Redis async wrapper | 🟠 |
 | 9 | 清理偵錯日誌與 print | 🟡 |

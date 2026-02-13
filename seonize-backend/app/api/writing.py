@@ -9,6 +9,8 @@ from typing import List, Optional, Dict
 from app.models.project import OptimizationMode
 from app.services.ai_service import AIService
 from app.core.auth import get_current_admin
+from sqlalchemy.orm import Session
+from app.core.database import get_db
 
 router = APIRouter(dependencies=[Depends(get_current_admin)])
 
@@ -39,60 +41,55 @@ class WritingResponse(BaseModel):
 
 
 @router.post("/generate-section", response_model=WritingResponse)
-async def generate_section(request: WritingRequest):
+async def generate_section(request: WritingRequest, db: Session = Depends(get_db)):
     """
     生成單一章節內容 - 整合指令倉庫
     """
-    from app.core.database import SessionLocal
     from app.models.db_models import PromptTemplate
     
-    db = SessionLocal()
     prompt_content = None
     research_context = ""
-    try:
-        # 從資料庫獲取專案的研究數據與背景
-        from app.models.db_models import Project
-        db_project = db.query(Project).filter(Project.id == request.project_id).first()
-        if db_project and db_project.research_data:
-            rd = db_project.research_data
-            parts = []
-            if rd.get('paa'):
-                parts.append("常見問題 (PAA): " + "; ".join(rd['paa'][:5]))
-            if rd.get('related_searches'):
-                parts.append("相關搜尋: " + ", ".join(rd['related_searches'][:5]))
-            if rd.get('ai_overview'):
-                parts.append("AI 概覽重點: " + str(rd['ai_overview'])[:500])
-            research_context = "\n".join(parts)
+    # 從資料庫獲取專案的研究數據與背景
+    from app.models.db_models import Project
+    db_project = db.query(Project).filter(Project.id == request.project_id).first()
+    if db_project and db_project.research_data:
+        rd = db_project.research_data
+        parts = []
+        if rd.get('paa'):
+            parts.append("常見問題 (PAA): " + "; ".join(rd['paa'][:5]))
+        if rd.get('related_searches'):
+            parts.append("相關搜尋: " + ", ".join(rd['related_searches'][:5]))
+        if rd.get('ai_overview'):
+            parts.append("AI 概覽重點: " + str(rd['ai_overview'])[:500])
+        research_context = "\n".join(parts)
 
-        # 從指令倉庫載入 Prompt Template
-        template = db.query(PromptTemplate).filter(
-            PromptTemplate.category == "content_writing",
-            PromptTemplate.is_active == True
-        ).first()
-        if template:
-            prompt_content = template.content
-            
-        result = await AIService.generate_section_content(
-            heading=request.section.heading,
-            keywords=request.section.keywords,
-            previous_summary=request.section.previous_summary,
-            optimization_mode=request.optimization_mode.value,
-            target_word_count=request.target_word_count,
-            keyword_density=request.keyword_density,
-            h1=request.h1,
-            custom_prompt=prompt_content,
-            research_context=research_context
-        )
+    # 從指令倉庫載入 Prompt Template
+    template = db.query(PromptTemplate).filter(
+        PromptTemplate.category == "content_writing",
+        PromptTemplate.is_active == True
+    ).first()
+    if template:
+        prompt_content = template.content
+        
+    result = await AIService.generate_section_content(
+        heading=request.section.heading,
+        keywords=request.section.keywords,
+        previous_summary=request.section.previous_summary,
+        optimization_mode=request.optimization_mode.value,
+        target_word_count=request.target_word_count,
+        keyword_density=request.keyword_density,
+        h1=request.h1,
+        custom_prompt=prompt_content,
+        research_context=research_context
+    )
 
-        return WritingResponse(
-            heading=result["heading"],
-            content=result["content"],
-            word_count=result["word_count"],
-            embedded_keywords=result["embedded_keywords"],
-            summary=result["summary"],
-        )
-    finally:
-        db.close()
+    return WritingResponse(
+        heading=result["heading"],
+        content=result["content"],
+        word_count=result["word_count"],
+        embedded_keywords=result["embedded_keywords"],
+        summary=result["summary"],
+    )
 
 
 class FullArticleRequest(BaseModel):
@@ -221,63 +218,47 @@ async def check_seo(request: SEOCheckRequest):
         suggestions=suggestions
     )
 @router.post("/projects/{project_id}/analyze-competition")
-async def analyze_competition(project_id: str):
+async def analyze_competition(project_id: str, db: Session = Depends(get_db)):
     """
     對專案的關鍵字進行 SERP 競爭對手深度分析 (H2/H3 抓取)
     """
-    from app.core.database import SessionLocal
     from app.models.db_models import Project, Settings
     from app.services.dataforseo_service import DataForSEOService
     import asyncio
     
-    db = SessionLocal()
-    try:
-        db_project = db.query(Project).filter(Project.id == project_id).first()
-        if not db_project:
-            raise HTTPException(status_code=404, detail="Project not found")
-        
-        # 取得 DataForSEO 憑證
-        login = Settings.get_value(db, "dataforseo_login")
-        password = Settings.get_value(db, "dataforseo_password")
-        
-        if not login or not password:
-            raise HTTPException(status_code=400, detail="DataForSEO 憑證未設定，請至系統設定配置 DataForSEO。")
+    # 1. 取得 SERP 結果
+    serp_data = db_project.research_data or {}
+    results = serp_data.get("results", [])
+    
+    if not results:
+        return {"error": "請先執行基礎研究以獲取搜尋結果列表", "competitors": []}
 
-        # 1. 取得 SERP 結果
-        serp_data = db_project.research_data or {}
-        results = serp_data.get("results", [])
-        
-        if not results:
-            return {"error": "請先執行基礎研究以獲取搜尋結果列表", "competitors": []}
-
-        # 2. 針對前 5 名競爭對手進行深度抓取
-        competitor_analysis = []
-        top_competitors = results[:5]
-        
-        tasks = []
-        for comp in top_competitors:
-            url = comp.get("url")
-            if url:
-                tasks.append(DataForSEOService.get_page_structure(url, login, password, db))
-        
-        # 並行執行抓取任務
-        analysis_results = await asyncio.gather(*tasks)
-        
-        for i, res in enumerate(analysis_results):
-            comp_info = {
-                "rank": top_competitors[i].get("rank"),
-                "url": top_competitors[i].get("url"),
-                "title": top_competitors[i].get("title"),
-                "snippet": top_competitors[i].get("snippet"),
-                "structure": res
-            }
-            competitor_analysis.append(comp_info)
-            
-        return {
-            "project_id": project_id,
-            "keyword": db_project.primary_keyword,
-            "competitors": competitor_analysis,
-            "serp_features": serp_data.get("serp_features", [])
+    # 2. 針對前 5 名競爭對手進行深度抓取
+    competitor_analysis = []
+    top_competitors = results[:5]
+    
+    tasks = []
+    for comp in top_competitors:
+        url = comp.get("url")
+        if url:
+            tasks.append(DataForSEOService.get_page_structure(url, login, password, db))
+    
+    # 並行執行抓取任務
+    analysis_results = await asyncio.gather(*tasks)
+    
+    for i, res in enumerate(analysis_results):
+        comp_info = {
+            "rank": top_competitors[i].get("rank"),
+            "url": top_competitors[i].get("url"),
+            "title": top_competitors[i].get("title"),
+            "snippet": top_competitors[i].get("snippet"),
+            "structure": res
         }
-    finally:
-        db.close()
+        competitor_analysis.append(comp_info)
+        
+    return {
+        "project_id": project_id,
+        "keyword": db_project.primary_keyword,
+        "competitors": competitor_analysis,
+        "serp_features": serp_data.get("serp_features", [])
+    }

@@ -10,6 +10,8 @@ import jieba
 from sklearn.feature_extraction.text import TfidfVectorizer
 from app.models.project import SearchIntent, WritingStyle
 from app.core.auth import get_current_admin
+from sqlalchemy.orm import Session
+from app.core.database import get_db
 
 router = APIRouter(dependencies=[Depends(get_current_admin)])
 
@@ -159,15 +161,13 @@ class OutlineResponse(BaseModel):
 
 
 @router.post("/outline", response_model=OutlineResponse)
-async def generate_outline(request: OutlineRequest):
+async def generate_outline(request: OutlineRequest, db: Session = Depends(get_db)):
     """
     生成文章大綱 - 語義數據驅動版（整合指令倉庫）
     """
     from app.services.ai_service import AIService
-    from app.core.database import SessionLocal
     from app.models.db_models import Project, PromptTemplate
     
-    db = SessionLocal()
     research_data = {}
     try:
         # 1. 嘗試載入專案中的研究數據 (PAA, 相關搜尋)
