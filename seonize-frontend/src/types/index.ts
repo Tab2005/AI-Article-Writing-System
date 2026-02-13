@@ -137,16 +137,12 @@ export interface KeywordIdea {
     cpc: number;
     competition: string;
     competition_index: number;
+    monthly_searches?: any[];
+    relevance?: number;
 }
 
 export interface KeywordIdeasResponse {
-    seed_keyword_data: {
-        keyword: string;
-        search_volume: number;
-        cpc: number;
-        competition: string;
-        competition_index: number;
-    } | null;
+    seed_keyword_data: KeywordIdea | null;
     suggestions: KeywordIdea[];
     ai_suggestions?: AITitleSuggestion[]; // 新增：已生成的 AI 標題建議
     from_cache: boolean;

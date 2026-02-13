@@ -704,4 +704,6 @@ class DataForSEOService:
             "competition_index": competition_index,
             "low_top_of_page_bid": low_bid,
             "high_top_of_page_bid": high_bid,
+            "monthly_searches": item.get("monthly_searches") or info.get("monthly_searches"),
+            "relevance": item.get("relevance")
         }
