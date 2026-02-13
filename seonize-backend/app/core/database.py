@@ -22,18 +22,22 @@ IS_POSTGRES = DATABASE_URL.startswith("postgresql")
 # 建立引擎
 if IS_SQLITE:
     # SQLite 設定 - 處理多執行緒
+    # 移除 StaticPool 以允許真正的併發 (SQLite WAL 模式支援)
     engine = create_engine(
         DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        connect_args={"check_same_thread": False, "timeout": 30},
         echo=False,
     )
     
-    # SQLite 啟用外鍵約束
+    # SQLite 啟用外鍵約束與 WAL 模式
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        # 啟用 WAL (Write-Ahead Logging) 模式，大幅提升併發讀寫效能
+        cursor.execute("PRAGMA journal_mode=WAL")
+        # 設定同步模式為 NORMAL (在效能與資料安全性間取得平衡)
+        cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.close()
 else:
     # PostgreSQL 設定

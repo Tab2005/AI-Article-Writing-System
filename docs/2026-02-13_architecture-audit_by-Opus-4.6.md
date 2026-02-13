@@ -309,7 +309,7 @@ readability_score=75.0,  # Mock score
 
 ## 🔵 建議改善 (Low)
 
-### L-1. 前端 `package.json` 缺少實用開發工具
+### L-1. 前端 `package.json` 缺少實用開發工具 ✅ [已修復]
 
 ```json
 // 建議加入
@@ -321,7 +321,7 @@ readability_score=75.0,  # Mock score
 
 ---
 
-### L-2. 前端 CSS 拆分方式為 Page-Level CSS
+### L-2. 前端 CSS 拆分方式為 Page-Level CSS ✅ [已修復]
 
 **現狀**: 每個頁面都有獨立的 CSS 檔案 (如 `KeywordPage.css`, `WritingPage.css`)，容易造成樣式重複
 
@@ -332,7 +332,7 @@ readability_score=75.0,  # Mock score
 
 ---
 
-### L-3. 前端 `types/index.ts` 單一檔案已達 296 行
+### L-3. 前端 `types/index.ts` 單一檔案已達 296 行 ✅ [已修復]
 
 **建議**: 按領域拆分：
 ```
@@ -346,7 +346,7 @@ types/
 
 ---
 
-### L-4. 後端 `api/__init__.py` 應明確匯出路由器
+### L-4. 後端 `api/__init__.py` 應明確匯出路由器 ✅ [已修復]
 
 **現狀**: `__init__.py` 內有隱式匯出但不完整
 
@@ -359,7 +359,7 @@ from .research import router as research_router
 
 ---
 
-### L-5. 前端缺少環境設定檔範例
+### L-5. 前端缺少環境設定檔範例 ✅ [已修復]
 
 **建議**: 在 `seonize-frontend/` 新增 `.env.example`：
 ```env
@@ -368,7 +368,7 @@ VITE_API_URL=http://localhost:8000
 
 ---
 
-### L-6. 後端 `Crawl` 功能缺少 User-Agent 與速率限制
+### L-6. 後端 `Crawl` 功能缺少 User-Agent 與速率限制 ✅ [已修復]
 
 **位置**: `research.py` 第 276-317 行
 
@@ -382,7 +382,7 @@ async def fetch_page(client: httpx.AsyncClient, url: str):
 
 ---
 
-### L-7. SQLite 使用 `StaticPool` 在高併發下可能出問題
+### L-7. SQLite 使用 `StaticPool` 在高併發下可能出問題 ✅ [已修復]
 
 **位置**: `database.py` 第 22-27 行
 
@@ -419,7 +419,7 @@ async def fetch_page(client: httpx.AsyncClient, url: str):
 
 | 模組 | 行數 | 說明 |
 |------|:----:|------|
-| `types/index.ts` | 296 | 偏大，建議拆分 |
+| `types/index.ts` | - | 已拆分為模組化檔案 |
 | `services/api.ts` | 132 | 結構清楚，缺少錯誤處理 |
 | `App.tsx` | 48 | 清楚，缺少 404 路由 |
 | `index.css` | 235 | ✅ 設計系統定義良好 |
@@ -469,7 +469,7 @@ async def fetch_page(client: httpx.AsyncClient, url: str):
 |---|------|:------:|
 | 11 | 加入後端單元測試 (目標覆蓋率 60%+) | 🟠 |
 | 12 | 前端加入 Error Boundary 與 404 頁面 | 🟡 |
-| 13 | 拆分前端 types | 🔵 |
+| 13 | 拆分前端 types | ✅ |
 | 14 | 實作 readability_score 計算 | 🔵 |
 | 15 | 加入 Husky + Prettier 代碼規範 | 🔵 |
 
@@ -479,7 +479,7 @@ async def fetch_page(client: httpx.AsyncClient, url: str):
 |---|------|:------:|
 | 16 | 建立 Dockerfile 與 docker-compose.yml | 🟡 |
 | 17 | 設定 CI/CD Pipeline (GitHub Actions) | 🟡 |
-| 18 | 加入 Alembic 資料庫遷移 | 🟡 |
+| 18 | 加入 Alembic 資料庫遷移 | ✅ |
 | 19 | 加入健康檢查與 Metrics (Prometheus) | 🔵 |
 | 20 | 移除殭屍代碼與未使用依賴 | 🔵 |
 | 21 | **[進階版升級] 實作多使用者與權限系統** | 🚀 |

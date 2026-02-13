@@ -256,45 +256,68 @@ async def crawl_pages(request: CrawlRequest):
     爬取指定網頁內容
     異步爬取 Top 10 網頁內容 (H1-H3 標籤及全文)
     """
-    async def fetch_page(client: httpx.AsyncClient, url: str) -> CrawlResult:
-        try:
-            response = await client.get(url, timeout=15.0, follow_redirects=True)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
+    import random
+    
+    # 旋轉 User-Agent 以降低被封鎖風險
+    USER_AGENTS = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+    ]
 
-            title = (soup.title.string.strip() if soup.title and soup.title.string else url)
-            headings = []
-            for tag in soup.find_all(["h1", "h2", "h3"]):
-                text = tag.get_text(strip=True)
-                if text:
-                    headings.append(f"{tag.name.upper()}: {text}")
+    async def fetch_page(client: httpx.AsyncClient, url: str, sem: asyncio.Semaphore) -> CrawlResult:
+        async with sem:
+            try:
+                # 隨機延遲 0.5~2.0 秒，分散請求頻率
+                await asyncio.sleep(random.uniform(0.5, 2.0))
+                
+                headers = {
+                    "User-Agent": random.choice(USER_AGENTS),
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                    "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+                    "Referer": "https://www.google.com/",
+                }
+                
+                response = await client.get(url, timeout=20.0, follow_redirects=True, headers=headers)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "html.parser")
 
-            # 取得主要文字內容
-            for script in soup(["script", "style", "noscript"]):
-                script.decompose()
-            content = " ".join(soup.stripped_strings)
-            content = content[:8000]
+                title = (soup.title.string.strip() if soup.title and soup.title.string else url)
+                headings = []
+                for tag in soup.find_all(["h1", "h2", "h3"]):
+                    text = tag.get_text(strip=True)
+                    if text:
+                        headings.append(f"{tag.name.upper()}: {text}")
 
-            word_count = len(content.replace(" ", "").replace("\n", ""))
-            return CrawlResult(
-                url=url,
-                title=title,
-                headings=headings,
-                content=content,
-                word_count=word_count,
-            )
-        except Exception as e:
-            return CrawlResult(
-                url=url,
-                title=url,
-                headings=[],
-                content=f"爬取失敗：{str(e)}",
-                word_count=0,
-            )
+                # 取得主要文字內容
+                for script in soup(["script", "style", "noscript"]):
+                    script.decompose()
+                content = " ".join(soup.stripped_strings)
+                content = content[:8000]
+
+                word_count = len(content.replace(" ", "").replace("\n", ""))
+                return CrawlResult(
+                    url=url,
+                    title=title,
+                    headings=headings,
+                    content=content,
+                    word_count=word_count,
+                )
+            except Exception as e:
+                return CrawlResult(
+                    url=url,
+                    title=url,
+                    headings=[],
+                    content=f"爬取失敗：{str(e)}",
+                    word_count=0,
+                )
 
     urls = request.urls[:10]
+    sem = asyncio.Semaphore(3)  # 限制最大併發數為 3，避免同時觸發 WAF
     async with httpx.AsyncClient() as client:
-        tasks = [fetch_page(client, url) for url in urls]
+        tasks = [fetch_page(client, url, sem) for url in urls]
         results = await asyncio.gather(*tasks)
 
     return CrawlResponse(results=results)

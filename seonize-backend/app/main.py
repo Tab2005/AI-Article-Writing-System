@@ -16,8 +16,15 @@ logger = logging.getLogger(__name__)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.api import projects, research, analysis, prompts, writing, auth
-from app.api import settings as settings_api
+from app.api import (
+    projects_router,
+    research_router,
+    analysis_router,
+    prompts_router,
+    writing_router,
+    auth_router,
+    settings_router as settings_api_router,
+)
 from app.core.config import settings as app_settings
 from app.core.database import init_db
 from app.core.cache import CacheManager
@@ -63,13 +70,13 @@ app.add_middleware(
 )
 
 # 註冊路由
-app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
-app.include_router(research.router, prefix="/api/research", tags=["Research"])
-app.include_router(analysis.router, prefix="/api/analysis", tags=["Analysis"])
-app.include_router(writing.router, prefix="/api/writing", tags=["Writing"])
-app.include_router(settings_api.router, prefix="/api/settings", tags=["Settings"])
-app.include_router(prompts.router, prefix="/api/prompts", tags=["Prompts"])
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(projects_router, prefix="/api/projects", tags=["Projects"])
+app.include_router(research_router, prefix="/api/research", tags=["Research"])
+app.include_router(analysis_router, prefix="/api/analysis", tags=["Analysis"])
+app.include_router(writing_router, prefix="/api/writing", tags=["Writing"])
+app.include_router(settings_api_router, prefix="/api/settings", tags=["Settings"])
+app.include_router(prompts_router, prefix="/api/prompts", tags=["Prompts"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 
 
 @app.get("/")

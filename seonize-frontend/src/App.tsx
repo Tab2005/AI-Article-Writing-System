@@ -40,9 +40,11 @@ function App() {
           <Route
             path="/login"
             element={
-              localStorage.getItem('seonize_token') ?
-                <Navigate to="/dashboard" replace /> :
+              localStorage.getItem('seonize_token') ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
                 <LoginPage />
+              )
             }
           />
 
