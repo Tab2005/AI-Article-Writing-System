@@ -405,3 +405,76 @@
     border-radius: 50%;
     box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
 }
+
+/* 關鍵字趨勢圖 */
+.trend-sparkline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+    width: fit-content;
+}
+
+.trend-sparkline svg {
+    filter: drop-shadow(0 0 2px var(--color-primary-glow));
+}
+
+/* 相關度單元格 */
+.relevance-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100px;
+}
+
+.relevance-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.relevance-fill {
+    height: 100%;
+    transition: width 0.618s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 3px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.relevance-text {
+    font-size: 0.7rem;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+/* 競爭度標籤 */
+.comp-badge {
+    display: inline-flex;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.comp-high {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.comp-medium {
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.comp-low {
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}

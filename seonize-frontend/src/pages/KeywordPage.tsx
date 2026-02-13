@@ -205,6 +205,39 @@ export const KeywordPage: React.FC = () => {
         { key: 'snippet', header: '摘要' },
     ];
 
+    const TrendSparkline: React.FC<{ data: any[] | undefined }> = ({ data }) => {
+        if (!data || data.length === 0) return <span>-</span>;
+
+        // 找到最大值以進行縮放
+        const values = data.map(d => d.search_volume || 0);
+        const max = Math.max(...values, 1);
+        const width = 80;
+        const height = 24;
+        const padding = 2;
+
+        // 繪製路徑
+        const points = values.map((v, i) => {
+            const x = (i / (values.length - 1)) * (width - padding * 2) + padding;
+            const y = height - ((v / max) * (height - padding * 2)) - padding;
+            return `${x},${y}`;
+        }).join(' ');
+
+        return (
+            <div className="trend-sparkline" title="過去 12 個月趨勢">
+                <svg width={width} height={height}>
+                    <polyline
+                        fill="none"
+                        stroke="var(--color-primary)"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={points}
+                    />
+                </svg>
+            </div>
+        );
+    };
+
     const suggestionColumns = [
         { key: 'keyword', header: '關鍵字', sortable: true },
         {
@@ -214,12 +247,49 @@ export const KeywordPage: React.FC = () => {
             render: (val: any) => val?.toLocaleString() || '-'
         },
         {
+            key: 'monthly_searches',
+            header: '趨勢 (12m)',
+            render: (val: any) => <TrendSparkline data={val} />
+        },
+        {
             key: 'cpc',
             header: '平均 CPC',
             sortable: true,
             render: (val: any) => val ? `$${val.toFixed(2)}` : '-'
         },
-        { key: 'competition', header: '競爭程度', sortable: true },
+        {
+            key: 'competition',
+            header: '競爭度',
+            sortable: true,
+            render: (val: any) => (
+                <span className={`comp-badge comp-${String(val).toLowerCase()}`}>
+                    {val}
+                </span>
+            )
+        },
+        {
+            key: 'relevance',
+            header: '相關度',
+            sortable: true,
+            render: (val: any) => {
+                const score = typeof val === 'number' ? Math.round(val * 100) : 0;
+                if (score === 0) return '-';
+                return (
+                    <div className="relevance-cell" title={`相關度: ${score}%`}>
+                        <div className="relevance-bar">
+                            <div
+                                className="relevance-fill"
+                                style={{
+                                    width: `${score}%`,
+                                    background: `hsla(${120 * (score / 100)}, 70%, 50%, 0.8)`
+                                }}
+                            ></div>
+                        </div>
+                        <span className="relevance-text">{score}%</span>
+                    </div>
+                );
+            }
+        },
     ];
 
     const intentLabels: Record<string, { label: string; color: string }> = {
