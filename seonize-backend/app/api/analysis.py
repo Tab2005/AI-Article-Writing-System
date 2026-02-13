@@ -60,23 +60,31 @@ async def analyze_intent(request: AnalysisRequest):
     # 意圖偵測邏輯 (簡化版)
     keyword_lower = request.keyword.lower()
     
-    # 判斷意圖
+    # 判斷意圖並計算信心分數
+    signal_count = 0
     if any(word in keyword_lower for word in ["如何", "怎麼", "什麼是", "為什麼"]):
         intent = SearchIntent.INFORMATIONAL
         style = WritingStyle.EDUCATIONAL
         signals = ["疑問詞觸發", "資訊需求特徵"]
+        signal_count = sum(1 for word in ["如何", "怎麼", "什麼是", "為什麼"] if word in keyword_lower)
     elif any(word in keyword_lower for word in ["推薦", "比較", "最好", "評價"]):
         intent = SearchIntent.COMMERCIAL
         style = WritingStyle.REVIEW
         signals = ["商業評估詞觸發", "購買意圖特徵"]
+        signal_count = sum(1 for word in ["推薦", "比較", "最好", "評價"] if word in keyword_lower)
     elif any(word in keyword_lower for word in ["購買", "價格", "下載", "訂閱"]):
         intent = SearchIntent.TRANSACTIONAL
         style = WritingStyle.CONVERSATIONAL
         signals = ["交易動作詞觸發"]
+        signal_count = sum(1 for word in ["購買", "價格", "下載", "訂閱"] if word in keyword_lower)
     else:
         intent = SearchIntent.INFORMATIONAL
         style = WritingStyle.EDUCATIONAL
         signals = ["預設為資訊型"]
+        signal_count = 0
+    
+    # 動態計算信心分數：基礎 0.6 + 每個匹配信號加 0.1，最多 0.95
+    confidence = min(0.95, 0.6 + 0.1 * signal_count)
     
     # 關鍵字抽取：jieba + TF-IDF
     corpus = [request.keyword] + request.titles + request.content_samples
@@ -113,7 +121,7 @@ async def analyze_intent(request: AnalysisRequest):
         keyword_weights=keyword_scores,
     )
     
-    # Generate title suggestions with dynamic year
+    # Generate title suggestions with dynamic year and CTR scores
     from datetime import datetime
     current_year = datetime.now().year
     title_templates = [
@@ -124,19 +132,29 @@ async def analyze_intent(request: AnalysisRequest):
         f"想學{request.keyword}？這篇文章一次搞定",
     ]
     
-    title_suggestions = [
-        TitleSuggestion(
+    # 動態計算 CTR 分數：基於標題中是否包含關鍵詞與年份
+    title_suggestions = []
+    for i, title in enumerate(title_templates):
+        # 基礎分數 0.7，包含關鍵字加 0.15，包含年份加 0.1，排名靠前加分
+        base_score = 0.7
+        if request.keyword in title:
+            base_score += 0.15
+        if str(current_year) in title:
+            base_score += 0.1
+        # 排名靠前的標題略有加分
+        rank_bonus = (5 - i) * 0.02
+        ctr_score = min(0.95, base_score + rank_bonus)
+        
+        title_suggestions.append(TitleSuggestion(
             title=title,
-            ctr_score=0.9 - (i * 0.1),
+            ctr_score=round(ctr_score, 2),
             intent_match=True
-        )
-        for i, title in enumerate(title_templates)
-    ]
+        ))
     
     return AnalysisResponse(
         intent_analysis=IntentResult(
             intent=intent,
-            confidence=0.85,
+            confidence=round(confidence, 2),
             signals=signals
         ),
         suggested_style=style,

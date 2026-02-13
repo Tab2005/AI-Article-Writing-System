@@ -15,8 +15,9 @@ logger = logging.getLogger(__name__)
 # 我們自定義一個轉換函數，確保任何 SECRET_KEY 都能轉為有效金鑰
 def get_fernet_key(secret: str) -> bytes:
     """將任意字串轉為 32 位元 Base64 格式的 Fernet 金鑰"""
-    # 填補或截斷至 32 位元
-    key_32 = (secret + "0" * 32)[:32].encode()
+    # 使用 SHA-256 雜湊函數生成金鑰，提升安全性
+    import hashlib
+    key_32 = hashlib.sha256(secret.encode()).digest()
     return base64.urlsafe_b64encode(key_32)
 
 try:

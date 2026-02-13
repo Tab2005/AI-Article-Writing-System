@@ -17,14 +17,59 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// API 請求配置
+const API_CONFIG = {
+  timeout: 30000, // 30 秒超時
+  maxRetries: 3, // 最多重試 3 次
+  retryDelay: 1000, // 重試延遲 1 秒
+};
+
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   headers?: Record<string, string>;
+  timeout?: number; // 自定義超時
+  retries?: number; // 自定義重試次數
+}
+
+/**
+ * 延遲函數
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * 帶有超時控制的 fetch
+ */
+async function fetchWithTimeout(url: string, config: RequestInit, timeout: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...config,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('請求超時，請重試');
+    }
+    throw error;
+  }
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, headers = {} } = options;
+  const {
+    method = 'GET',
+    body,
+    headers = {},
+    timeout = API_CONFIG.timeout,
+    retries = API_CONFIG.maxRetries,
+  } = options;
 
   // 從 LocalStorage 獲取 Token
   const token = localStorage.getItem('seonize_token');
@@ -45,34 +90,69 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   // 自動開啟全域 Loading
   uiBus.showLoading();
 
+  let lastError: Error | null = null;
+
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    // 重試邏輯
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, config, timeout);
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        // Token 失效，清理並跳轉
-        localStorage.removeItem('seonize_token');
-        uiBus.notify('登入逾期，請重新登入', 'warning');
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+        if (!response.ok) {
+          if (response.status === 401) {
+            // Token 失效，清理並跳轉（不重試）
+            localStorage.removeItem('seonize_token');
+            uiBus.notify('登入逾期，請重新登入', 'warning');
+            if (window.location.pathname !== '/login') {
+              window.location.href = '/login';
+            }
+            throw new Error('Unauthorized');
+          }
+
+          const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          const errorMsg = error.detail || `HTTP 錯誤！狀態碼: ${response.status}`;
+
+          // 5xx 錯誤可以重試，4xx 錯誤（除了 401）不重試
+          if (response.status >= 500 && attempt < retries) {
+            lastError = new Error(errorMsg);
+            await delay(API_CONFIG.retryDelay * (attempt + 1)); // 指數退避
+            continue;
+          }
+
+          // 全域錯誤通知
+          uiBus.notify(errorMsg, 'error');
+          throw new Error(errorMsg);
         }
+
+        // 成功，返回結果
+        return await response.json();
+      } catch (err: any) {
+        lastError = err;
+
+        // 網路錯誤或超時可以重試
+        const isRetriable =
+          err.message?.includes('請求超時') ||
+          err.message?.includes('Failed to fetch') ||
+          err.message?.includes('NetworkError');
+
+        if (isRetriable && attempt < retries) {
+          await delay(API_CONFIG.retryDelay * (attempt + 1));
+          continue;
+        }
+
+        // 最後一次嘗試失敗，顯示錯誤
+        if (!(err instanceof Error) || !err.message || err.message === 'Unauthorized') {
+          const msg = attempt > 0
+            ? `無法連接至伺服器（已重試 ${attempt} 次），請檢查網路連線`
+            : '無法連接至伺服器，請檢查網路連線';
+          uiBus.notify(msg, 'error');
+        }
+        throw err;
       }
-
-      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      const errorMsg = error.detail || `HTTP 錯誤！狀態碼: ${response.status}`;
-
-      // 全域錯誤通知
-      uiBus.notify(errorMsg, 'error');
-      throw new Error(errorMsg);
     }
 
-    return await response.json();
-  } catch (err: any) {
-    // 如果不是已經處理過的 Error，則顯示連線錯誤
-    if (!(err instanceof Error) || !err.message) {
-      uiBus.notify('無法連接至伺服器，請檢查網路連線', 'error');
-    }
-    throw err;
+    // 如果所有重試都失敗
+    throw lastError || new Error('請求失敗');
   } finally {
     // 自動關閉全域 Loading
     uiBus.hideLoading();
