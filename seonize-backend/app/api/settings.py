@@ -232,6 +232,6 @@ async def get_database_info():
 async def get_cache_info():
     """取得快取資訊"""
     from app.core.cache import get_cache
-    return get_cache().get_stats()
+    return await get_cache().get_stats()
 
 

@@ -73,7 +73,7 @@ class InMemoryCache:
             self._cache.clear()
             return True
     
-    def get_stats(self) -> dict:
+    async def get_stats(self) -> dict:
         return {
             "type": "in-memory",
             "size": len(self._cache),
@@ -189,8 +189,8 @@ class CacheManager:
     async def clear_all(self) -> bool:
         return await self._cache.clear_all()
     
-    def get_stats(self) -> dict:
-        return self._cache.get_stats()
+    async def get_stats(self) -> dict:
+        return await self._cache.get_stats()
 
 
 # 快取裝飾器
