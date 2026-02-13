@@ -40,6 +40,7 @@ class ResearchResponse(BaseModel):
     ai_overview: Optional[Dict[str, Any]] = None
     paa: List[str] = []              # 新增 PAA 清單
     related_searches: List[str] = [] # 新增相關搜尋清單
+    serp_features: List[str] = []    # 新增搜尋特徵
     created_at: Optional[str] = None # 數據時間
     error: Optional[str] = None
 
@@ -87,6 +88,7 @@ async def research_serp(request: ResearchRequest):
     ai_overview = search_data.get("ai_overview")
     paa = search_data.get("paa", [])
     related_searches = search_data.get("related_searches", [])
+    serp_features = search_data.get("serp_features", [])
     created_at = search_data.get("created_at")
     error = search_data.get("error")
 
@@ -97,6 +99,7 @@ async def research_serp(request: ResearchRequest):
         ai_overview=ai_overview,
         paa=paa,
         related_searches=related_searches,
+        serp_features=serp_features,
         created_at=created_at,
         error=error,
     )

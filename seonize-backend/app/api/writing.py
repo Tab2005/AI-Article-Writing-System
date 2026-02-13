@@ -219,3 +219,64 @@ async def check_seo(request: SEOCheckRequest):
         eeat_signals=eeat_signals,
         suggestions=suggestions
     )
+@router.post("/projects/{project_id}/analyze-competition")
+async def analyze_competition(project_id: str):
+    """
+    對專案的關鍵字進行 SERP 競爭對手深度分析 (H2/H3 抓取)
+    """
+    from app.core.database import SessionLocal
+    from app.models.db_models import Project, Settings
+    from app.services.dataforseo_service import DataForSEOService
+    import asyncio
+    
+    db = SessionLocal()
+    try:
+        db_project = db.query(Project).filter(Project.id == project_id).first()
+        if not db_project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # 取得 DataForSEO 憑證
+        login = Settings.get_value(db, "dataforseo_login")
+        password = Settings.get_value(db, "dataforseo_password")
+        
+        if not login or not password:
+            raise HTTPException(status_code=400, detail="DataForSEO 憑證未設定，請至系統設定配置 DataForSEO。")
+
+        # 1. 取得 SERP 結果
+        serp_data = db_project.research_data or {}
+        results = serp_data.get("results", [])
+        
+        if not results:
+            return {"error": "請先執行基礎研究以獲取搜尋結果列表", "competitors": []}
+
+        # 2. 針對前 5 名競爭對手進行深度抓取
+        competitor_analysis = []
+        top_competitors = results[:5]
+        
+        tasks = []
+        for comp in top_competitors:
+            url = comp.get("url")
+            if url:
+                tasks.append(DataForSEOService.get_page_structure(url, login, password, db))
+        
+        # 並行執行抓取任務
+        analysis_results = await asyncio.gather(*tasks)
+        
+        for i, res in enumerate(analysis_results):
+            comp_info = {
+                "rank": top_competitors[i].get("rank"),
+                "url": top_competitors[i].get("url"),
+                "title": top_competitors[i].get("title"),
+                "snippet": top_competitors[i].get("snippet"),
+                "structure": res
+            }
+            competitor_analysis.append(comp_info)
+            
+        return {
+            "project_id": project_id,
+            "keyword": db_project.primary_keyword,
+            "competitors": competitor_analysis,
+            "serp_features": serp_data.get("serp_features", [])
+        }
+    finally:
+        db.close()

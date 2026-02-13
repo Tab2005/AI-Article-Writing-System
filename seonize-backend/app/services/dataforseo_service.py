@@ -202,26 +202,146 @@ class DataForSEOService:
             return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": str(e)}
 
     @classmethod
+    async def get_page_structure(
+        cls, 
+        url: str, 
+        login: Optional[str] = None, 
+        password: Optional[str] = None,
+        db: Optional[Session] = None
+    ) -> Dict[str, Any]:
+        """
+        透過 On-Page API 獲取特定網頁的 H 標籤結構與基本指標
+        """
+        if not url:
+            return {"error": "Invalid URL"}
+
+        # 1. 檢查快取
+        if db:
+            from app.models.db_models import CompetitiveCache
+            cache = db.query(CompetitiveCache).filter(CompetitiveCache.url == url).first()
+            if cache and not cache.is_expired:
+                logger.debug(f"Using cached page structure for: {url}")
+                return {
+                    "h_tags": cache.h_tags or [],
+                    "content_stats": cache.content_stats or {},
+                    "meta_info": cache.meta_info or {},
+                    "from_cache": True
+                }
+
+        # 2. 調用 API (使用 On-Page Instant Pages 以獲得即時結果)
+        api_url = f"{cls.BASE_URL}/on_page/instant_pages"
+        post_data = [{
+            "url": url,
+            "enable_content_parsing": True,
+            "calculate_keyword_density": False
+        }]
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    api_url,
+                    json=post_data,
+                    headers=cls._get_auth_header(login, password),
+                    timeout=25.0
+                )
+                
+                if response.status_code != 200:
+                    logger.warning(f"On-Page API HTTP Error: {response.status_code} Body: {response.text}")
+                    return {"error": f"On-Page API HTTP Error: {response.status_code}"}
+                
+                data = response.json()
+                parsed = cls._parse_onpage_response(data)
+                
+                # 3. 儲存快取
+                if db and not parsed.get("error"):
+                    from app.models.db_models import CompetitiveCache
+                    # 移除舊快取 (若存在且過期)
+                    db.query(CompetitiveCache).filter(CompetitiveCache.url == url).delete()
+                    
+                    new_cache = CompetitiveCache(
+                        url=url,
+                        h_tags=parsed.get("h_tags"),
+                        content_stats=parsed.get("content_stats"),
+                        meta_info=parsed.get("meta_info"),
+                        expires_at=datetime.now() + timedelta(days=30)
+                    )
+                    db.add(new_cache)
+                    db.commit()
+                
+                return parsed
+        except Exception as e:
+            logger.error(f"On-Page Exception: {str(e)}", exc_info=True)
+            return {"error": str(e)}
+
+    @classmethod
+    def _parse_onpage_response(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        """解析 On-Page API 回傳數據，提取標題結構與統計"""
+        h_tags = []
+        content_stats = {"word_count": 0, "images_count": 0}
+        meta_info = {"title": "", "description": ""}
+
+        tasks = data.get("tasks", [])
+        if not tasks or not tasks[0].get("result") or not tasks[0]["result"][0].get("items"):
+            return {"error": "No on-page result found"}
+        
+        main_page = tasks[0]["result"][0]["items"][0]
+        
+        # 1. 提取 Meta
+        meta_info["title"] = main_page.get("meta", {}).get("title", "")
+        meta_info["description"] = main_page.get("meta", {}).get("description", "")
+        
+        # 2. 提取內容統計
+        stats = main_page.get("meta", {}).get("content_entities_count", {})
+        content_stats["word_count"] = stats.get("words_count", 0)
+        content_stats["images_count"] = main_page.get("meta", {}).get("images_count", 0)
+        
+        # 3. 提取 H 標籤 (Content Parsing)
+        content_items = main_page.get("content", {})
+        if content_items:
+            def collect_headings(node):
+                if isinstance(node, dict):
+                    tag = str(node.get("type", "")).lower()
+                    if tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+                        h_tags.append({"tag": tag, "text": node.get("text", "")})
+                    
+                    for key in ["items", "content"]:
+                        if key in node:
+                            collect_headings(node[key])
+                elif isinstance(node, list):
+                    for item in node:
+                        collect_headings(item)
+            
+            collect_headings(content_items)
+
+        return {
+            "h_tags": h_tags,
+            "content_stats": content_stats,
+            "meta_info": meta_info,
+            "error": None
+        }
+
+    @classmethod
     def _parse_serp_response(cls, data: Dict[str, Any]) -> Dict[str, Any]:
         """解析 DataForSEO 的回傳格式，提取有機搜尋、AI Overview、PAA 與 相關搜尋"""
         results = []
         ai_overview = None
         paa = []
         related_searches = []
+        serp_features = [] # 追蹤搜尋結果頁面特徵以供意圖判定
         
         # DataForSEO 的 task 回傳結構
         tasks = data.get("tasks", [])
         if not tasks:
             status_message = data.get("status_message", "Unknown error")
             logger.warning("DataForSEO response missing tasks. Status: %s, Full Data: %s", status_message, data)
-            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": f"DataForSEO 錯誤: {status_message}"}
+            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "serp_features": [], "error": f"DataForSEO 錯誤: {status_message}"}
             
         # 取得第一個 task 的結果
         task_result = tasks[0].get("result", [])
         if not task_result:
             status_message = tasks[0].get("status_message", "No result found")
             logger.warning("DataForSEO task missing result. Status: %s, Task: %s", status_message, tasks[0])
-            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "error": f"DataForSEO 任務失敗: {status_message}"}
+            return {"results": [], "ai_overview": None, "paa": [], "related_searches": [], "serp_features": [], "error": f"DataForSEO 任務失敗: {status_message}"}
             
         # 遍歷結果項項目
         items = task_result[0].get("items", [])
@@ -230,6 +350,10 @@ class DataForSEOService:
         for item in items:
             item_type = item.get("type")
             
+            # 收集非有機搜尋結果的特徵類型 (意圖證物)
+            if item_type != "organic":
+                serp_features.append(item_type)
+
             if item_type == "organic":
                 results.append(SERPResult(
                     rank=rank,
@@ -265,6 +389,7 @@ class DataForSEOService:
             "ai_overview": ai_overview, 
             "paa": paa,
             "related_searches": related_searches,
+            "serp_features": list(set(serp_features)), # 移除重複
             "error": None
         }
 

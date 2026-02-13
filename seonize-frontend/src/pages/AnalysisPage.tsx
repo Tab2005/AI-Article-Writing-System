@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, KPICard } from '../components/ui';
-import { projectsApi, analysisApi } from '../services/api';
-import type { ProjectState, AnalysisResponse, SearchIntent, WritingStyle, OptimizationMode } from '../types';
+import { projectsApi, analysisApi, writingApi } from '../services/api';
+import type { ProjectState, AnalysisResponse, SearchIntent, WritingStyle, OptimizationMode, CompetitionResponse } from '../types';
 import './AnalysisPage.css';
 
 export const AnalysisPage: React.FC = () => {
@@ -21,6 +21,11 @@ export const AnalysisPage: React.FC = () => {
     const [selectedIntent, setSelectedIntent] = useState<SearchIntent | null>(null);
     const [selectedStyle, setSelectedStyle] = useState<WritingStyle | null>(null);
     const [selectedMode, setSelectedMode] = useState<OptimizationMode>('seo');
+
+    // 競爭對手數據
+    const [competitionData, setCompetitionData] = useState<CompetitionResponse | null>(null);
+    const [analyzingCompetition, setAnalyzingCompetition] = useState(false);
+    const [expandedCompetitor, setExpandedCompetitor] = useState<number | null>(null);
 
     const loadProject = useCallback(async () => {
         if (!projectId) {
@@ -84,6 +89,28 @@ export const AnalysisPage: React.FC = () => {
             console.error(err);
         } finally {
             setAnalyzing(false);
+        }
+    };
+
+    const handleAnalyzeCompetition = async () => {
+        if (!projectId) return;
+        try {
+            setAnalyzingCompetition(true);
+            const res = await writingApi.analyzeCompetition(projectId);
+            setCompetitionData(res);
+
+            // 根據競爭實體自動優示意圖證物 (例如偵測到 Shopping)
+            if (res.serp_features.includes('shopping') || res.serp_features.includes('merchant_ad')) {
+                setSelectedIntent('commercial');
+                setSelectedMode('aeo');
+            } else if (res.serp_features.includes('local_pack') || res.serp_features.includes('map')) {
+                setSelectedIntent('navigational');
+            }
+        } catch (err) {
+            console.error('分析競爭對手失敗', err);
+            setError('競爭分析失敗，請檢查 DataForSEO 設定');
+        } finally {
+            setAnalyzingCompetition(false);
         }
     };
 
@@ -243,6 +270,82 @@ export const AnalysisPage: React.FC = () => {
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* Competition Intelligence */}
+            <div className="analysis-competition-section animate-fade-in" style={{ marginTop: '2.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '2rem' }}>
+                <div className="competition-header">
+                    <div className="competition-header__info">
+                        <h3 style={{ margin: 0, color: 'var(--color-text-primary)' }}>競爭對手深度情報 (Top 5)</h3>
+                        <p className="subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', margin: '0.25rem 0 1rem' }}>拆解對手文章骨架，找出內容缺口</p>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleAnalyzeCompetition}
+                        loading={analyzingCompetition}
+                        disabled={!project?.research_data?.results}
+                    >
+                        {competitionData ? '重新整理數據' : '執行深度拆解 (H2/H3專用)'}
+                    </Button>
+                </div>
+
+                {competitionData && (
+                    <div className="competitors-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
+                        {competitionData.competitors.length > 0 ? (
+                            competitionData.competitors.map((comp, idx) => (
+                                <div key={idx} className={`competitor-card ${expandedCompetitor === idx ? 'expanded' : ''}`} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden', transition: 'all 0.3s ease' }}>
+                                    <div
+                                        className="competitor-card__header"
+                                        onClick={() => setExpandedCompetitor(expandedCompetitor === idx ? null : idx)}
+                                        style={{ padding: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem' }}
+                                    >
+                                        <span className="rank-badge" style={{ background: 'var(--color-primary)', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>#{comp.rank}</span>
+                                        <div className="competitor-info" style={{ flex: 1, minWidth: 0 }}>
+                                            <div className="competitor-title" style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{comp.title}</div>
+                                            <div className="competitor-url" style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{comp.url}</div>
+                                        </div>
+                                        <div className="expand-trigger" style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                                            {expandedCompetitor === idx ? '收合 ▲' : '分析 ➔'}
+                                        </div>
+                                    </div>
+
+                                    {expandedCompetitor === idx && (
+                                        <div className="competitor-structure-tree animate-slide-down" style={{ padding: '0 1rem 1rem', borderTop: '1px solid var(--color-border)' }}>
+                                            <div className="structure-meta" style={{ display: 'flex', gap: '1rem', padding: '1rem 0', fontSize: '0.8rem', opacity: 0.8 }}>
+                                                <div className="stat-item">
+                                                    <span>預估字數：</span>
+                                                    <strong>{comp.structure.content_stats.word_count || 'N/A'}</strong>
+                                                </div>
+                                                <div className="stat-item">
+                                                    <span>圖片：</span>
+                                                    <strong>{comp.structure.content_stats.images_count || 0}</strong>
+                                                </div>
+                                            </div>
+
+                                            <div className="h-tag-list" style={{ maxHeight: '300px', overflowY: 'auto', background: 'rgba(0,0,0,0.1)', borderRadius: '6px', padding: '0.5rem' }}>
+                                                {comp.structure.h_tags.length > 0 ? (
+                                                    comp.structure.h_tags.map((h, hIdx) => (
+                                                        <div key={hIdx} className={`h-tag-item tag-${h.tag}`} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
+                                                            <span className="h-badge" style={{ fontSize: '0.65rem', background: h.tag === 'h2' ? 'rgba(7, 137, 240, 0.2)' : 'rgba(255,255,255,0.1)', padding: '0 0.25rem', borderRadius: '2px', height: 'fit-content' }}>{h.tag.toUpperCase()}</span>
+                                                            <span className="h-text">{h.text}</span>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="structure-empty" style={{ textAlign: 'center', padding: '1rem', opacity: 0.5, fontSize: '0.8rem' }}>
+                                                        <p>無法解析該網頁結構</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="no-competitors">無有效的競爭對手數據</div>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="analysis-footer">

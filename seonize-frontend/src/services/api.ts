@@ -10,7 +10,8 @@ import type {
     AnalysisResponse,
     WritingResponse,
     SEOCheckResponse,
-    WritingSection
+    WritingSection,
+    CompetitionResponse
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -121,6 +122,9 @@ export const writingApi = {
 
     seoCheck: (data: { content: string; primary_keyword: string; secondary_keywords?: string[] }) =>
         request<SEOCheckResponse>('/api/writing/seo-check', { method: 'POST', body: data }),
+
+    analyzeCompetition: (projectId: string) =>
+        request<CompetitionResponse>(`/api/writing/projects/${projectId}/analyze-competition`, { method: 'POST' }),
 };
 
 // Health check

@@ -244,6 +244,41 @@ export interface DataTableProps<T> {
     onRowClick?: (row: T) => void;
 }
 
+export interface HTag {
+    tag: string;
+    text: string;
+}
+
+export interface PageStructure {
+    h_tags: HTag[];
+    content_stats: {
+        word_count: number;
+        images_count: number;
+    };
+    meta_info: {
+        title: string;
+        description: string;
+    };
+    error?: string | null;
+    from_cache?: boolean;
+}
+
+export interface CompetitorAnalysis {
+    rank: number;
+    url: string;
+    title: string;
+    snippet: string;
+    structure: PageStructure;
+}
+
+export interface CompetitionResponse {
+    project_id: string;
+    keyword: string;
+    competitors: CompetitorAnalysis[];
+    serp_features: string[];
+    error?: string;
+}
+
 export interface CrawlResult {
     url: string;
     title: string;

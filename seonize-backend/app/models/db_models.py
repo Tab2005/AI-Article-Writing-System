@@ -159,6 +159,25 @@ class KeywordCache(Base):
             return False # 預設不逾期
         return datetime.utcnow() > self.expires_at
 
+class CompetitiveCache(Base):
+    """競爭對手網頁內容快取資料表"""
+    __tablename__ = "competitive_cache"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    url = Column(Text, nullable=False, index=True)
+    h_tags = Column(JSON, nullable=True)     # [{tag: 'h2', text: '...'}, ...]
+    content_stats = Column(JSON, nullable=True) # {word_count: 1200, images_count: 5, ...}
+    meta_info = Column(JSON, nullable=True)    # {title: '...', description: '...'}
+    
+    created_at = Column(DateTime, default=datetime.now)
+    expires_at = Column(DateTime, nullable=True)
+
+    @property
+    def is_expired(self) -> bool:
+        if not self.expires_at:
+            return False
+        return datetime.now() > self.expires_at
+
 class PromptTemplate(Base):
     """指令模板資料表"""
     __tablename__ = "prompt_templates"
