@@ -209,7 +209,7 @@ async def generate_outline(request: OutlineRequest, db: Session = Depends(get_db
         from datetime import datetime
         h1 = ai_result.get("h1", f"{datetime.now().year} {request.keyword}完整指南")
         sections = []
-        for idx, s in enumerate(ai_result.get("sections", []))::
+        for idx, s in enumerate(ai_result.get("sections", [])):
             sections.append(OutlineSection(
                 id=str(uuid.uuid4()),
                 heading=s.get("heading", f"章節 {idx+1}"),
