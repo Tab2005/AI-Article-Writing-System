@@ -59,6 +59,13 @@ export interface SERPResult {
     title: string;
     snippet: string;
     headings: string[];
+    sitelinks?: Array<{ title: string; url: string }>;
+    faq?: Array<{ question: string; answer: string }>;
+    rating?: any;
+    price?: any;
+    about_this_result?: any;
+    main_domain?: string;
+    metrics?: any;
 }
 
 export interface ProjectState {

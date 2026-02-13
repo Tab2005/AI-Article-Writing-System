@@ -355,12 +355,39 @@ class DataForSEOService:
                 serp_features.append(item_type)
 
             if item_type == "organic":
+                # 提取 Sitelinks
+                sitelinks = []
+                links = item.get("links", [])
+                if links:
+                    for link in links:
+                        sitelinks.append({
+                            "title": link.get("title", ""),
+                            "url": link.get("url", "")
+                        })
+
+                # 提取 FAQ
+                faq_list = []
+                faq_item = item.get("faq")
+                if faq_item and faq_item.get("items"):
+                    for f in faq_item["items"]:
+                        faq_list.append({
+                            "question": f.get("question", ""),
+                            "answer": f.get("answer", "")
+                        })
+
                 results.append(SERPResult(
                     rank=rank,
                     url=item.get("url", ""),
                     title=item.get("title", ""),
                     snippet=item.get("description", ""),
-                    headings=[] # DataForSEO Advanced 有時會提供更多，此處先留空
+                    headings=[],
+                    sitelinks=sitelinks,
+                    faq=faq_list,
+                    rating=item.get("rating"),
+                    price=item.get("price"),
+                    about_this_result=item.get("about_this_result"),
+                    main_domain=item.get("domain"),
+                    metrics=None # 目前 Advanced API 的 organic item 未必直接包含流量計算，需外部處理
                 ).model_dump())
                 rank += 1
                 

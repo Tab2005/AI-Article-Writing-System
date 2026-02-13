@@ -282,9 +282,12 @@ export const AnalysisPage: React.FC = () => {
                     <Button
                         size="sm"
                         variant="secondary"
-                        onClick={handleAnalyzeCompetition}
+                        onClick={() => {
+                            console.log('Project analysis data:', project);
+                            handleAnalyzeCompetition();
+                        }}
                         loading={analyzingCompetition}
-                        disabled={!project?.research_data?.results}
+                        disabled={!project || analyzingCompetition}
                     >
                         {competitionData ? '重新整理數據' : '執行深度拆解 (H2/H3專用)'}
                     </Button>
@@ -304,6 +307,25 @@ export const AnalysisPage: React.FC = () => {
                                         <div className="competitor-info" style={{ flex: 1, minWidth: 0 }}>
                                             <div className="competitor-title" style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{comp.title}</div>
                                             <div className="competitor-url" style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{comp.url}</div>
+
+                                            {/* 進階 SERP 資訊標籤 (Advanced API 帶來的額外價值) */}
+                                            <div className="advanced-badges" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                                                {project?.serp_results?.[idx]?.faq && project.serp_results[idx].faq!.length > 0 && (
+                                                    <span style={{ fontSize: '0.65rem', background: 'rgba(139, 92, 246, 0.2)', color: '#A78BFA', padding: '1px 6px', borderRadius: '4px', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
+                                                        💬 FAQ ({project.serp_results[idx].faq!.length})
+                                                    </span>
+                                                )}
+                                                {project?.serp_results?.[idx]?.sitelinks && project.serp_results[idx].sitelinks!.length > 0 && (
+                                                    <span style={{ fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.2)', color: '#34D399', padding: '1px 6px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                                        🔗 Sitelinks ({project.serp_results[idx].sitelinks!.length})
+                                                    </span>
+                                                )}
+                                                {project?.serp_results?.[idx]?.rating && (
+                                                    <span style={{ fontSize: '0.65rem', background: 'rgba(245, 158, 11, 0.2)', color: '#FBBF24', padding: '1px 6px', borderRadius: '4px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                                                        ⭐ {project.serp_results[idx].rating.value} ({project.serp_results[idx].rating.votes_count})
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="expand-trigger" style={{ fontSize: '0.75rem', opacity: 0.6 }}>
                                             {expandedCompetitor === idx ? '收合 ▲' : '分析 ➔'}

@@ -58,6 +58,13 @@ class SERPResult(BaseModel):
     title: str
     snippet: str
     headings: List[str] = Field(default_factory=list)
+    sitelinks: List[Dict[str, str]] = Field(default_factory=list) # [{title: '', url: ''}]
+    faq: List[Dict[str, str]] = Field(default_factory=list)       # [{question: '', answer: ''}]
+    rating: Optional[Dict[str, Any]] = None                      # {value: 4.5, votes_count: 120}
+    price: Optional[Dict[str, Any]] = None                       # {value: 99.0, currency: 'USD'}
+    about_this_result: Optional[Dict[str, Any]] = None
+    main_domain: Optional[str] = None
+    metrics: Optional[Dict[str, Any]] = None                     # {estimated_traffic: 100, ...}
 
 
 class ProjectState(BaseModel):
