@@ -4,6 +4,7 @@ Google Gemini API 客戶端實作
 """
 
 import os
+import asyncio
 from typing import Optional, AsyncGenerator
 
 # Google Generative AI SDK
@@ -33,7 +34,8 @@ class GeminiClient:
         
         try:
             model = genai.GenerativeModel("gemini-2.0-flash")
-            response = model.generate_content("Hello, respond with 'OK' only.")
+            # 修正：genai 是同步呼叫，使用 to_thread 避免阻塞
+            response = await asyncio.to_thread(model.generate_content, "Hello, respond with 'OK' only.")
             return response.text is not None
         except Exception as e:
             print(f"Gemini connection test failed: {e}")
@@ -65,8 +67,8 @@ class GeminiClient:
                 system_instruction=system_prompt,
             )
             
-            # 生成內容
-            response = gemini_model.generate_content(prompt)
+            # 修正：使用 to_thread 避免阻塞事件循環 (H-4)
+            response = await asyncio.to_thread(gemini_model.generate_content, prompt)
             
             return response.text
         except Exception as e:

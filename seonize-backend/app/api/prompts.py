@@ -9,9 +9,10 @@ from typing import List, Optional
 from pydantic import BaseModel
 from app.core.database import get_db
 from app.models.db_models import PromptTemplate
+from app.core.auth import get_current_admin
 from datetime import datetime
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_admin)])
 
 # Schema
 class PromptTemplateBase(BaseModel):
@@ -63,7 +64,7 @@ async def update_template(template_id: int, template_update: PromptTemplateUpdat
     """更新指令模板"""
     db_template = db.query(PromptTemplate).filter(PromptTemplate.id == template_id).first()
     if not db_template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise HTTPException(status_code=404, detail="找不到該指令模板")
     
     update_data = template_update.model_dump(exclude_unset=True)
     
@@ -86,8 +87,8 @@ async def delete_template(template_id: int, db: Session = Depends(get_db)):
     """刪除指令模板"""
     db_template = db.query(PromptTemplate).filter(PromptTemplate.id == template_id).first()
     if not db_template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise HTTPException(status_code=404, detail="找不到該指令模板")
     
     db.delete(db_template)
     db.commit()
-    return {"message": "Template deleted"}
+    return {"message": "指令模板已刪除"}

@@ -11,3 +11,4 @@ export { WritingPage } from './WritingPage';
 export { SettingsPage } from './SettingsPage';
 export { KeywordHistoryPage } from './KeywordHistoryPage';
 export { PromptPage } from './PromptPage';
+export { NotFoundPage } from './NotFoundPage';

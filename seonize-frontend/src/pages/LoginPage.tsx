@@ -1,23 +1,33 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input } from '../components/ui';
+import { authApi } from '../services/api';
 import './LoginPage.css';
 
 export const LoginPage: React.FC = () => {
     const navigate = useNavigate();
-    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        setError(null);
 
-        // 模擬登入延遲
-        setTimeout(() => {
-            setIsLoading(false);
+        try {
+            const data = await authApi.login(password);
+
+            // 儲存 Token
+            localStorage.setItem('seonize_token', data.access_token);
+
+            // 跳轉至儀表板
             navigate('/dashboard');
-        }, 800);
+        } catch (err: any) {
+            setError(err.message || '登入失敗，請檢查密碼。');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -33,28 +43,22 @@ export const LoginPage: React.FC = () => {
                         <span className="login-card__logo-icon">🚀</span>
                         <span className="login-card__logo-text">Seonize</span>
                     </div>
-                    <h1 className="login-card__title">歡迎回來</h1>
-                    <p className="login-card__subtitle">請登入您的帳號以繼續分析</p>
+                    <h1 className="login-card__title">管理員驗證</h1>
+                    <p className="login-card__subtitle">請輸入系統密碼以解鎖分析功能</p>
                 </div>
 
                 <form className="login-form" onSubmit={handleLogin}>
-                    <div className="login-form__group">
-                        <label className="login-form__label">電子郵件</label>
-                        <Input
-                            type="email"
-                            placeholder="name@company.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            fullWidth
-                        />
-                    </div>
+                    {error && (
+                        <div className="login-form__error" style={{ color: 'var(--color-danger, #ef4444)', marginBottom: 'var(--space-4)', fontSize: '0.875rem' }}>
+                            {error}
+                        </div>
+                    )}
 
                     <div className="login-form__group">
-                        <label className="login-form__label">密碼</label>
+                        <label className="login-form__label">管理員密碼</label>
                         <Input
                             type="password"
-                            placeholder="••••••••"
+                            placeholder="請輸入系統管理密碼"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required

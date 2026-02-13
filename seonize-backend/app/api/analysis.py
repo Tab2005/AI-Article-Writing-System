@@ -3,14 +3,15 @@ Seonize Backend - Analysis API Router
 意圖分析與策略建議 API
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import jieba
 from sklearn.feature_extraction.text import TfidfVectorizer
 from app.models.project import SearchIntent, WritingStyle
+from app.core.auth import get_current_admin
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_admin)])
 
 
 class AnalysisRequest(BaseModel):

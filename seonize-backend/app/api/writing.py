@@ -3,13 +3,14 @@ Seonize Backend - Writing API Router
 內容生成 API
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from app.models.project import OptimizationMode
 from app.services.ai_service import AIService
+from app.core.auth import get_current_admin
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_admin)])
 
 
 class WritingSection(BaseModel):

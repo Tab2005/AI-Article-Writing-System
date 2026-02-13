@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 from app.models.project import ProjectState, ProjectCreate, ProjectUpdate
 from app.models.db_models import Project
 from app.core.database import get_db
+from app.core.auth import get_current_admin
 from datetime import datetime
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_admin)])
 
 
 def db_to_project_state(db_project: Project) -> ProjectState:

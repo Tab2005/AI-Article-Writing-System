@@ -25,10 +25,14 @@ interface RequestOptions {
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const { method = 'GET', body, headers = {} } = options;
 
+    // 從 LocalStorage 獲取 Token
+    const token = localStorage.getItem('seonize_token');
+
     const config: RequestInit = {
         method,
         headers: {
             'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             ...headers,
         },
     };
@@ -40,12 +44,43 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
     if (!response.ok) {
+        if (response.status === 401) {
+            // Token 失效，清理並跳轉
+            localStorage.removeItem('seonize_token');
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
+        }
         const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
         throw new Error(error.detail || `HTTP error! status: ${response.status}`);
     }
 
     return response.json();
 }
+
+// Auth API
+export const authApi = {
+    login: (password: string) => {
+        const formData = new URLSearchParams();
+        formData.append('username', 'admin');
+        formData.append('password', password);
+
+        return fetch(`${API_BASE_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData.toString(),
+        }).then(async res => {
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.detail || '登入失敗');
+            }
+            return res.json();
+        });
+    },
+    validate: () => request<{ status: string }>('/api/auth/validate'),
+};
 
 // Projects API
 export const projectsApi = {

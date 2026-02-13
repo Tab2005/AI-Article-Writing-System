@@ -14,9 +14,9 @@ logging.basicConfig(
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.api import projects, research, analysis, settings, prompts, writing
-from app.api import settings as settings_router
-from app.core.config import settings
+from app.api import projects, research, analysis, prompts, writing, auth
+from app.api import settings as settings_api
+from app.core.config import settings as app_settings
 from app.core.database import init_db
 from app.core.cache import CacheManager
 
@@ -48,7 +48,7 @@ app = FastAPI(
 # CORS 設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=app_settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,8 +59,9 @@ app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
 app.include_router(research.router, prefix="/api/research", tags=["Research"])
 app.include_router(analysis.router, prefix="/api/analysis", tags=["Analysis"])
 app.include_router(writing.router, prefix="/api/writing", tags=["Writing"])
-app.include_router(settings_router.router, prefix="/api/settings", tags=["Settings"])
+app.include_router(settings_api.router, prefix="/api/settings", tags=["Settings"])
 app.include_router(prompts.router, prefix="/api/prompts", tags=["Prompts"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 
 
 @app.get("/")

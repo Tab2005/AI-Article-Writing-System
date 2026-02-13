@@ -13,7 +13,7 @@ import hashlib
 
 # Redis 可選導入
 try:
-    import redis
+    import redis.asyncio as redis
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -90,7 +90,7 @@ class RedisCache:
     
     async def get(self, key: str) -> Optional[Any]:
         try:
-            value = self._client.get(self._make_key(key))
+            value = await self._client.get(self._make_key(key))
             if value:
                 return json.loads(value)
             return None
@@ -99,7 +99,7 @@ class RedisCache:
     
     async def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
         try:
-            self._client.setex(
+            await self._client.setex(
                 self._make_key(key),
                 ttl,
                 json.dumps(value, default=str)
@@ -110,32 +110,32 @@ class RedisCache:
     
     async def delete(self, key: str) -> bool:
         try:
-            self._client.delete(self._make_key(key))
+            await self._client.delete(self._make_key(key))
             return True
         except Exception:
             return False
     
     async def clear_pattern(self, pattern: str) -> int:
         try:
-            keys = self._client.keys(self._make_key(pattern))
+            keys = await self._client.keys(self._make_key(pattern))
             if keys:
-                return self._client.delete(*keys)
+                return await self._client.delete(*keys)
             return 0
         except Exception:
             return 0
     
     async def clear_all(self) -> bool:
         try:
-            keys = self._client.keys(f"{self._prefix}*")
+            keys = await self._client.keys(f"{self._prefix}*")
             if keys:
-                self._client.delete(*keys)
+                await self._client.delete(*keys)
             return True
         except Exception:
             return False
     
-    def get_stats(self) -> dict:
+    async def get_stats(self) -> dict:
         try:
-            info = self._client.info("memory")
+            info = await self._client.info("memory")
             return {
                 "type": "redis",
                 "used_memory": info.get("used_memory_human", "unknown"),
@@ -156,11 +156,10 @@ class CacheManager:
         if redis_url and REDIS_AVAILABLE:
             try:
                 self._cache = RedisCache(redis_url)
-                # 測試連線
-                self._cache._client.ping()
+                # Redis 具備異步 ping，但我們在 init 只標記
                 print(f"Cache: Using Redis ({redis_url})")
             except Exception as e:
-                print(f"Cache: Redis connection failed ({e}), falling back to in-memory")
+                print(f"Cache: Redis init failed ({e}), falling back to in-memory")
                 self._cache = InMemoryCache()
         else:
             self._cache = InMemoryCache()

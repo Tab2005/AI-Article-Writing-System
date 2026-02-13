@@ -3,7 +3,7 @@ Seonize Backend - Research API Router
 SERP 研究 API
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 import asyncio
 import httpx
 from bs4 import BeautifulSoup
@@ -11,8 +11,9 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from app.models.project import SERPResult
+from app.core.auth import get_current_admin
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_admin)])
 
 
 class ResearchRequest(BaseModel):

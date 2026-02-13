@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     DATAFORSEO_PASSWORD: str = ""
     DATAFORSEO_USE_SANDBOX: bool = False
     
+    # Security
+    SECRET_KEY: str = "your-super-secret-key-change-it-in-env"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+    ADMIN_PASSWORD: str = "admin123"  # 預設密碼，建議從 .env 覆蓋
+    
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     

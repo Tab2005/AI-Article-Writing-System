@@ -36,7 +36,7 @@
 
 ## 🔴 嚴重問題 (Critical)
 
-### C-1. 無任何認證與授權機制
+### C-1. 無任何認證與授權機制 ✅ [已修復]
 
 **位置**: 整個後端 API  
 **風險**: 所有 API 端點均為公開存取，任何人皆可讀寫設定、刪除專案、消耗 API 額度
@@ -74,7 +74,7 @@ setting = cls(key=key, value=value, encrypted=encrypted)
 
 ---
 
-### C-3. `main.py` 中的 `settings` 命名衝突
+### C-3. `main.py` 中的 `settings` 命名衝突 ✅ [已修復]
 
 **位置**: `main.py` 第 17-19 行  
 **風險**: `settings` 同時指向 API router (模組) 和 config 物件，可能導致不可預測的行為
@@ -119,7 +119,7 @@ finally:
 
 ---
 
-### H-2. `requirements.txt` 嚴重過時且缺少核心依賴
+### H-2. `requirements.txt` 嚴重過時且缺少核心依賴 ✅ [已完成]
 
 **位置**: 根目錄 `requirements.txt`
 
@@ -162,7 +162,7 @@ dataforseo/
 
 ---
 
-### H-4. Gemini 關鍵字研究的 Blocking I/O 呼叫
+### H-4. Gemini 關鍵字研究的 Blocking I/O 呼叫 ✅ [已修復]
 
 **位置**: `gemini_client.py` 第 36、69、97 行  
 **風險**: `google.generativeai` SDK 的 `generate_content()` 是同步呼叫，包在 `async def` 中會阻塞事件循環
@@ -180,7 +180,7 @@ response = await asyncio.to_thread(gemini_model.generate_content, prompt)
 
 ---
 
-### H-5. Redis 客戶端使用同步 API 但包裝成 async
+### H-5. Redis 客戶端使用同步 API 但包裝成 async ✅ [已修復]
 
 **位置**: `cache.py` > `RedisCache` 類別  
 **風險**: 線程池阻塞，高併發下效能下降
@@ -270,7 +270,7 @@ readability_score=75.0,  # Mock score
 
 ---
 
-### M-5. 前端路由無 404 Fallback 與守衛
+### M-5. 前端路由無 404 Fallback 與守衛 ✅ [已修復]
 
 **位置**: `App.tsx`
 
@@ -450,10 +450,10 @@ async def fetch_page(client: httpx.AsyncClient, url: str):
 
 | # | 項目 | 優先級 |
 |---|------|:------:|
-| 1 | 加入 API 認證 middleware (JWT / API Key) | 🔴 |
-| 2 | 實作 Settings 值加密儲存 | 🔴 |
-| 3 | 修復 `main.py` 命名衝突 | 🔴 |
-| 4 | 更新 `requirements.txt`，鎖定版本 | 🟠 |
+| 1 | 加入 API 認證 middleware (JWT / API Key) | ✅ |
+| 2 | 實作 Settings 值加密儲存 | 🟠 |
+| 3 | 修復 `main.py` 命名衝突 | ✅ |
+| 4 | 更新 `requirements.txt`，鎖定版本 | ✅ |
 
 ### 🔧 第二階段 — 架構重構 (建議 2-3 週)
 
@@ -485,6 +485,11 @@ async def fetch_page(client: httpx.AsyncClient, url: str):
 | 18 | 加入 Alembic 資料庫遷移 | 🟡 |
 | 19 | 加入健康檢查與 Metrics (Prometheus) | 🔵 |
 | 20 | 移除殭屍代碼與未使用依賴 | 🔵 |
+| 21 | **[進階版升級] 實作多使用者與權限系統** | 🚀 |
+
+> [!NOTE]
+> 關於進階版 (Professional Edition) 的詳細技術路線圖，請參閱：
+> [professional-upgrade-path.md](file:///d:/users/Qoo/Documents/python/AI-Article-Writing-System/docs/professional-upgrade-path.md)
 
 ---
 

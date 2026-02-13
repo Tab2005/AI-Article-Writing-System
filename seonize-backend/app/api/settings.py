@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.db_models import Settings
 from app.services.ai_service import AIService, AIProvider
+from app.core.auth import get_current_admin
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_admin)])
 
 logger = logging.getLogger(__name__)
 
