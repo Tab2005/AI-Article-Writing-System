@@ -4,6 +4,7 @@ SERP 研究 API
 """
 
 from fastapi import APIRouter, HTTPException, status, Depends
+import logging
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 import asyncio
@@ -17,6 +18,8 @@ from app.core.auth import get_current_admin
 from app.services.serp_service import SERPService
 from app.services.dataforseo_service import DataForSEOService
 from app.services.ai_service import AIService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(get_current_admin)])
 

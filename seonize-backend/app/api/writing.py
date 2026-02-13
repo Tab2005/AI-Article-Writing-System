@@ -12,7 +12,61 @@ from app.core.auth import get_current_admin
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 
+from app.core.database import get_db
+import re
+
 router = APIRouter(dependencies=[Depends(get_current_admin)])
+
+
+def calculate_readability(content: str) -> float:
+    """
+    計算中文文章的可讀性分數 (0-100)
+    考量平均句長、段落密度與標點符號。
+    """
+    if not content or not content.strip():
+        return 0.0
+    
+    # 移除空白與換行進行基礎統計
+    clean_text = content.replace(" ", "").replace("\n", "").replace("\t", "").replace("\r", "")
+    total_chars = len(clean_text)
+    if total_chars == 0:
+        return 0.0
+    
+    # 1. 句子切分 (使用標點符號)
+    sentences = re.split(r'[。！？；]', content)
+    sentences = [s.strip() for s in sentences if s.strip()]
+    num_sentences = len(sentences)
+    
+    # 如果全無標點符號，基礎分數大幅下降
+    if num_sentences == 0:
+        return 40.0
+    
+    avg_sentence_len = total_chars / num_sentences
+    
+    # 2. 評分邏輯 (以 100 為基準)
+    score = 100.0
+    
+    # 理想的平均句長在 15-25 字之間
+    if avg_sentence_len > 30:
+        # 太長扣分
+        score -= (avg_sentence_len - 30) * 1.5
+    elif avg_sentence_len < 8:
+        # 太短(太破碎)也稍微扣分
+        score -= (8 - avg_sentence_len) * 0.5
+        
+    # 3. 段落密度
+    paragraphs = [p for p in content.split("\n") if p.strip()]
+    if paragraphs:
+        avg_para_len = total_chars / len(paragraphs)
+        # 單段超過 250 字會讓人壓力大
+        if avg_para_len > 250:
+            score -= (avg_para_len - 250) / 5
+            
+    # 4. 長句懲罰 (單句超過 60 字)
+    long_sentences = [s for s in sentences if len(s) > 60]
+    score -= len(long_sentences) * 2
+    
+    return max(0.0, min(100.0, round(score, 1)))
 
 
 class WritingSection(BaseModel):
@@ -213,7 +267,7 @@ async def check_seo(request: SEOCheckRequest):
     return SEOCheckResponse(
         word_count=word_count,
         keyword_density=keyword_density,
-        readability_score=75.0,  # Mock score
+        readability_score=calculate_readability(content),
         eeat_signals=eeat_signals,
         suggestions=suggestions
     )

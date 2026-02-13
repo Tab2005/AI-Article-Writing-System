@@ -1,7 +1,7 @@
 import logging
 import httpx
 from typing import Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from .base import DataForSEOBase
 from app.models.db_models import CompetitiveCache
 
@@ -27,7 +27,7 @@ class DataForSEOOnPageService(DataForSEOBase):
                 parsed = cls._parse_onpage_response(response.json())
                 if db and not parsed.get("error"):
                     db.query(CompetitiveCache).filter(CompetitiveCache.url == url).delete()
-                    db.add(CompetitiveCache(url=url, h_tags=parsed.get("h_tags"), content_stats=parsed.get("content_stats"), meta_info=parsed.get("meta_info"), expires_at=datetime.now() + timedelta(days=30)))
+                    db.add(CompetitiveCache(url=url, h_tags=parsed.get("h_tags"), content_stats=parsed.get("content_stats"), meta_info=parsed.get("meta_info"), expires_at=datetime.now(timezone.utc) + timedelta(days=30)))
                     db.commit()
                 return parsed
         except Exception as e:

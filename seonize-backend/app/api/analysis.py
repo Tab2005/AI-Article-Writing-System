@@ -12,6 +12,9 @@ from app.models.project import SearchIntent, WritingStyle
 from app.core.auth import get_current_admin
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(get_current_admin)])
 
@@ -197,7 +200,7 @@ async def generate_outline(request: OutlineRequest, db: Session = Depends(get_db
         )
         
         # 偵錯：列印 AI 回傳結果
-        print(f"DEBUG: AI Outline Result: {ai_result}")
+        logger.debug(f"AI Outline Result: {ai_result}")
         
         # 4. 處理 AI 回傳結果
         h1 = ai_result.get("h1", f"2026 {request.keyword}完整指南")

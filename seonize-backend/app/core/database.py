@@ -4,10 +4,13 @@ Seonize Backend - Database Configuration
 """
 
 import os
+import logging
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
+
+logger = logging.getLogger(__name__)
 
 # 從環境變數取得資料庫 URL，預設使用 SQLite
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./seonize.db")
@@ -76,7 +79,7 @@ def init_db():
     """初始化資料庫 - 建立所有表格"""
     from app.models.db_models import Project, Settings, PromptTemplate, SerpCache, KeywordCache  # noqa
     Base.metadata.create_all(bind=engine)
-    print(f"Database initialized: {DATABASE_URL}")
+    logger.info(f"Database initialized: {DATABASE_URL}")
 
 
 def get_database_info() -> dict:

@@ -203,7 +203,7 @@ value = await self._client.get(...)
 
 ## 🟡 中等問題 (Medium)
 
-### M-1. 過多偵錯日誌與 `print()` 殘留
+### M-1. 過多偵錯日誌與 `print()` 殘留 ✅ [已修復]
 
 **位置**: 多處
 
@@ -219,7 +219,7 @@ value = await self._client.get(...)
 
 ---
 
-### M-2. 日期時間使用不一致
+### M-2. 日期時間使用不一致 ✅ [已修復]
 
 **位置**: `db_models.py`
 
@@ -243,9 +243,12 @@ class SerpCache(Base):
 
 **建議**: 全面統一使用 `datetime.now(timezone.utc)` (推薦) 或始終使用 `datetime.now()`。避免混用 `utcnow()` 和 `now()`。
 
----
+### 其他 M 級問題修復進度
+- [x] M-1. 偵錯日誌清理
+- [x] M-2. 日期時間統一
+- [x] M-3. 全域錯誤處理與 Loading 狀態管理
 
-### M-3. 前端缺少全域錯誤處理與 Loading 狀態管理
+### M-3. 前端缺少全域錯誤處理與 Loading 狀態管理 ✅ [已修復]
 
 **位置**: `services/api.ts`
 
@@ -258,7 +261,7 @@ class SerpCache(Base):
 
 ---
 
-### M-4. `analysis.py` 中 `readability_score` 寫死為 75.0
+### M-4. `analysis.py` 中 `readability_score` 寫死為 75.0 ✅ [已修復]
 
 **位置**: `analysis.py` 第 218 行
 
@@ -290,7 +293,7 @@ readability_score=75.0,  # Mock score
 
 ---
 
-### M-6. `config.py` 中的 `Settings` 幾乎未被使用
+### M-6. `config.py` 中的 `Settings` 幾乎未被使用 ✅ [已修復]
 
 **位置**: `core/config.py`
 
@@ -300,13 +303,7 @@ readability_score=75.0,  # Mock score
 
 ---
 
-### M-7. `GeminiClient` 中的 `classify_intent` 和 `generate_titles` 是殭屍代碼
-
-**位置**: `gemini_client.py` 第 105-173 行
-
-**現狀**: 這些方法在 `AIService` 中有更完整的上層版本，但 `GeminiClient` 仍保留了舊版。沒有任何代碼調用它們。
-
-**建議**: 移除 `GeminiClient.classify_intent` 和 `GeminiClient.generate_titles`，避免維護歧義
+### M-7. `GeminiClient` 中的 `classify_intent` 和 `generate_titles` 是殭屍代碼 ✅ [已修復]
 
 ---
 
@@ -463,8 +460,8 @@ async def fetch_page(client: httpx.AsyncClient, url: str):
 | 6 | 拆分 `DataForSEOService` | ✅ |
 | 7 | 修復 Gemini blocking I/O | 🟠 |
 | 8 | 修復 Redis async wrapper | 🟠 |
-| 9 | 清理偵錯日誌與 print | 🟡 |
-| 10 | 統一日期時間處理 | 🟡 |
+| 9 | 清理偵錯日誌與 print | ✅ |
+| 10 | 統一日期時間處理 | ✅ |
 
 ### 📐 第三階段 — 品質提升 (建議 2-4 週)
 

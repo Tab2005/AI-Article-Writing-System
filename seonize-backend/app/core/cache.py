@@ -4,12 +4,15 @@ Seonize Backend - Cache Manager
 """
 
 import os
+import logging
 import json
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from functools import wraps
 import hashlib
+
+logger = logging.getLogger(__name__)
 
 # Redis 可選導入
 try:
@@ -32,7 +35,7 @@ class InMemoryCache:
                 return None
             
             entry = self._cache[key]
-            if entry["expires_at"] and datetime.now() > entry["expires_at"]:
+            if entry["expires_at"] and datetime.now(timezone.utc) > entry["expires_at"]:
                 del self._cache[key]
                 return None
             
@@ -40,11 +43,11 @@ class InMemoryCache:
     
     async def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
         async with self._lock:
-            expires_at = datetime.now() + timedelta(seconds=ttl) if ttl > 0 else None
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl) if ttl > 0 else None
             self._cache[key] = {
                 "value": value,
                 "expires_at": expires_at,
-                "created_at": datetime.now(),
+                "created_at": datetime.now(timezone.utc),
             }
             return True
     
@@ -157,13 +160,13 @@ class CacheManager:
             try:
                 self._cache = RedisCache(redis_url)
                 # Redis 具備異步 ping，但我們在 init 只標記
-                print(f"Cache: Using Redis ({redis_url})")
+                logger.info(f"Cache: Using Redis ({redis_url})")
             except Exception as e:
-                print(f"Cache: Redis init failed ({e}), falling back to in-memory")
+                logger.warning(f"Cache: Redis init failed ({e}), falling back to in-memory")
                 self._cache = InMemoryCache()
         else:
             self._cache = InMemoryCache()
-            print("Cache: Using in-memory cache")
+            logger.info("Cache: Using in-memory cache")
     
     @classmethod
     def get_instance(cls) -> "CacheManager":

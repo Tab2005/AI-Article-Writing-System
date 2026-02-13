@@ -1,7 +1,7 @@
 import logging
 import httpx
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from .base import DataForSEOBase
 from app.models.db_models import KeywordCache
 
@@ -56,9 +56,9 @@ class DataForSEOKeywordService(DataForSEOBase):
                     cache = db.query(KeywordCache).filter(KeywordCache.keyword == keyword, KeywordCache.location_code == location_code, KeywordCache.language_code == language_code).first()
                     if cache:
                         cache.seed_data, cache.suggestions = seed_data, suggestions
-                        cache.created_at, cache.expires_at = datetime.now(), datetime.now() + timedelta(days=30)
+                        cache.created_at, cache.expires_at = datetime.now(timezone.utc), datetime.now(timezone.utc) + timedelta(days=30)
                     else:
-                        db.add(KeywordCache(keyword=keyword, location_code=location_code, language_code=language_code, seed_data=seed_data, suggestions=suggestions, expires_at=datetime.now() + timedelta(days=30)))
+                        db.add(KeywordCache(keyword=keyword, location_code=location_code, language_code=language_code, seed_data=seed_data, suggestions=suggestions, expires_at=datetime.now(timezone.utc) + timedelta(days=30)))
                     db.commit()
                 
                 return {

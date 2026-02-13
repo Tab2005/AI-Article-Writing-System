@@ -6,7 +6,7 @@ Seonize Backend - Pydantic Models for Project State
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -70,8 +70,8 @@ class SERPResult(BaseModel):
 class ProjectState(BaseModel):
     """專案狀態物件 - 對應 SSD v2.0 定義"""
     project_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # User Inputs
     primary_keyword: str = Field(..., description="核心關鍵字")

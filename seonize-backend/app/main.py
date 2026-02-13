@@ -11,6 +11,8 @@ logging.basicConfig(
     ]
 )
 
+logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -25,15 +27,21 @@ from app.core.cache import CacheManager
 async def lifespan(app: FastAPI):
     """應用程式生命週期管理"""
     # 啟動時
-    print("Seonize Backend starting...")
+    logger.info("Seonize Backend starting...")
+    try:
+        import google.generativeai # type: ignore
+    except ImportError:
+        logger.warning("Warning: google-generativeai not installed. Gemini features will be limited.")
+    
     init_db()  # 初始化資料庫
+    logger.info(f"Database initialized: {app_settings.DATABASE_URL}")
     CacheManager.get_instance()  # 初始化快取
-    print("Seonize Backend ready!")
+    logger.info("Seonize Backend ready!")
     
     yield
     
     # 關閉時
-    print("Seonize Backend shutting down...")
+    logger.info("Seonize Backend shutting down...")
 
 
 app = FastAPI(

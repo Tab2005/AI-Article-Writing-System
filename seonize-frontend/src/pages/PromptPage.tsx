@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Textarea, Input } from '../components/ui';
+import { promptsApi, type PromptTemplate } from '../services/api';
 import './PromptPage.css';
-
-interface PromptTemplate {
-    id: number;
-    category: string;
-    name: string;
-    content: string;
-    is_active: boolean;
-    created_at: string;
-    updated_at: string;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Category 中文標籤 - 按照流程順序排列
 const CATEGORY_ORDER = ['title_generation', 'outline_generation', 'content_writing'];
@@ -52,29 +41,26 @@ export const PromptPage: React.FC = () => {
 
     const loadTemplates = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/prompts/templates`);
-            if (response.ok) {
-                const data = await response.json();
-                setAllTemplates(data);
+            const data = await promptsApi.list();
+            setAllTemplates(data);
 
-                // 為每個 category 初始化 activePrompts
-                const prompts: Record<string, string> = {};
-                const categories = Array.from(new Set(data.map((t: PromptTemplate) => t.category))) as string[];
+            // 為每個 category 初始化 activePrompts
+            const prompts: Record<string, string> = {};
+            const categories = Array.from(new Set(data.map((t: PromptTemplate) => t.category))) as string[];
 
-                categories.forEach((category: string) => {
-                    const categoryTemplates = data.filter((t: PromptTemplate) => t.category === category);
-                    const active = categoryTemplates.find((t: PromptTemplate) => t.is_active);
-                    if (active) {
-                        prompts[category] = active.content;
-                    } else if (categoryTemplates.length > 0) {
-                        prompts[category] = categoryTemplates[0].content;
-                    } else {
-                        prompts[category] = '';
-                    }
-                });
+            categories.forEach((category: string) => {
+                const categoryTemplates = data.filter((t: PromptTemplate) => t.category === category);
+                const active = categoryTemplates.find((t: PromptTemplate) => t.is_active);
+                if (active) {
+                    prompts[category] = active.content;
+                } else if (categoryTemplates.length > 0) {
+                    prompts[category] = categoryTemplates[0].content;
+                } else {
+                    prompts[category] = '';
+                }
+            });
 
-                setActivePrompts(prompts);
-            }
+            setActivePrompts(prompts);
         } catch (error) {
             console.error('Failed to load templates:', error);
         } finally {
@@ -92,25 +78,17 @@ export const PromptPage: React.FC = () => {
 
         setSavingCategory(category);
         try {
-            const response = await fetch(`${API_URL}/api/prompts/templates`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    category: category,
-                    name: templateName,
-                    content: activePrompts[category] || '',
-                }),
+            await promptsApi.create({
+                category: category,
+                name: templateName,
+                content: activePrompts[category] || '',
             });
 
-            if (response.ok) {
-                setMessage({ type: 'success', text: `模板「${templateName}」儲存成功！` });
-                setNewTemplateNames({ ...newTemplateNames, [category]: '' });
-                loadTemplates();
-            } else {
-                setMessage({ type: 'error', text: '儲存失敗' });
-            }
+            setMessage({ type: 'success', text: `模板「${templateName}」儲存成功！` });
+            setNewTemplateNames({ ...newTemplateNames, [category]: '' });
+            loadTemplates();
         } catch {
-            setMessage({ type: 'error', text: '連線錯誤' });
+            // 全域已顯示錯誤
         } finally {
             setSavingCategory(null);
             setTimeout(() => setMessage(null), 3000);
@@ -131,23 +109,15 @@ export const PromptPage: React.FC = () => {
 
         setSavingCategory(category);
         try {
-            const response = await fetch(`${API_URL}/api/prompts/templates/${template.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: newName,
-                    content: newContent,
-                }),
+            await promptsApi.update(template.id, {
+                name: newName,
+                content: newContent,
             });
 
-            if (response.ok) {
-                setMessage({ type: 'success', text: `模板「${newName}」已更新！` });
-                loadTemplates();
-            } else {
-                setMessage({ type: 'error', text: '更新失敗' });
-            }
+            setMessage({ type: 'success', text: `模板「${newName}」已更新！` });
+            loadTemplates();
         } catch {
-            setMessage({ type: 'error', text: '連線錯誤' });
+            // 全域已顯示錯誤
         } finally {
             setSavingCategory(null);
             setTimeout(() => setMessage(null), 3000);
@@ -156,20 +126,12 @@ export const PromptPage: React.FC = () => {
 
     const handleActivate = async (id: number) => {
         try {
-            const response = await fetch(`${API_URL}/api/prompts/templates/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_active: true }),
-            });
-
-            if (response.ok) {
-                setMessage({ type: 'success', text: '模板已啟用' });
-                loadTemplates();
-                setTimeout(() => setMessage(null), 3000);
-            }
-        } catch {
-            setMessage({ type: 'error', text: '啟用失敗' });
+            await promptsApi.update(id, { is_active: true });
+            setMessage({ type: 'success', text: '模板已啟用' });
+            loadTemplates();
             setTimeout(() => setMessage(null), 3000);
+        } catch {
+            // 全域已顯示錯誤
         }
     };
 
@@ -178,15 +140,10 @@ export const PromptPage: React.FC = () => {
         if (!confirm('確定要刪除此模板嗎？')) return;
 
         try {
-            const response = await fetch(`${API_URL}/api/prompts/templates/${id}`, {
-                method: 'DELETE',
-            });
-
-            if (response.ok) {
-                loadTemplates();
-            }
+            await promptsApi.delete(id);
+            loadTemplates();
         } catch {
-            alert('刪除失敗');
+            // 全域已顯示錯誤
         }
     };
 

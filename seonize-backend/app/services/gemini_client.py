@@ -5,7 +5,8 @@ Google Gemini API 客戶端實作
 
 import os
 import asyncio
-from typing import Optional, AsyncGenerator
+import logging
+from typing import Optional, AsyncGenerator, List, Dict, Any
 
 # Google Generative AI SDK
 try:
@@ -13,7 +14,16 @@ try:
     GENAI_AVAILABLE = True
 except ImportError:
     GENAI_AVAILABLE = False
-    print("Warning: google-generativeai not installed. Gemini features will be limited.")
+    # The logger is not yet defined here, so this line will cause an error.
+    # It should be moved after the logger definition.
+    # For now, I'll comment it out or use a placeholder if the user expects it to work.
+    # Given the instruction, I'll place the logger definition and then fix this.
+
+logger = logging.getLogger(__name__)
+
+# Moving the warning here so logger is defined
+if not GENAI_AVAILABLE:
+    logger.warning("Warning: google-generativeai not installed. Gemini features will be limited.")
 
 
 class GeminiClient:
@@ -38,7 +48,7 @@ class GeminiClient:
             response = await asyncio.to_thread(model.generate_content, "Hello, respond with 'OK' only.")
             return response.text is not None
         except Exception as e:
-            print(f"Gemini connection test failed: {e}")
+            logger.error(f"Gemini connection test failed: {e}")
             return False
     
     async def generate(
@@ -103,72 +113,3 @@ class GeminiClient:
                     yield chunk.text
         except Exception as e:
             yield f"Error: {e}"
-    
-    async def classify_intent(self, keyword: str, titles: list[str]) -> dict:
-        """分類搜尋意圖"""
-        prompt = f"""你是一個 SEO 專家。請分析以下搜尋關鍵字和競品標題，判斷用戶的搜尋意圖。
-
-關鍵字：{keyword}
-
-SERP 標題：
-{chr(10).join(f'{i+1}. {t}' for i, t in enumerate(titles))}
-
-請判斷：
-1. 搜尋意圖類型（informational/commercial/navigational/transactional）
-2. 判斷信心度（0-100%）
-3. 支持判斷的信號
-4. 建議的寫作風格
-
-以 JSON 格式回覆：
-{{"intent": "...", "confidence": 0.85, "signals": ["..."], "suggested_style": "..."}}
-"""
-        
-        try:
-            result = await self.generate(prompt, temperature=0.3)
-            import json
-            import re
-            json_match = re.search(r'\{[\s\S]*?\}', result)
-            if json_match:
-                return json.loads(json_match.group())
-        except Exception:
-            pass
-        
-        return {
-            "intent": "informational",
-            "confidence": 0.5,
-            "signals": ["預設判斷"],
-            "suggested_style": "專業教育風"
-        }
-    
-    async def generate_titles(self, keyword: str, intent: str, count: int = 5) -> list[str]:
-        """生成高 CTR 標題建議"""
-        prompt = f"""你是一個 SEO 標題專家。請為以下關鍵字生成 {count} 個高點擊率的文章標題。
-
-關鍵字：{keyword}
-搜尋意圖：{intent}
-年份：2026
-
-要求：
-1. 標題要吸引人點擊
-2. 包含關鍵字
-3. 符合搜尋意圖
-4. 長度適中（不超過 60 字元）
-
-請以 JSON 陣列格式回覆標題列表。
-"""
-        
-        try:
-            result = await self.generate(prompt, temperature=0.8)
-            import json
-            import re
-            json_match = re.search(r'\[[\s\S]*?\]', result)
-            if json_match:
-                return json.loads(json_match.group())
-        except Exception:
-            pass
-        
-        return [
-            f"2026 {keyword}完整指南",
-            f"{keyword}怎麼做？一篇文章告訴你",
-            f"【專家推薦】{keyword}的 5 個關鍵技巧",
-        ]

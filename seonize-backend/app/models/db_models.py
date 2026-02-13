@@ -4,10 +4,11 @@ Seonize Backend - SQLAlchemy Database Models
 
 import uuid
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Integer, Float, Boolean, DateTime, JSON
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from app.core.database import Base, IS_SQLITE
+from app.core.security import encrypt_value, decrypt_value
 
 
 # 根據資料庫類型選擇 UUID 類型
@@ -53,8 +54,8 @@ class Project(Base):
     eeat_score = Column(Float, nullable=True)
     
     # 時間戳記
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         """轉換為字典"""
@@ -90,7 +91,7 @@ class Settings(Base):
     key = Column(String(100), unique=True, nullable=False, index=True)
     value = Column(Text, nullable=True)
     encrypted = Column(Boolean, default=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     @classmethod
     def get_value(cls, db, key: str, default: str = None) -> str:
@@ -98,6 +99,11 @@ class Settings(Base):
         setting = db.query(cls).filter(cls.key == key).first()
         if not setting or setting.value is None:
             return default
+        
+        # 如果標記為加密，則進行解密
+        if setting.encrypted:
+            return decrypt_value(setting.value)
+            
         return setting.value
 
     @classmethod
@@ -108,11 +114,21 @@ class Settings(Base):
             # 如果是金鑰、密碼或帳號，自動去前後空白
             if any(k in key for k in ["api_key", "password", "login"]):
                 value = value.strip()
+            
+            # 如果需要加密
+            if encrypted:
+                value = encrypt_value(value)
+                
             setting.value = value
             setting.encrypted = encrypted
         else:
             if any(k in key for k in ["api_key", "password", "login"]):
                 value = value.strip()
+            
+            # 如果需要加密
+            if encrypted:
+                value = encrypt_value(value)
+                
             setting = cls(key=key, value=value, encrypted=encrypted)
             db.add(setting)
         db.commit()
@@ -128,14 +144,14 @@ class SerpCache(Base):
     country = Column(String(10), default="TW")
     language = Column(String(10), default="zh-TW")
     results = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
 
     @property
     def is_expired(self) -> bool:
         if not self.expires_at:
             return True
-        return datetime.now() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
 class KeywordCache(Base):
     """關鍵字快取資料表，儲存 Keyword Ideas 研究結果"""
@@ -150,14 +166,14 @@ class KeywordCache(Base):
     suggestions = Column(JSON, nullable=True)   # 長尾詞建議列表 [{keyword, search_volume, ...}]
     ai_suggestions = Column(JSON, nullable=True) # AI 產出的 5 個標題建議列表
     
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
 
     @property
     def is_expired(self) -> bool:
         if not self.expires_at:
             return False # 預設不逾期
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
 class CompetitiveCache(Base):
     """競爭對手網頁內容快取資料表"""
@@ -169,14 +185,14 @@ class CompetitiveCache(Base):
     content_stats = Column(JSON, nullable=True) # {word_count: 1200, images_count: 5, ...}
     meta_info = Column(JSON, nullable=True)    # {title: '...', description: '...'}
     
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
 
     @property
     def is_expired(self) -> bool:
         if not self.expires_at:
             return False
-        return datetime.now() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
 class PromptTemplate(Base):
     """指令模板資料表"""
@@ -187,8 +203,8 @@ class PromptTemplate(Base):
     name = Column(String(100), nullable=False)
     content = Column(Text, nullable=False)
     is_active = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         return {

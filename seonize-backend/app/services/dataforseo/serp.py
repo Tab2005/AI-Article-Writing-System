@@ -1,7 +1,7 @@
 import logging
 import httpx
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.models.project import SERPResult
 from .base import DataForSEOBase
 
@@ -57,13 +57,13 @@ class DataForSEOSerpService(DataForSEOBase):
                 
                 data = response.json()
                 parsed_results = cls._parse_serp_response(data)
-                parsed_results["created_at"] = datetime.utcnow().isoformat()
+                parsed_results["created_at"] = datetime.now(timezone.utc).isoformat()
                 
                 if db and not parsed_results.get("error"):
                     from app.models.db_models import SerpCache
                     new_cache = SerpCache(
                         keyword=keyword, country="TW", language="zh-TW",
-                        results=parsed_results, expires_at=datetime.utcnow() + timedelta(days=7)
+                        results=parsed_results, expires_at=datetime.now(timezone.utc) + timedelta(days=7)
                     )
                     db.add(new_cache)
                     db.commit()

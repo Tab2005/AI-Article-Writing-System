@@ -10,7 +10,7 @@ from app.models.project import ProjectState, ProjectCreate, ProjectUpdate
 from app.models.db_models import Project
 from app.core.database import get_db
 from app.core.auth import get_current_admin
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(dependencies=[Depends(get_current_admin)])
 
@@ -94,7 +94,7 @@ async def update_project(project_id: str, project_update: ProjectUpdate, db: Ses
     for field, value in update_data.items():
         setattr(db_project, field, value)
     
-    db_project.updated_at = datetime.now()
+    db_project.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_project)
     

@@ -26,25 +26,6 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379"
     CACHE_TTL: int = 3600  # 1 hour
     
-    # AI Provider Settings
-    AI_PROVIDER: str = "gemini"
-    AI_MODEL: str = "gemini-2.0-flash"
-    
-    # AI API Keys
-    GEMINI_API_KEY: str = ""
-    OPENAI_API_KEY: str = ""
-    ZEABUR_API_KEY: str = ""
-    
-    # Search API
-    SERP_API_KEY: str = ""
-    GOOGLE_SEARCH_API_KEY: str = ""
-    GOOGLE_SEARCH_CX: str = ""
-    
-    # DataForSEO
-    DATAFORSEO_LOGIN: str = ""
-    DATAFORSEO_PASSWORD: str = ""
-    DATAFORSEO_USE_SANDBOX: bool = False
-    
     # Security
     SECRET_KEY: str = "your-super-secret-key-change-it-in-env"
     ALGORITHM: str = "HS256"

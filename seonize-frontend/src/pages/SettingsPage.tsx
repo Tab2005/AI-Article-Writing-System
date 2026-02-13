@@ -1,25 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Select, KPICard } from '../components/ui';
+import { settingsApi, type SettingsData, type AIProvider } from '../services/api';
 import './SettingsPage.css';
-
-interface SettingsData {
-    ai_provider: string;
-    ai_api_key: string;
-    ai_model: string;
-    dataforseo_login: string;
-    dataforseo_password: string;
-    dataforseo_serp_mode: string;
-    system_provided?: string[];
-}
-
-interface AIProvider {
-    id: string;
-    name: string;
-    models: string[];
-    description: string;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const SettingsPage: React.FC = () => {
     const [settings, setSettings] = useState<SettingsData>({
@@ -57,11 +39,8 @@ export const SettingsPage: React.FC = () => {
 
     const loadSettings = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/settings/`);
-            if (response.ok) {
-                const data = await response.json();
-                setSettings(data);
-            }
+            const data = await settingsApi.get();
+            setSettings(data);
         } catch (error) {
             console.error('Failed to load settings:', error);
         } finally {
@@ -71,11 +50,8 @@ export const SettingsPage: React.FC = () => {
 
     const loadProviders = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/settings/providers`);
-            if (response.ok) {
-                const data = await response.json();
-                setProviders(data);
-            }
+            const data = await settingsApi.getProviders();
+            setProviders(data);
         } catch {
             console.error('Failed to load providers');
             setProviders([
@@ -87,17 +63,13 @@ export const SettingsPage: React.FC = () => {
 
     const loadSystemInfo = async () => {
         try {
-            const [dbResponse, cacheResponse] = await Promise.all([
-                fetch(`${API_URL}/api/settings/database-info`),
-                fetch(`${API_URL}/api/settings/cache-info`),
+            const [dbInfo, cacheInfo] = await Promise.all([
+                settingsApi.getDbInfo(),
+                settingsApi.getCacheInfo(),
             ]);
 
-            if (dbResponse.ok) {
-                setDbInfo(await dbResponse.json());
-            }
-            if (cacheResponse.ok) {
-                setCacheInfo(await cacheResponse.json());
-            }
+            setDbInfo(dbInfo);
+            setCacheInfo(cacheInfo);
         } catch {
             console.error('Failed to load system info');
         }
@@ -109,23 +81,15 @@ export const SettingsPage: React.FC = () => {
         setMessage(null);
 
         try {
-            const response = await fetch(`${API_URL}/api/settings/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ai_provider: settings.ai_provider,
-                    ai_api_key: settings.ai_api_key,
-                    ai_model: settings.ai_model,
-                }),
+            await settingsApi.save({
+                ai_provider: settings.ai_provider,
+                ai_api_key: settings.ai_api_key,
+                ai_model: settings.ai_model,
             });
 
-            if (response.ok) {
-                setMessage({ type: 'success', text: 'AI 模組設定已儲存！', section: 'ai' });
-            } else {
-                setMessage({ type: 'error', text: '儲存 AI 設定失敗', section: 'ai' });
-            }
+            setMessage({ type: 'success', text: 'AI 模組設定已儲存！', section: 'ai' });
         } catch {
-            setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'ai' });
+            // 全域已顯示錯誤
         } finally {
             setSavingAI(false);
         }
@@ -137,24 +101,16 @@ export const SettingsPage: React.FC = () => {
         setMessage(null);
 
         try {
-            const response = await fetch(`${API_URL}/api/settings/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    dataforseo_login: settings.dataforseo_login,
-                    dataforseo_password: settings.dataforseo_password,
-                    dataforseo_serp_mode: settings.dataforseo_serp_mode,
-                }),
+            await settingsApi.save({
+                dataforseo_login: settings.dataforseo_login,
+                dataforseo_password: settings.dataforseo_password,
+                dataforseo_serp_mode: settings.dataforseo_serp_mode,
             });
 
-            if (response.ok) {
-                setMessage({ type: 'success', text: 'DataForSEO 設定已儲存！', section: 'dataforseo' });
-                loadSettings(); // Reload to get masked values
-            } else {
-                setMessage({ type: 'error', text: '儲存 DataForSEO 設定失敗', section: 'dataforseo' });
-            }
+            setMessage({ type: 'success', text: 'DataForSEO 設定已儲存！', section: 'dataforseo' });
+            loadSettings(); // Reload to get masked values
         } catch {
-            setMessage({ type: 'error', text: '儲存時發生錯誤', section: 'dataforseo' });
+            // 全域已顯示錯誤
         } finally {
             setSavingDataForSEO(false);
         }
@@ -165,24 +121,19 @@ export const SettingsPage: React.FC = () => {
         setMessage(null);
 
         try {
-            const response = await fetch(`${API_URL}/api/settings/test-ai`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    provider: settings.ai_provider,
-                    api_key: settings.ai_api_key,
-                    model: settings.ai_model,
-                }),
+            const result = await settingsApi.testAI({
+                provider: settings.ai_provider,
+                api_key: settings.ai_api_key,
+                model: settings.ai_model,
             });
 
-            const result = await response.json();
             setMessage({
                 type: result.success ? 'success' : 'error',
                 text: result.message,
                 section: 'ai',
             });
         } catch {
-            setMessage({ type: 'error', text: '測試連線時發生錯誤', section: 'ai' });
+            // 全域已顯示錯誤
         } finally {
             setTestingAI(false);
         }
@@ -193,23 +144,18 @@ export const SettingsPage: React.FC = () => {
         setMessage(null);
 
         try {
-            const response = await fetch(`${API_URL}/api/settings/test-dataforseo`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    login: settings.dataforseo_login,
-                    password: settings.dataforseo_password,
-                }),
+            const result = await settingsApi.testDataForSEO({
+                login: settings.dataforseo_login,
+                password: settings.dataforseo_password,
             });
 
-            const result = await response.json();
             setMessage({
                 type: result.success ? 'success' : 'error',
                 text: result.message,
                 section: 'dataforseo',
             });
         } catch {
-            setMessage({ type: 'error', text: '測試連線時發生錯誤', section: 'dataforseo' });
+            // 全域已顯示錯誤
         } finally {
             setTestingDataForSEO(false);
         }
