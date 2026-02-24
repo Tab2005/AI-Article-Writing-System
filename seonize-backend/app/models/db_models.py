@@ -216,3 +216,69 @@ class PromptTemplate(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class KalpaMatrix(Base):
+    """因果矩陣專案資料表"""
+    __tablename__ = "kalpa_matrices"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    project_name = Column(String(255), nullable=False, index=True)
+    industry = Column(String(100), default="Crypto")
+    money_page_url = Column(Text, nullable=True)
+    
+    # 原始配置
+    entities = Column(JSON, default=list)
+    actions = Column(JSON, default=list)
+    pain_points = Column(JSON, default=list)
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "project_name": self.project_name,
+            "industry": self.industry,
+            "money_page_url": self.money_page_url,
+            "entities": self.entities or [],
+            "actions": self.actions or [],
+            "pain_points": self.pain_points or [],
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class KalpaNode(Base):
+    """因果矩陣節點（意圖）資料表"""
+    __tablename__ = "kalpa_nodes"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    matrix_id = Column(String(36), nullable=False, index=True)
+    
+    entity = Column(String(100))
+    action = Column(String(100))
+    pain_point = Column(String(100))
+    target_title = Column(Text)
+    
+    # 編織結果
+    status = Column(String(20), default="pending")  # pending, weaving, completed, failed
+    woven_content = Column(Text, nullable=True)
+    anchor_used = Column(String(255), nullable=True)
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "matrix_id": self.matrix_id,
+            "entity": self.entity,
+            "action": self.action,
+            "pain_point": self.pain_point,
+            "target_title": self.target_title,
+            "status": self.status,
+            "woven_content": self.woven_content,
+            "anchor_used": self.anchor_used,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

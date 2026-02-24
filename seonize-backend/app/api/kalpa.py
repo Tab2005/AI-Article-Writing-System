@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Any
+from sqlalchemy.orm import Session
 from app.services.kalpa_service import kalpa_service
 from app.core.auth import get_current_admin
+from app.core.database import get_db
 
 router = APIRouter()
 
@@ -12,20 +14,29 @@ class KalpaGenerateRequest(BaseModel):
     actions: List[str]
     pain_points: List[str]
 
-class KalpaNode(BaseModel):
+class KalpaNodeSchema(BaseModel):
     entity: str
     action: str
     pain_point: str
     target_title: str
     status: str
 
-@router.post("/generate", response_model=List[KalpaNode])
+class KalpaSaveRequest(BaseModel):
+    project_name: str
+    industry: str = "Crypto"
+    money_page_url: str = ""
+    entities: List[str]
+    actions: List[str]
+    pain_points: List[str]
+    nodes: List[dict]
+
+@router.post("/generate", response_model=List[KalpaNodeSchema])
 async def generate_kalpa_matrix(
     request: KalpaGenerateRequest,
     current_admin: str = Depends(get_current_admin)
 ):
     """
-    生成因果矩陣端點
+    生成因果矩陣端點 (不存檔)
     """
     if not request.entities or not request.actions or not request.pain_points:
         raise HTTPException(status_code=400, detail="實體、動作與痛點列表均不能為空。")
@@ -40,3 +51,70 @@ async def generate_kalpa_matrix(
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"矩陣生成失敗: {str(e)}")
+
+@router.post("/save")
+async def save_kalpa_matrix(
+    request: KalpaSaveRequest,
+    db: Session = Depends(get_db),
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    儲存因果矩陣與節點到資料庫
+    """
+    try:
+        matrix = kalpa_service.save_matrix(
+            db=db,
+            project_name=request.project_name,
+            industry=request.industry,
+            money_page_url=request.money_page_url,
+            entities=request.entities,
+            actions=request.actions,
+            pain_points=request.pain_points,
+            nodes=request.nodes
+        )
+        return {"success": True, "matrix_id": matrix.id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"儲存失敗: {str(e)}")
+
+@router.get("/list")
+async def list_kalpa_matrices(
+    db: Session = Depends(get_db),
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    列出所有已儲存的矩陣
+    """
+    from app.models.db_models import KalpaMatrix
+    matrices = db.query(KalpaMatrix).order_by(KalpaMatrix.created_at.desc()).all()
+    return [m.to_dict() for m in matrices]
+
+@router.get("/{matrix_id}")
+async def get_kalpa_matrix(
+    matrix_id: str,
+    db: Session = Depends(get_db),
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    取得特定矩陣的詳細內容與節點
+    """
+    result = kalpa_service.get_matrix(db, matrix_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="找不到該矩陣")
+    return result
+
+@router.post("/weave/{node_id}")
+async def weave_kalpa_node(
+    node_id: str,
+    db: Session = Depends(get_db),
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    啟動「神諭編織」為節點生成文章
+    """
+    try:
+        node = await kalpa_service.weave_node(db, node_id)
+        return {"success": True, "node": node.to_dict()}
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"編織失敗: {str(e)}")

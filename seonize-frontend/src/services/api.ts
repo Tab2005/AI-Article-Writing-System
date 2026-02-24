@@ -288,11 +288,27 @@ export const writingApi = {
 
 // Kalpa API
 export interface KalpaNode {
+  id?: string;
+  matrix_id?: string;
   entity: string;
   action: string;
   pain_point: string;
   target_title: string;
-  status: string;
+  status: 'pending' | 'weaving' | 'completed' | 'failed';
+  woven_content?: string;
+  anchor_used?: string;
+}
+
+export interface KalpaMatrix {
+  id: string;
+  project_name: string;
+  industry: string;
+  money_page_url: string;
+  entities: string[];
+  actions: string[];
+  pain_points: string[];
+  created_at: string;
+  nodes?: KalpaNode[];
 }
 
 export const kalpaApi = {
@@ -302,6 +318,22 @@ export const kalpaApi = {
     actions: string[];
     pain_points: string[];
   }) => request<KalpaNode[]>('/api/kalpa/generate', { method: 'POST', body: data }),
+
+  save: (data: {
+    project_name: string;
+    industry: string;
+    money_page_url: string;
+    entities: string[];
+    actions: string[];
+    pain_points: string[];
+    nodes: KalpaNode[];
+  }) => request<{ success: boolean; matrix_id: string }>('/api/kalpa/save', { method: 'POST', body: data }),
+
+  list: () => request<KalpaMatrix[]>('/api/kalpa/list'),
+
+  get: (id: string) => request<KalpaMatrix & { nodes: KalpaNode[] }>(`/api/kalpa/${id}`),
+
+  weave: (nodeId: string) => request<{ success: boolean; node: KalpaNode }>(`/api/kalpa/weave/${nodeId}`, { method: 'POST' }),
 };
 
 // Health check

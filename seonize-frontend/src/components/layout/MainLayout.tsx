@@ -168,8 +168,8 @@ const navItems: NavItem[] = [
     ),
   },
   {
-    path: '/kalpa',
-    label: '因果矩陣',
+    path: '/kalpa-eye',
+    label: '劫之眼術',
     icon: (
       <svg
         width="20"
@@ -181,14 +181,9 @@ const navItems: NavItem[] = [
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 2a10 10 0 1 0 10 10" />
-        <path d="M12 12L2 12" />
-        <path d="M12 12L12 22" />
-        <path d="m20 20-4-4" />
-        <path d="m20 4-4 4" />
-        <path d="m4 20 4-4" />
-        <path d="m4 4 4 4" />
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3" />
+        <path d="m16 16-4-4" />
       </svg>
     ),
   },

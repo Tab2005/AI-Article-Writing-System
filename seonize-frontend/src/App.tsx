@@ -16,6 +16,8 @@ import {
   KeywordHistoryPage,
   PromptPage,
   KalpaPage,
+  KalpaEyeLayout,
+  KalpaHistoryPage,
   NotFoundPage,
 } from './pages';
 import './index.css';
@@ -62,7 +64,12 @@ function App() {
               <Route path="/outline" element={<OutlinePage />} />
               <Route path="/writing" element={<WritingPage />} />
               <Route path="/prompts" element={<PromptPage />} />
-              <Route path="/kalpa" element={<KalpaPage />} />
+              <Route path="/kalpa" element={<Navigate to="/kalpa-eye/matrix" replace />} />
+              <Route path="/kalpa-eye" element={<KalpaEyeLayout />}>
+                <Route index element={<Navigate to="matrix" replace />} />
+                <Route path="matrix" element={<KalpaPage />} />
+                <Route path="history" element={<KalpaHistoryPage />} />
+              </Route>
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

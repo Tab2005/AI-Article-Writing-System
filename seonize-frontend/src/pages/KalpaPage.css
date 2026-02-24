@@ -1,4 +1,4 @@
-.kalpa-page {
+.kalpa-page-content {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);

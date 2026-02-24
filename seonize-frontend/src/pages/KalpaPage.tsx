@@ -60,12 +60,19 @@ const TagInput: React.FC<TagInputProps> = ({ label, tags, setTags, placeholder }
 
 export const KalpaPage: React.FC = () => {
     const [projectName, setProjectName] = useState('Crypto_Emergency_2026');
+    const [industry, setIndustry] = useState('Crypto');
+    const [moneyPageUrl, setMoneyPageUrl] = useState('');
     const [entities, setEntities] = useState<string[]>(['幣安', 'MAX', 'OKX', 'MetaMask', 'Bybit']);
     const [actions, setActions] = useState<string[]>(['入金', '提現', 'KYC認證', '合約下單', '提幣']);
     const [pains, setPains] = useState<string[]>(['卡住', '失敗', '被風控', '顯示錯誤代碼', '等很久沒收到']);
 
     const [loading, setLoading] = useState(false);
+    const [saveLoading, setSaveLoading] = useState(false);
+    const [weaveLoading, setWeaveLoading] = useState<string | null>(null);
     const [results, setResults] = useState<KalpaNode[]>([]);
+    const [matrixId, setMatrixId] = useState<string | null>(null);
+
+    const [previewNode, setPreviewNode] = useState<KalpaNode | null>(null);
 
     const handleGenerate = async () => {
         if (entities.length === 0 || actions.length === 0 || pains.length === 0) {
@@ -82,10 +89,60 @@ export const KalpaPage: React.FC = () => {
                 pain_points: pains,
             });
             setResults(data);
+            setMatrixId(null); // Reset saved ID on new generation
         } catch (error) {
             console.error('Failed to generate Kalpa matrix:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (results.length === 0) return;
+        setSaveLoading(true);
+        try {
+            const res = await kalpaApi.save({
+                project_name: projectName,
+                industry,
+                money_page_url: moneyPageUrl,
+                entities,
+                actions,
+                pain_points: pains,
+                nodes: results
+            });
+            if (res.success) {
+                setMatrixId(res.matrix_id);
+                // Refresh results to get IDs from database
+                const updatedMatrix = await kalpaApi.get(res.matrix_id);
+                setResults(updatedMatrix.nodes || []);
+                alert('專案儲存成功！');
+            }
+        } catch (error) {
+            console.error('Failed to save project:', error);
+            alert('儲存失敗，請檢查網路連線。');
+        } finally {
+            setSaveLoading(false);
+        }
+    };
+
+    const handleWeave = async (node: KalpaNode) => {
+        if (!node.id) {
+            alert('請先點擊「儲存專案」，才能開始編織文章。');
+            return;
+        }
+
+        setWeaveLoading(node.id);
+        try {
+            const res = await kalpaApi.weave(node.id);
+            if (res.success) {
+                setResults(prev => prev.map(n => n.id === node.id ? res.node : n));
+                setPreviewNode(res.node);
+            }
+        } catch (error) {
+            console.error('Weaving failed:', error);
+            alert('編織失敗，請稍後再試。');
+        } finally {
+            setWeaveLoading(null);
         }
     };
 
@@ -112,50 +169,76 @@ export const KalpaPage: React.FC = () => {
     };
 
     const columns = [
-        { key: 'entity', header: '實體', width: '120px' },
-        { key: 'action', header: '動作', width: '120px' },
-        { key: 'pain_point', header: '痛點', width: '150px' },
+        { key: 'entity', header: '實體', width: '100px' },
+        { key: 'action', header: '動作', width: '100px' },
+        { key: 'pain_point', header: '痛點', width: '120px' },
         { key: 'target_title', header: '意圖標題' },
         {
             key: 'status',
             header: '狀態',
-            width: '100px',
-            render: (val: any) => {
+            width: '120px',
+            render: (val: any, row: KalpaNode) => {
                 const statusStr = String(val);
+                if (statusStr === 'completed') {
+                    return (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <span className="status-badge status-completed">已編織</span>
+                            <button className="weave-btn" onClick={() => setPreviewNode(row)}>預覽</button>
+                        </div>
+                    );
+                }
                 return (
-                    <span className={`status-badge status-${statusStr}`}>
-                        {statusStr === 'pending' ? '待編織' : statusStr}
-                    </span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span className={`status-badge status-${statusStr}`}>
+                            {statusStr === 'pending' ? '待編織' : statusStr === 'weaving' ? '編織中' : statusStr}
+                        </span>
+                        {statusStr === 'pending' && (
+                            <button
+                                className="weave-btn"
+                                disabled={weaveLoading !== null}
+                                onClick={() => handleWeave(row)}
+                            >
+                                {weaveLoading === row.id ? '...' : '編織'}
+                            </button>
+                        )}
+                    </div>
                 );
             }
         },
     ] as any;
 
     return (
-        <div className="kalpa-page">
-            <div className="kalpa-header">
-                <h1 className="page-title">因果矩陣 (Kalpa Intent Matrix)</h1>
-                <p className="kalpa-desc">透過笛卡爾乘積演算法，捕捉市場中所有潛在的搜尋意圖節點。</p>
-            </div>
-
+        <div className="kalpa-page-content" style={{ animation: 'fadeIn 0.5s ease-out' }}>
             <div className="kalpa-config card">
                 <div className="kalpa-instruction">
                     <h4>
                         <span>💡</span> 如何使用因果矩陣？
                     </h4>
                     <p>
-                        在下方欄位輸入您的核心<b>實體</b>（如：產品名）、<b>動作</b>（如：入金）與<b>痛點</b>（如：沒收到）。
+                        在下方欄位輸入您的核心<b>實體</b>、<b>動作</b>與<b>痛點</b>。
                         輸入完成後按下 <b>Enter</b> 即可新增。系統將自動排列組合生成所有可能的搜尋意圖標題。
+                        生成後請點擊「儲存專案」以解鎖預留「神諭編織」功能。
                     </p>
                 </div>
 
-                <div className="kalpa-config__row">
+                <div className="kalpa-config__row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: 'var(--space-4)' }}>
                     <Input
                         label="專案名稱"
-                        placeholder="輸入專案名稱以便後續追蹤..."
+                        placeholder="輸入專案名稱..."
                         value={projectName}
                         onChange={(e) => setProjectName(e.target.value)}
-                        fullWidth
+                    />
+                    <Input
+                        label="產業 (Industry)"
+                        placeholder="例如：Crypto, Finance..."
+                        value={industry}
+                        onChange={(e) => setIndustry(e.target.value)}
+                    />
+                    <Input
+                        label="目標導航 URL (Money Page)"
+                        placeholder="https://your-money-page.com"
+                        value={moneyPageUrl}
+                        onChange={(e) => setMoneyPageUrl(e.target.value)}
                     />
                 </div>
 
@@ -190,9 +273,19 @@ export const KalpaPage: React.FC = () => {
                         推演因果矩陣
                     </Button>
                     {results.length > 0 && (
-                        <Button variant="outline" onClick={exportCSV}>
-                            匯出 CSV
-                        </Button>
+                        <>
+                            <Button
+                                variant="primary"
+                                onClick={handleSave}
+                                loading={saveLoading}
+                                icon={<span>💾</span>}
+                            >
+                                {matrixId ? '更新專案' : '儲存專案'}
+                            </Button>
+                            <Button variant="outline" onClick={exportCSV}>
+                                匯出 CSV
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>
@@ -201,12 +294,39 @@ export const KalpaPage: React.FC = () => {
                 <div className="kalpa-results">
                     <div className="results-header">
                         <KPICard title="總意圖節點" value={results.length.toString()} icon={<span>📊</span>} />
-                        <KPICard title="預計生成次數" value={results.length.toString()} icon={<span>⚡</span>} />
+                        <KPICard title="儲存狀態" value={matrixId ? '已儲存' : '未儲存'} icon={<span>🔒</span>} />
                     </div>
 
                     <div className="results-table-container card">
                         <h3 className="card-title">矩陣節點預覽</h3>
                         <DataTable columns={columns} data={results} />
+                    </div>
+                </div>
+            )}
+
+            {/* Preview Modal */}
+            {previewNode && (
+                <div className="modal-overlay" onClick={() => setPreviewNode(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="card-title" style={{ marginBottom: 0 }}>文章預覽：{previewNode.target_title}</h3>
+                            <button onClick={() => setPreviewNode(null)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>&times;</button>
+                        </div>
+                        <div className="modal-body">
+                            <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-body)' }}>
+                                {previewNode.woven_content}
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <p style={{ marginRight: 'auto', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                                使用法寶：{previewNode.anchor_used}
+                            </p>
+                            <Button variant="outline" onClick={() => setPreviewNode(null)}>關閉</Button>
+                            <Button variant="primary" onClick={() => {
+                                // Logic to send to main project list
+                                alert('功能開發中：將內容發佈至專案清單');
+                            }}>發佈文章</Button>
+                        </div>
                     </div>
                 </div>
             )}

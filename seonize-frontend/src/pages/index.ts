@@ -12,4 +12,6 @@ export { SettingsPage } from './SettingsPage';
 export { KeywordHistoryPage } from './KeywordHistoryPage';
 export { PromptPage } from './PromptPage';
 export { KalpaPage } from './KalpaPage';
+export { KalpaEyeLayout } from './KalpaEyeLayout';
+export { KalpaHistoryPage } from './KalpaHistoryPage';
 export { NotFoundPage } from './NotFoundPage';
