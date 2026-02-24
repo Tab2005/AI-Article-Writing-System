@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 import './MainLayout.css';
 
 interface NavItem {
@@ -168,6 +168,31 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    path: '/kalpa',
+    label: '因果矩陣',
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 2a10 10 0 1 0 10 10" />
+        <path d="M12 12L2 12" />
+        <path d="M12 12L12 22" />
+        <path d="m20 20-4-4" />
+        <path d="m20 4-4 4" />
+        <path d="m4 20 4-4" />
+        <path d="m4 4 4 4" />
+      </svg>
+    ),
+  },
+  {
     path: '/settings',
     label: '系統設定',
     icon: (
@@ -190,7 +215,6 @@ const navItems: NavItem[] = [
 
 export const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const location = useLocation();
 
   return (
     <div className="main-layout">
@@ -247,30 +271,7 @@ export const MainLayout: React.FC = () => {
 
       {/* Main Content */}
       <div className="main-content">
-        <header className="main-header">
-          <div className="main-header__title">
-            {navItems.find((item) => item.path === location.pathname)?.label || 'Seonize'}
-          </div>
-          <div className="main-header__actions">
-            <button className="main-header__btn">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            </button>
-          </div>
-        </header>
-
-        <main className="main-body">
+        <main className="main-body" style={{ paddingTop: 'var(--space-8)' }}>
           <Outlet />
         </main>
       </div>

@@ -24,6 +24,7 @@ from app.api import (
     writing_router,
     auth_router,
     settings_router as settings_api_router,
+    kalpa_router,
 )
 from app.core.config import settings as app_settings
 from app.core.database import init_db
@@ -77,6 +78,7 @@ app.include_router(writing_router, prefix="/api/writing", tags=["Writing"])
 app.include_router(settings_api_router, prefix="/api/settings", tags=["Settings"])
 app.include_router(prompts_router, prefix="/api/prompts", tags=["Prompts"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(kalpa_router, prefix="/api/kalpa", tags=["Kalpa Matrix"])
 
 
 @app.get("/")

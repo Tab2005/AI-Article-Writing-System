@@ -199,6 +199,7 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="dashboard-page">
+      <h1 className="page-title">數據儀表板</h1>
       {/* KPI Cards */}
       <div className="dashboard-kpi-grid">
         <KPICard

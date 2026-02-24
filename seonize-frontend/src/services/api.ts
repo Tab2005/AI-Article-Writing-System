@@ -286,6 +286,24 @@ export const writingApi = {
     }),
 };
 
+// Kalpa API
+export interface KalpaNode {
+  entity: string;
+  action: string;
+  pain_point: string;
+  target_title: string;
+  status: string;
+}
+
+export const kalpaApi = {
+  generate: (data: {
+    project_name?: string;
+    entities: string[];
+    actions: string[];
+    pain_points: string[];
+  }) => request<KalpaNode[]>('/api/kalpa/generate', { method: 'POST', body: data }),
+};
+
 // Health check
 export const healthCheck = () => request<{ status: string }>('/api/health');
 

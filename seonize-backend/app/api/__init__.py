@@ -6,6 +6,8 @@ from .writing import router as writing_router
 from .settings import router as settings_router
 from .prompts import router as prompts_router
 from .auth import router as auth_router
+from .kalpa import router as kalpa_router
+
 
 __all__ = [
     "projects_router",
@@ -15,5 +17,7 @@ __all__ = [
     "settings_router",
     "prompts_router",
     "auth_router",
+    "kalpa_router",
+
 ]
 
