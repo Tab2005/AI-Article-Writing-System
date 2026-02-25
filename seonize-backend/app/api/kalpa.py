@@ -30,6 +30,20 @@ async def brainstorm_kalpa_elements(
         logger.error(f"Brainstorm failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"解析失敗: {str(e)}")
 
+@router.delete("/delete/{matrix_id}")
+async def delete_kalpa_matrix(
+    matrix_id: str,
+    db: Session = Depends(get_db),
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    刪除指定的矩陣及其所有節點
+    """
+    success = kalpa_service.delete_matrix(db, matrix_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="找不到該矩陣")
+    return {"success": True, "message": "專案已刪除"}
+
 class KalpaGenerateRequest(BaseModel):
     project_name: str = "Default_Project"
     entities: List[str]
@@ -110,19 +124,6 @@ async def list_kalpa_matrices(
     matrices = db.query(KalpaMatrix).order_by(KalpaMatrix.created_at.desc()).all()
     return [m.to_dict() for m in matrices]
 
-@router.get("/{matrix_id}")
-async def get_kalpa_matrix(
-    matrix_id: str,
-    db: Session = Depends(get_db),
-    current_admin: str = Depends(get_current_admin)
-):
-    """
-    取得特定矩陣的詳細內容與節點
-    """
-    result = kalpa_service.get_matrix(db, matrix_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="找不到該矩陣")
-    return result
 
 @router.post("/weave/{node_id}")
 async def weave_kalpa_node(
@@ -155,3 +156,17 @@ async def list_all_woven_articles(
         return articles
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文章查詢失敗: {str(e)}")
+
+@router.get("/{matrix_id}")
+async def get_kalpa_matrix(
+    matrix_id: str,
+    db: Session = Depends(get_db),
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    取得特定矩陣的詳細內容與節點
+    """
+    result = kalpa_service.get_matrix(db, matrix_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="找不到該矩陣")
+    return result

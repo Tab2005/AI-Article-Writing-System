@@ -120,7 +120,7 @@ export const ProjectsPage: React.FC = () => {
     {
       key: 'updated_at',
       header: '更新時間',
-      render: (value: unknown) => new Date(String(value)).toLocaleDateString('zh-TW'),
+      render: (value: unknown) => new Date(String(value)).toLocaleString('zh-TW'),
     },
     {
       key: 'actions',

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Input, DataTable, KPICard } from '../components/ui';
+import { Button, Input, DataTable, KPICard, MermaidRenderer } from '../components/ui';
 import { kalpaApi } from '../services/api';
 import type { KalpaNode } from '../services/api';
+import { parseMarkdown } from '../utils/markdown';
 import './KalpaPage.css';
 
 interface TagInputProps {
@@ -222,7 +223,10 @@ export const KalpaPage: React.FC = () => {
             return;
         }
 
+        // 優化：立即更新本地狀態為「編織中」，讓使用者知道進度
+        setResults(prev => prev.map(n => n.id === node.id ? { ...n, status: 'weaving' } : n));
         setWeaveLoading(node.id);
+
         try {
             const res = await kalpaApi.weave(node.id);
             if (res.success) {
@@ -231,6 +235,8 @@ export const KalpaPage: React.FC = () => {
             }
         } catch (error) {
             console.error('Weaving failed:', error);
+            // 失敗時也要更新狀態，讓使用者可以重試
+            setResults(prev => prev.map(n => n.id === node.id ? { ...n, status: 'failed' } : n));
             alert('編織失敗，請稍後再試。');
         } finally {
             setWeaveLoading(null);
@@ -267,7 +273,7 @@ export const KalpaPage: React.FC = () => {
         {
             key: 'status',
             header: '狀態',
-            width: '160px',
+            width: '240px',
             render: (val: any, row: KalpaNode) => {
                 const statusStr = String(val);
                 if (statusStr === 'completed') {
@@ -281,15 +287,28 @@ export const KalpaPage: React.FC = () => {
                 return (
                     <div className="status-cell">
                         <span className={`status-badge status-${statusStr}`}>
-                            {statusStr === 'pending' ? '待編織' : statusStr === 'weaving' ? '編織中' : statusStr}
+                            {statusStr === 'pending' ? '待編織' :
+                                statusStr === 'weaving' ? '神諭編織中...' :
+                                    statusStr === 'failed' ? '失敗' : statusStr}
                         </span>
-                        {statusStr === 'pending' && (
+                        {statusStr === 'weaving' && (
+                            <div className="weaving-progress-info">
+                                <div className="mini-spinner"></div>
+                                <span className="estimate-text">預計 40-60 秒</span>
+                            </div>
+                        )}
+                        {(statusStr === 'pending' || statusStr === 'failed') && (
                             <button
-                                className="weave-btn"
+                                className={`weave-btn ${statusStr === 'failed' ? 'retry' : ''}`}
                                 disabled={weaveLoading !== null}
                                 onClick={() => handleWeave(row)}
+                                style={statusStr === 'failed' ? {
+                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    color: 'var(--color-error)',
+                                    borderColor: 'var(--color-error)'
+                                } : {}}
                             >
-                                {weaveLoading === row.id ? '...' : '編織'}
+                                {weaveLoading === row.id ? '...' : statusStr === 'failed' ? '重試' : '編織'}
                             </button>
                         )}
                     </div>
@@ -467,26 +486,83 @@ export const KalpaPage: React.FC = () => {
 
             {/* Preview Modal */}
             {previewNode && (
-                <div className="modal-overlay" onClick={() => setPreviewNode(null)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
+                <div className="modal-overlay" onClick={() => setPreviewNode(null)} style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{
+                        maxWidth: '800px',
+                        width: '90%',
+                        maxHeight: '85vh',
+                        backgroundColor: 'var(--color-bg-card)',
+                        padding: 'var(--space-6)',
+                        borderRadius: 'var(--radius-xl)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: 'var(--shadow-xl)'
+                    }}>
+                        <div className="modal-header" style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: 'var(--space-4)',
+                            paddingBottom: 'var(--space-4)',
+                            borderBottom: '1px solid var(--color-border)'
+                        }}>
                             <h3 className="card-title" style={{ marginBottom: 0 }}>文章預覽：{previewNode.target_title}</h3>
-                            <button onClick={() => setPreviewNode(null)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>&times;</button>
+                            <button onClick={() => setPreviewNode(null)} style={{
+                                background: 'none',
+                                border: 'none',
+                                fontSize: '24px',
+                                cursor: 'pointer',
+                                color: 'var(--color-text-muted)'
+                            }}>&times;</button>
                         </div>
-                        <div className="modal-body">
-                            <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-body)' }}>
-                                {previewNode.woven_content}
+                        <div className="modal-body" style={{
+                            overflowY: 'auto',
+                            padding: 'var(--space-2)',
+                            flex: 1
+                        }}>
+                            <div className="markdown-body">
+                                {previewNode.woven_content ? (
+                                    <>
+                                        <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.woven_content) }} />
+                                        <MermaidRenderer content={previewNode.woven_content} />
+                                    </>
+                                ) : (
+                                    <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 'var(--space-10)' }}>
+                                        尚無內容
+                                    </p>
+                                )}
                             </div>
                         </div>
-                        <div className="modal-footer">
-                            <p style={{ marginRight: 'auto', fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                                使用法寶：{previewNode.anchor_used}
-                            </p>
-                            <Button variant="outline" onClick={() => setPreviewNode(null)}>關閉</Button>
-                            <Button variant="primary" onClick={() => {
-                                // Logic to send to main project list
-                                alert('功能開發中：將內容發佈至專案清單');
-                            }}>發佈文章</Button>
+                        <div className="modal-footer" style={{
+                            marginTop: 'var(--space-4)',
+                            paddingTop: 'var(--space-4)',
+                            borderTop: '1px solid var(--color-border)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+                                <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
+                                    使用法寶：<span style={{ color: 'var(--color-primary)' }}>{previewNode.anchor_used || '預設'}</span>
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                                <Button variant="outline" onClick={() => setPreviewNode(null)}>關閉</Button>
+                                <Button variant="primary" onClick={() => {
+                                    alert('功能開發中：將內容發佈至專案清單');
+                                }}>發佈文章</Button>
+                            </div>
                         </div>
                     </div>
                 </div>

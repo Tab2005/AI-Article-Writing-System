@@ -16,7 +16,7 @@ class ZeaburClient:
         self.api_key = api_key
         # 確保 base_url 結尾沒有斜線，方便後續拼接
         self.base_url = base_url.rstrip("/")
-        self.timeout = 60.0
+        self.timeout = 120.0
     
     async def generate(
         self,

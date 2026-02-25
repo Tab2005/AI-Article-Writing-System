@@ -195,12 +195,11 @@
   padding: 4px 10px;
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  text-transform: uppercase;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 60px;
+  white-space: nowrap;
+  width: fit-content;
 }
 
 .status-pending {
@@ -222,6 +221,39 @@
   animation: pulse 2s infinite;
 }
 
+.status-failed {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-error);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.mini-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.weave-btn.retry:hover {
+  background: var(--color-error) !important;
+  color: white !important;
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
+
 @keyframes pulse {
   0% {
     opacity: 1;
@@ -239,8 +271,22 @@
 .status-cell {
   display: flex !important;
   align-items: center !important;
-  gap: var(--space-3) !important;
-  min-height: 32px;
+  gap: var(--space-4) !important;
+  min-height: 36px;
+}
+
+.weaving-progress-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.estimate-text {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  opacity: 0.8;
 }
 
 .weave-btn {

@@ -1,9 +1,13 @@
+from datetime import datetime, timezone
 import itertools
 import random
+import logging
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.models.db_models import KalpaMatrix, KalpaNode
 from app.services.ai_service import AIService
+
+logger = logging.getLogger(__name__)
 
 class KalpaService:
     @staticmethod
@@ -108,7 +112,7 @@ class KalpaService:
         
         寫作規範要求：
         - 結構層次：使用 H2, H3。
-        - **視覺化加強**：在解釋解決步驟時，必須包含一個用 Mermaid 語法編寫的 [mermaid] 流程圖，描述處理邏輯（語法：graph TD...）。
+        - **視覺化加強**：在解釋解決步驟時，必須包含一個用 Mermaid 語法編寫的流程圖，描述處理邏輯（語法必須被包裹在 ```mermaid 和 ``` 之間，例如：```mermaid\ngraph TD...```）。
         - **數據權威**：包含一個簡單的 HTML 表格，對比『常見錯誤原因』與『對應方案』。
         
         【核心指令：微上下文植入】
@@ -122,7 +126,7 @@ class KalpaService:
         實體：{node.entity} | 動作：{node.action} | 痛點：{node.pain_point}
         
         關鍵要求：
-        1. 插入一個 Mermaid 流程圖。
+        1. 插入一個 Mermaid 流程圖 (語法必須包裹在 ```mermaid 代碼塊內)。
         2. 插入一個 HTML 對照表格。
         3. 結尾自然植入連結：[{selected_anchor}]({matrix.money_page_url or "https://example.com"})
         
@@ -130,6 +134,7 @@ class KalpaService:
         """
 
         try:
+            logger.info(f"Starting weaving for node {node_id} (title: {node.target_title})")
             # 使用 AIService 生成內容
             content = await AIService.generate_content(
                 prompt=user_prompt,
@@ -137,11 +142,16 @@ class KalpaService:
                 temperature=0.8
             )
             
+            if not content:
+                raise ValueError("AIService returned empty content")
+
+            logger.info(f"Successfully generated content for node {node_id}")
             node.woven_content = content
             node.anchor_used = selected_anchor
             node.woven_at = datetime.now(timezone.utc)
             node.status = "completed"
         except Exception as e:
+            logger.error(f"Weaving failed for node {node_id}: {str(e)}")
             node.status = "failed"
             node.woven_content = f"Error during weaving: {str(e)}"
         
@@ -209,5 +219,21 @@ class KalpaService:
                 "actions": [],
                 "pain_points": []
             }
+
+    @staticmethod
+    def delete_matrix(db: Session, matrix_id: str) -> bool:
+        """
+        刪除矩陣及其所有關聯節點
+        """
+        matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == matrix_id).first()
+        if not matrix:
+            return False
+            
+        # 刪除關聯節點
+        db.query(KalpaNode).filter(KalpaNode.matrix_id == matrix_id).delete()
+        # 刪除矩陣
+        db.delete(matrix)
+        db.commit()
+        return True
 
 kalpa_service = KalpaService()

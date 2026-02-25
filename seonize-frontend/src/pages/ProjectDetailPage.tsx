@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Input, Select } from '../components/ui';
 import { projectsApi } from '../services/api';
+import { parseMarkdown } from '../utils/markdown';
 import type { ProjectState } from '../types';
 import { SearchIntent, WritingStyle } from '../types';
 import './ProjectDetailPage.css';
@@ -14,6 +15,8 @@ export const ProjectDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'render' | 'markdown'>('render');
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const loadProject = useCallback(async () => {
     if (!projectId) return;
@@ -52,6 +55,13 @@ export const ProjectDetailPage: React.FC = () => {
     } catch (error) {
       console.error('更新專案失敗:', error);
     }
+  };
+
+  const handleCopy = () => {
+    if (!project?.full_content) return;
+    navigator.clipboard.writeText(project.full_content);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
   };
 
   const handleDelete = async () => {
@@ -122,10 +132,10 @@ export const ProjectDetailPage: React.FC = () => {
           <h1 className="project-detail-title">{project.primary_keyword}</h1>
           <div className="project-detail-meta">
             <span className="project-detail-meta__item">
-              建立時間: {new Date(project.created_at).toLocaleDateString('zh-TW')}
+              建立時間: {new Date(project.created_at).toLocaleString('zh-TW')}
             </span>
             <span className="project-detail-meta__item">
-              更新時間: {new Date(project.updated_at).toLocaleDateString('zh-TW')}
+              更新時間: {new Date(project.updated_at).toLocaleString('zh-TW')}
             </span>
           </div>
         </div>
@@ -183,9 +193,9 @@ export const ProjectDetailPage: React.FC = () => {
                     setProject((prev) =>
                       prev
                         ? {
-                            ...prev,
-                            intent: e.target.value as SearchIntent,
-                          }
+                          ...prev,
+                          intent: e.target.value as SearchIntent,
+                        }
                         : null
                     )
                   }
@@ -212,9 +222,9 @@ export const ProjectDetailPage: React.FC = () => {
                     setProject((prev) =>
                       prev
                         ? {
-                            ...prev,
-                            style: e.target.value as WritingStyle,
-                          }
+                          ...prev,
+                          style: e.target.value as WritingStyle,
+                        }
                         : null
                     )
                   }
@@ -243,9 +253,9 @@ export const ProjectDetailPage: React.FC = () => {
                       setProject((prev) =>
                         prev
                           ? {
-                              ...prev,
-                              selected_title: e.target.value,
-                            }
+                            ...prev,
+                            selected_title: e.target.value,
+                          }
                           : null
                       )
                     }
@@ -264,9 +274,9 @@ export const ProjectDetailPage: React.FC = () => {
                             setProject((prev) =>
                               prev
                                 ? {
-                                    ...prev,
-                                    selected_title: title,
-                                  }
+                                  ...prev,
+                                  selected_title: title,
+                                }
                                 : null
                             )
                           }
@@ -301,7 +311,49 @@ export const ProjectDetailPage: React.FC = () => {
           )}
         </div>
 
-        {/* 工作流程 */}
+        {/* 內容預覽 */}
+        {project.full_content && (
+          <div className="project-preview-section">
+            <div className="section-header-with-actions">
+              <h2 className="section-title">文章預覽</h2>
+              <div className="preview-actions">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                  className={copySuccess ? 'copy-success' : ''}
+                >
+                  {copySuccess ? '✅ 已複製' : '📋 複製全文'}
+                </Button>
+                <div className="preview-toggle-group">
+                  <button
+                    className={`toggle-btn ${previewMode === 'render' ? 'active' : ''}`}
+                    onClick={() => setPreviewMode('render')}
+                  >
+                    渲染
+                  </button>
+                  <button
+                    className={`toggle-btn ${previewMode === 'markdown' ? 'active' : ''}`}
+                    onClick={() => setPreviewMode('markdown')}
+                  >
+                    Markdown
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="preview-container card">
+              {previewMode === 'render' ? (
+                <div
+                  className="preview-render markdown-body"
+                  dangerouslySetInnerHTML={{ __html: parseMarkdown(project.full_content) }}
+                />
+              ) : (
+                <pre className="preview-markdown">{project.full_content}</pre>
+              )}
+            </div>
+          </div>
+        )}
         <div className="project-workflow-section">
           <h2 className="section-title">工作流程</h2>
           <div className="workflow-steps">

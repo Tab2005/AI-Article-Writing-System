@@ -30,6 +30,7 @@ interface RequestOptions {
   headers?: Record<string, string>;
   timeout?: number; // 自定義超時
   retries?: number; // 自定義重試次數
+  showLoading?: boolean; // 是否顯示全域 Loading
 }
 
 /**
@@ -69,6 +70,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers = {},
     timeout = API_CONFIG.timeout,
     retries = API_CONFIG.maxRetries,
+    showLoading = true,
   } = options;
 
   // 從 LocalStorage 獲取 Token
@@ -88,7 +90,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   }
 
   // 自動開啟全域 Loading
-  uiBus.showLoading();
+  if (showLoading) uiBus.showLoading();
 
   let lastError: Error | null = null;
 
@@ -155,7 +157,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     throw lastError || new Error('請求失敗');
   } finally {
     // 自動關閉全域 Loading
-    uiBus.hideLoading();
+    if (showLoading) uiBus.hideLoading();
   }
 }
 
@@ -260,7 +262,13 @@ export const writingApi = {
     ai_model?: string;
     target_word_count?: number;
     keyword_density?: number;
-  }) => request<WritingResponse>('/api/writing/generate-section', { method: 'POST', body: data }),
+  }) => request<WritingResponse>('/api/writing/generate-section', {
+    method: 'POST',
+    body: data,
+    timeout: 120000,
+    retries: 0,
+    showLoading: false
+  }),
 
   generateFull: (data: {
     project_id: string;
@@ -275,7 +283,13 @@ export const writingApi = {
       keyword_density: Record<string, number>;
       meta_title: string;
       meta_description: string;
-    }>('/api/writing/generate-full', { method: 'POST', body: data }),
+    }>('/api/writing/generate-full', {
+      method: 'POST',
+      body: data,
+      timeout: 120000,
+      retries: 0,
+      showLoading: false
+    }),
 
   seoCheck: (data: { content: string; primary_keyword: string; secondary_keywords?: string[] }) =>
     request<SEOCheckResponse>('/api/writing/seo-check', { method: 'POST', body: data }),
@@ -334,10 +348,17 @@ export const kalpaApi = {
 
   get: (id: string) => request<KalpaMatrix & { nodes: KalpaNode[] }>(`/api/kalpa/${id}`),
 
-  weave: (nodeId: string) => request<{ success: boolean; node: KalpaNode }>(`/api/kalpa/weave/${nodeId}`, { method: 'POST' }),
+  weave: (nodeId: string) => request<{ success: boolean; node: KalpaNode }>(`/api/kalpa/weave/${nodeId}`, {
+    method: 'POST',
+    timeout: 120000,
+    retries: 0,
+    showLoading: false
+  }),
 
   listArticles: (matrixId?: string) =>
     request<(KalpaNode & { project_name: string })[]>(`/api/kalpa/articles/all${matrixId ? `?matrix_id=${matrixId}` : ''}`),
+
+  delete: (id: string) => request<void>(`/api/kalpa/delete/${id}`, { method: 'DELETE' }),
 
   brainstorm: (topic: string) =>
     request<{ entities: string[]; actions: string[]; pain_points: string[] }>('/api/kalpa/brainstorm', { method: 'POST', body: { topic } }),

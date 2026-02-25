@@ -277,67 +277,7 @@
   margin-bottom: var(--space-4);
 }
 
-/* Markdown Body Styles */
-.markdown-body h2 {
-  font-size: var(--text-xl);
-  font-weight: var(--font-bold);
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.markdown-body h3 {
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  margin: var(--space-4) 0 var(--space-2);
-}
-
-.markdown-body p {
-  margin-bottom: var(--space-4);
-}
-
-.markdown-body ol,
-.markdown-body ul {
-  margin: var(--space-3) 0;
-  padding-left: var(--space-6);
-}
-
-.markdown-body li {
-  margin-bottom: var(--space-2);
-}
-
-.markdown-body table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: var(--space-4) 0;
-}
-
-.markdown-body th,
-.markdown-body td {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  text-align: left;
-}
-
-.markdown-body th {
-  background: var(--color-bg-secondary);
-  font-weight: var(--font-semibold);
-}
-
-.markdown-body blockquote {
-  border-left: 3px solid var(--color-primary);
-  padding-left: var(--space-4);
-  margin: var(--space-4) 0;
-  color: var(--color-text-secondary);
-  font-style: italic;
-}
-
-.keyword-highlight {
-  background: rgba(249, 115, 22, 0.2);
-  color: var(--color-cta);
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
-}
+/* Markdown Body Styles (Inherited from global index.css) */
 
 /* Source Code View */
 .source-code-view {

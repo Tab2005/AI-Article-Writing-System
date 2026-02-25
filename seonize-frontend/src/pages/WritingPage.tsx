@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Button, KPICard } from '../components/ui';
+import { Button, KPICard, MermaidRenderer } from '../components/ui';
 import { projectsApi, writingApi } from '../services/api';
+import { parseMarkdown } from '../utils/markdown';
 import type { ProjectState, OutlineSection, OptimizationMode } from '../types';
 import './WritingPage.css';
 
@@ -394,6 +395,7 @@ export const WritingPage: React.FC = () => {
             <div className="preview-loading-overlay">
               <div className="preview-loading-spinner" />
               <p>AI 正在撰寫中...</p>
+              <span className="estimate-text">預計 40-60 秒</span>
             </div>
           )}
 
@@ -433,10 +435,10 @@ export const WritingPage: React.FC = () => {
             {activeSection ? (
               activeSection.content ? (
                 previewMode === 'render' ? (
-                  <div
-                    className="markdown-body"
-                    dangerouslySetInnerHTML={{ __html: highlightKeywords(activeSection.content) }}
-                  />
+                  <div className="markdown-body">
+                    <div dangerouslySetInnerHTML={{ __html: parseMarkdown(highlightKeywords(activeSection.content)) }} />
+                    <MermaidRenderer content={activeSection.content} />
+                  </div>
                 ) : (
                   <pre className="source-code-view">{activeSection.content}</pre>
                 )
