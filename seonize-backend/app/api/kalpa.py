@@ -8,6 +8,28 @@ from app.core.database import get_db
 
 router = APIRouter()
 
+class BrainstormRequest(BaseModel):
+    topic: str
+
+@router.post("/brainstorm")
+async def brainstorm_kalpa_elements(
+    request: BrainstormRequest,
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    天道解析：根據主題生成矩陣要素建議
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Received brainstorm request for topic: {request.topic}")
+    
+    try:
+        results = await kalpa_service.brainstorm_elements(request.topic)
+        return results
+    except Exception as e:
+        logger.error(f"Brainstorm failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"解析失敗: {str(e)}")
+
 class KalpaGenerateRequest(BaseModel):
     project_name: str = "Default_Project"
     entities: List[str]
@@ -118,3 +140,18 @@ async def weave_kalpa_node(
         raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"編織失敗: {str(e)}")
+
+@router.get("/articles/all")
+async def list_all_woven_articles(
+    matrix_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    列出所有已編導完成的文章 (跨專案)
+    """
+    try:
+        articles = kalpa_service.list_all_articles(db, matrix_id)
+        return articles
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"文章查詢失敗: {str(e)}")

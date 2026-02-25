@@ -265,6 +265,7 @@ class KalpaNode(Base):
     status = Column(String(20), default="pending")  # pending, weaving, completed, failed
     woven_content = Column(Text, nullable=True)
     anchor_used = Column(String(255), nullable=True)
+    woven_at = Column(DateTime, nullable=True)
     
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -280,5 +281,6 @@ class KalpaNode(Base):
             "status": self.status,
             "woven_content": self.woven_content,
             "anchor_used": self.anchor_used,
+            "woven_at": self.woven_at.isoformat() if self.woven_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

@@ -14,4 +14,5 @@ export { PromptPage } from './PromptPage';
 export { KalpaPage } from './KalpaPage';
 export { KalpaEyeLayout } from './KalpaEyeLayout';
 export { KalpaHistoryPage } from './KalpaHistoryPage';
+export { KalpaArticlesPage } from './KalpaArticlesPage';
 export { NotFoundPage } from './NotFoundPage';

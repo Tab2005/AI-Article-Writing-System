@@ -297,6 +297,7 @@ export interface KalpaNode {
   status: 'pending' | 'weaving' | 'completed' | 'failed';
   woven_content?: string;
   anchor_used?: string;
+  woven_at?: string;
 }
 
 export interface KalpaMatrix {
@@ -334,6 +335,12 @@ export const kalpaApi = {
   get: (id: string) => request<KalpaMatrix & { nodes: KalpaNode[] }>(`/api/kalpa/${id}`),
 
   weave: (nodeId: string) => request<{ success: boolean; node: KalpaNode }>(`/api/kalpa/weave/${nodeId}`, { method: 'POST' }),
+
+  listArticles: (matrixId?: string) =>
+    request<(KalpaNode & { project_name: string })[]>(`/api/kalpa/articles/all${matrixId ? `?matrix_id=${matrixId}` : ''}`),
+
+  brainstorm: (topic: string) =>
+    request<{ entities: string[]; actions: string[]; pain_points: string[] }>('/api/kalpa/brainstorm', { method: 'POST', body: { topic } }),
 };
 
 // Health check

@@ -6,6 +6,7 @@ interface NavItem {
   path: string;
   label: string;
   icon: React.ReactNode;
+  children?: { path: string; label: string }[];
 }
 
 const navItems: NavItem[] = [
@@ -186,6 +187,11 @@ const navItems: NavItem[] = [
         <path d="m16 16-4-4" />
       </svg>
     ),
+    children: [
+      { path: '/kalpa-eye/matrix', label: '因果矩陣' },
+      { path: '/kalpa-eye/history', label: '因果查詢' },
+      { path: '/kalpa-eye/articles', label: '靈感成稿' },
+    ]
   },
   {
     path: '/settings',
@@ -210,6 +216,18 @@ const navItems: NavItem[] = [
 
 export const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['/kalpa-eye']);
+
+  const toggleMenu = (path: string, e: React.MouseEvent) => {
+    if (!sidebarOpen) {
+      setSidebarOpen(true);
+    }
+    setExpandedMenus(prev =>
+      prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+    );
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   return (
     <div className="main-layout">
@@ -241,18 +259,52 @@ export const MainLayout: React.FC = () => {
         </div>
 
         <nav className="sidebar__nav">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `sidebar__link ${isActive ? 'sidebar__link--active' : ''}`
-              }
-            >
-              <span className="sidebar__link-icon">{item.icon}</span>
-              {sidebarOpen && <span className="sidebar__link-text">{item.label}</span>}
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const hasChildren = item.children && item.children.length > 0;
+            const isExpanded = expandedMenus.includes(item.path);
+
+            return (
+              <React.Fragment key={item.path}>
+                <NavLink
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `sidebar__link ${isActive ? 'sidebar__link--active' : ''} ${hasChildren ? 'sidebar__link--has-children' : ''}`
+                  }
+                  onClick={(e) => hasChildren && toggleMenu(item.path, e)}
+                >
+                  <span className="sidebar__link-icon">{item.icon}</span>
+                  {sidebarOpen && (
+                    <>
+                      <span className="sidebar__link-text">{item.label}</span>
+                      {hasChildren && (
+                        <span className={`sidebar__link-chevron ${isExpanded ? 'active' : ''}`}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </span>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+
+                {hasChildren && isExpanded && sidebarOpen && (
+                  <div className="sidebar__submenu">
+                    {item.children?.map(child => (
+                      <NavLink
+                        key={child.path}
+                        to={child.path}
+                        className={({ isActive }) =>
+                          `sidebar__submenu-link ${isActive ? 'sidebar__submenu-link--active' : ''}`
+                        }
+                      >
+                        <span className="sidebar__submenu-text">{child.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
         </nav>
 
         <div className="sidebar__footer">

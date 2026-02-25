@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard } from '../components/ui';
 import { kalpaApi } from '../services/api';
 import type { KalpaNode } from '../services/api';
@@ -59,12 +60,14 @@ const TagInput: React.FC<TagInputProps> = ({ label, tags, setTags, placeholder }
 };
 
 export const KalpaPage: React.FC = () => {
-    const [projectName, setProjectName] = useState('Crypto_Emergency_2026');
-    const [industry, setIndustry] = useState('Crypto');
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const [projectName, setProjectName] = useState('');
+    const [industry, setIndustry] = useState('');
     const [moneyPageUrl, setMoneyPageUrl] = useState('');
-    const [entities, setEntities] = useState<string[]>(['幣安', 'MAX', 'OKX', 'MetaMask', 'Bybit']);
-    const [actions, setActions] = useState<string[]>(['入金', '提現', 'KYC認證', '合約下單', '提幣']);
-    const [pains, setPains] = useState<string[]>(['卡住', '失敗', '被風控', '顯示錯誤代碼', '等很久沒收到']);
+    const [entities, setEntities] = useState<string[]>([]);
+    const [actions, setActions] = useState<string[]>([]);
+    const [pains, setPains] = useState<string[]>([]);
 
     const [loading, setLoading] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
@@ -73,6 +76,94 @@ export const KalpaPage: React.FC = () => {
     const [matrixId, setMatrixId] = useState<string | null>(null);
 
     const [previewNode, setPreviewNode] = useState<KalpaNode | null>(null);
+
+    // 天道解析狀態
+    const [brainstormTopic, setBrainstormTopic] = useState('');
+    const [isBrainstorming, setIsBrainstorming] = useState(false);
+    const [tiandaoSuggestions, setTiandaoSuggestions] = useState<{
+        entities: string[];
+        actions: string[];
+        pain_points: string[];
+    } | null>(null);
+
+    useEffect(() => {
+        const id = searchParams.get('id');
+        if (id) {
+            loadMatrix(id);
+        } else {
+            // Reset for new matrix
+            setResults([]);
+            setMatrixId(null);
+        }
+    }, [searchParams]);
+
+    const handleBrainstorm = async () => {
+        if (!brainstormTopic.trim()) return;
+        setIsBrainstorming(true);
+        try {
+            const data = await kalpaApi.brainstorm(brainstormTopic);
+            setTiandaoSuggestions(data);
+        } catch (error) {
+            console.error('Brainstorm failed:', error);
+        } finally {
+            setIsBrainstorming(false);
+        }
+    };
+
+    const applyTiandaoSuggestions = (overwrite: boolean = false) => {
+        if (!tiandaoSuggestions) return;
+
+        if (overwrite) {
+            setEntities(tiandaoSuggestions.entities);
+            setActions(tiandaoSuggestions.actions);
+            setPains(tiandaoSuggestions.pain_points);
+        } else {
+            // 併入但不重複
+            setEntities(prev => Array.from(new Set([...prev, ...tiandaoSuggestions.entities])));
+            setActions(prev => Array.from(new Set([...prev, ...tiandaoSuggestions.actions])));
+            setPains(prev => Array.from(new Set([...prev, ...tiandaoSuggestions.pain_points])));
+        }
+
+        setTiandaoSuggestions(null); // 套用後關閉預覽
+        setBrainstormTopic(''); // 清空輸入
+    };
+
+    const handleClearAll = () => {
+        if (window.confirm('確定要清空所有輸入欄位與生成的矩陣嗎？')) {
+            setProjectName('');
+            setIndustry('');
+            setMoneyPageUrl('');
+            setEntities([]);
+            setActions([]);
+            setPains([]);
+            setResults([]);
+            setMatrixId(null);
+            setTiandaoSuggestions(null);
+        }
+    };
+
+    const loadMatrix = async (id: string) => {
+        // ... loadMatrix stays the same (I'll skip it in this chunk to keep it smaller if possible, but I'll make sure context matches)
+        // (Self-correction: I should include the context correctly)
+        setLoading(true);
+        try {
+            const matrix = await kalpaApi.get(id);
+            setProjectName(matrix.project_name);
+            setIndustry(matrix.industry || '');
+            setMoneyPageUrl(matrix.money_page_url || '');
+            setEntities(matrix.entities || []);
+            setActions(matrix.actions || []);
+            setPains(matrix.pain_points || []);
+            setResults(matrix.nodes || []);
+            setMatrixId(id);
+        } catch (error) {
+            console.error('Failed to load matrix:', error);
+            alert('載入專案失敗');
+            navigate('/kalpa-eye/matrix', { replace: true });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleGenerate = async () => {
         if (entities.length === 0 || actions.length === 0 || pains.length === 0) {
@@ -176,19 +267,19 @@ export const KalpaPage: React.FC = () => {
         {
             key: 'status',
             header: '狀態',
-            width: '120px',
+            width: '160px',
             render: (val: any, row: KalpaNode) => {
                 const statusStr = String(val);
                 if (statusStr === 'completed') {
                     return (
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div className="status-cell">
                             <span className="status-badge status-completed">已編織</span>
-                            <button className="weave-btn" onClick={() => setPreviewNode(row)}>預覽</button>
+                            <button className="weave-btn preview" onClick={() => setPreviewNode(row)}>預覽</button>
                         </div>
                     );
                 }
                 return (
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div className="status-cell">
                         <span className={`status-badge status-${statusStr}`}>
                             {statusStr === 'pending' ? '待編織' : statusStr === 'weaving' ? '編織中' : statusStr}
                         </span>
@@ -209,6 +300,69 @@ export const KalpaPage: React.FC = () => {
 
     return (
         <div className="kalpa-page-content" style={{ animation: 'fadeIn 0.5s ease-out' }}>
+            {/* 天道解析面板 */}
+            <div className="tiandao-panel card">
+                <div className="tiandao-header">
+                    <div className="tiandao-title">
+                        <span className="tiandao-icon">☯️</span>
+                        <div>
+                            <h3>天道解析 (Tiandao Analysis)</h3>
+                            <p>輸入產業主題，AI 將為您推演因果要素</p>
+                        </div>
+                    </div>
+                    <div className="tiandao-input-group">
+                        <input
+                            type="text"
+                            placeholder="輸入主題 (例如：海外代購, 美妝保養...)"
+                            value={brainstormTopic}
+                            onChange={(e) => setBrainstormTopic(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleBrainstorm()}
+                            className="tiandao-input"
+                        />
+                        <Button
+                            variant="primary"
+                            onClick={handleBrainstorm}
+                            loading={isBrainstorming}
+                            disabled={!brainstormTopic.trim()}
+                        >
+                            解析天道
+                        </Button>
+                    </div>
+                </div>
+
+                {tiandaoSuggestions && (
+                    <div className="tiandao-results animate-slide-down">
+                        <div className="tiandao-suggest-grid">
+                            <div className="suggest-item">
+                                <label>建議實體：</label>
+                                <div className="suggest-tags">
+                                    {tiandaoSuggestions.entities.map(s => <span key={s} className="suggest-tag">{s}</span>)}
+                                </div>
+                            </div>
+                            <div className="suggest-item">
+                                <label>建議動作：</label>
+                                <div className="suggest-tags">
+                                    {tiandaoSuggestions.actions.map(s => <span key={s} className="suggest-tag">{s}</span>)}
+                                </div>
+                            </div>
+                            <div className="suggest-item">
+                                <label>建議痛點：</label>
+                                <div className="suggest-tags">
+                                    {tiandaoSuggestions.pain_points.map(s => <span key={s} className="suggest-tag">{s}</span>)}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="tiandao-actions">
+                            <Button variant="outline" onClick={() => setTiandaoSuggestions(null)}>放棄建議</Button>
+                            <div className="tiandao-apply-group">
+                                <Button variant="secondary" onClick={() => applyTiandaoSuggestions(false)}>併入現有項目</Button>
+                                <Button variant="cta" onClick={() => applyTiandaoSuggestions(true)}>取代目前項目</Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             <div className="kalpa-config card">
                 <div className="kalpa-instruction">
                     <h4>
@@ -271,6 +425,13 @@ export const KalpaPage: React.FC = () => {
                         icon={<span>🔮</span>}
                     >
                         推演因果矩陣
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handleClearAll}
+                        title="清空所有欄位"
+                    >
+                        全部清空
                     </Button>
                     {results.length > 0 && (
                         <>

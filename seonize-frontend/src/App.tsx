@@ -18,6 +18,7 @@ import {
   KalpaPage,
   KalpaEyeLayout,
   KalpaHistoryPage,
+  KalpaArticlesPage,
   NotFoundPage,
 } from './pages';
 import './index.css';
@@ -69,6 +70,7 @@ function App() {
                 <Route index element={<Navigate to="matrix" replace />} />
                 <Route path="matrix" element={<KalpaPage />} />
                 <Route path="history" element={<KalpaHistoryPage />} />
+                <Route path="articles" element={<KalpaArticlesPage />} />
               </Route>
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

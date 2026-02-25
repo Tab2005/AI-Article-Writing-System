@@ -139,6 +139,7 @@ class KalpaService:
             
             node.woven_content = content
             node.anchor_used = selected_anchor
+            node.woven_at = datetime.now(timezone.utc)
             node.status = "completed"
         except Exception as e:
             node.status = "failed"
@@ -147,5 +148,66 @@ class KalpaService:
         db.commit()
         db.refresh(node)
         return node
+
+    @staticmethod
+    def list_all_articles(db: Session, matrix_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        取得所有已編織完成的文章，整合專案名稱。
+        """
+        query = db.query(KalpaNode, KalpaMatrix.project_name)\
+                  .join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id)\
+                  .filter(KalpaNode.status == "completed")
+        
+        if matrix_id:
+            query = query.filter(KalpaNode.matrix_id == matrix_id)
+            
+        results = query.order_by(KalpaNode.woven_at.desc()).all()
+        
+        articles = []
+        for node, project_name in results:
+            d = node.to_dict()
+            d["project_name"] = project_name
+            articles.append(d)
+        
+        return articles
+
+    @staticmethod
+    async def brainstorm_elements(topic: str) -> Dict[str, List[str]]:
+        """
+        天道解析：透過 AI 進行領域建模，生成建議的實體、動作與痛點。
+        """
+        system_prompt = """
+        你是一位精通 SEO 內容行銷與產業建模的專家。
+        你的任務是針對使用者提供的『主題』，進行因果矩陣建模。
+        
+        請回傳一個包含以下三個欄位的 JSON 物件：
+        1. entities (實體)：該產業的核心對象、平台、工具或軟體。
+        2. actions (動作)：使用者對這些實體執行的具體行為。
+        3. pain_points (痛點)：執行動作時最常遇到的困難、錯誤、恐懼或不便。
+        
+        每個欄位請提供約 5-8 個最具代表性的詞彙。
+        回傳格式必須為純 JSON，不得包含任何 Markdown 標籤或額外解釋。
+        """
+        
+        user_prompt = f"請針對主題『{topic}』進行天道解析建模。"
+        
+        try:
+            content = await AIService.generate_content(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.7
+            )
+            
+            # 清理可能的 Markdown 標記
+            clean_json = content.replace("```json", "").replace("```", "").strip()
+            import json
+            return json.loads(clean_json)
+        except Exception as e:
+            print(f"Brainstorm failed: {str(e)}")
+            return {
+                "entities": [],
+                "actions": [],
+                "pain_points": []
+            }
 
 kalpa_service = KalpaService()
