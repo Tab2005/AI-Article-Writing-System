@@ -78,8 +78,8 @@ class Project(Base):
             "word_count": self.word_count or 0,
             "keyword_density": self.keyword_density or {},
             "eeat_score": self.eeat_score,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
 
 
@@ -213,8 +213,8 @@ class PromptTemplate(Base):
             "name": self.name,
             "content": self.content,
             "is_active": self.is_active,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
 
 
@@ -246,8 +246,8 @@ class KalpaMatrix(Base):
             "actions": self.actions or [],
             "pain_points": self.pain_points or [],
             "anchor_variants": self.anchor_variants or [],
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
 
 
@@ -283,6 +283,6 @@ class KalpaNode(Base):
             "status": self.status,
             "woven_content": self.woven_content,
             "anchor_used": self.anchor_used,
-            "woven_at": self.woven_at.isoformat() if self.woven_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "woven_at": self.woven_at.replace(tzinfo=timezone.utc).isoformat() if self.woven_at else None,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
         }
