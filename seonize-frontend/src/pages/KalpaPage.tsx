@@ -331,6 +331,11 @@ export const KalpaPage: React.FC = () => {
             (filterPain === '' || n.pain_point === filterPain);
     });
 
+    // 動態從結果提取篩選選項 (確保與當前矩陣內容同步)
+    const uniqueEntities = Array.from(new Set(results.map(n => n.entity))).sort();
+    const uniqueActions = Array.from(new Set(results.map(n => n.action))).sort();
+    const uniquePains = Array.from(new Set(results.map(n => n.pain_point))).sort();
+
     const toggleSelectNode = (nodeId: string) => {
         setSelectedNodeIds(prev =>
             prev.includes(nodeId) ? prev.filter(id => id !== nodeId) : [...prev, nodeId]
@@ -796,19 +801,9 @@ export const KalpaPage: React.FC = () => {
                                         value={filterEntity}
                                         onChange={(e) => setFilterEntity(e.target.value)}
                                         className="filter-select"
-                                        style={{
-                                            backgroundColor: 'rgba(0,0,0,0.2)',
-                                            color: 'var(--color-text)',
-                                            border: '1px solid var(--color-border)',
-                                            borderRadius: 'var(--radius-sm)',
-                                            padding: '4px 8px',
-                                            fontSize: '13px',
-                                            outline: 'none',
-                                            minWidth: '120px'
-                                        }}
                                     >
                                         <option value="">全部實體</option>
-                                        {entities.map(e => <option key={e} value={e}>{e}</option>)}
+                                        {uniqueEntities.map(e => <option key={e} value={e}>{e}</option>)}
                                     </select>
                                 </div>
                                 <div className="filter-group">
@@ -817,19 +812,9 @@ export const KalpaPage: React.FC = () => {
                                         value={filterAction}
                                         onChange={(e) => setFilterAction(e.target.value)}
                                         className="filter-select"
-                                        style={{
-                                            backgroundColor: 'rgba(0,0,0,0.2)',
-                                            color: 'var(--color-text)',
-                                            border: '1px solid var(--color-border)',
-                                            borderRadius: 'var(--radius-sm)',
-                                            padding: '4px 8px',
-                                            fontSize: '13px',
-                                            outline: 'none',
-                                            minWidth: '120px'
-                                        }}
                                     >
                                         <option value="">全部動作</option>
-                                        {actions.map(a => <option key={a} value={a}>{a}</option>)}
+                                        {uniqueActions.map(a => <option key={a} value={a}>{a}</option>)}
                                     </select>
                                 </div>
                                 <div className="filter-group">
@@ -838,19 +823,9 @@ export const KalpaPage: React.FC = () => {
                                         value={filterPain}
                                         onChange={(e) => setFilterPain(e.target.value)}
                                         className="filter-select"
-                                        style={{
-                                            backgroundColor: 'rgba(0,0,0,0.2)',
-                                            color: 'var(--color-text)',
-                                            border: '1px solid var(--color-border)',
-                                            borderRadius: 'var(--radius-sm)',
-                                            padding: '4px 8px',
-                                            fontSize: '13px',
-                                            outline: 'none',
-                                            minWidth: '120px'
-                                        }}
                                     >
                                         <option value="">全部痛點</option>
-                                        {pains.map(p => <option key={p} value={p}>{p}</option>)}
+                                        {uniquePains.map(p => <option key={p} value={p}>{p}</option>)}
                                     </select>
                                 </div>
                                 <div className="filter-info" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
