@@ -350,6 +350,13 @@ export const KalpaPage: React.FC = () => {
         }
     };
 
+    const handleResetFilters = () => {
+        setFilterEntity('');
+        setFilterAction('');
+        setFilterPain('');
+        setSelectedNodeIds([]);
+    };
+
     const exportCSV = () => {
         if (results.length === 0) return;
 
@@ -785,18 +792,11 @@ export const KalpaPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="table-filters" style={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                gap: 'var(--space-4)',
-                                marginBottom: 'var(--space-4)',
-                                padding: 'var(--space-3)',
-                                backgroundColor: 'rgba(255,255,255,0.03)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--color-border)'
-                            }}>
+                            <div className="table-filters">
                                 <div className="filter-group">
-                                    <label style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>實體篩選</label>
+                                    <label>
+                                        <span className="filter-icon">🎯</span> 實體篩選
+                                    </label>
                                     <select
                                         value={filterEntity}
                                         onChange={(e) => setFilterEntity(e.target.value)}
@@ -806,8 +806,11 @@ export const KalpaPage: React.FC = () => {
                                         {uniqueEntities.map(e => <option key={e} value={e}>{e}</option>)}
                                     </select>
                                 </div>
+                                <div className="filter-separator"></div>
                                 <div className="filter-group">
-                                    <label style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>動作篩選</label>
+                                    <label>
+                                        <span className="filter-icon">⚡</span> 動作篩選
+                                    </label>
                                     <select
                                         value={filterAction}
                                         onChange={(e) => setFilterAction(e.target.value)}
@@ -817,8 +820,11 @@ export const KalpaPage: React.FC = () => {
                                         {uniqueActions.map(a => <option key={a} value={a}>{a}</option>)}
                                     </select>
                                 </div>
+                                <div className="filter-separator"></div>
                                 <div className="filter-group">
-                                    <label style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>痛點篩選</label>
+                                    <label>
+                                        <span className="filter-icon">🔥</span> 痛點篩選
+                                    </label>
                                     <select
                                         value={filterPain}
                                         onChange={(e) => setFilterPain(e.target.value)}
@@ -828,8 +834,16 @@ export const KalpaPage: React.FC = () => {
                                         {uniquePains.map(p => <option key={p} value={p}>{p}</option>)}
                                     </select>
                                 </div>
-                                <div className="filter-info" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                                    顯示 {filteredResults.length} / {results.length} 個節點
+
+                                <div className="filter-actions-right">
+                                    {(filterEntity || filterAction || filterPain) && (
+                                        <button className="filter-reset-btn" onClick={handleResetFilters}>
+                                            重置篩選 ↺
+                                        </button>
+                                    )}
+                                    <div className="filter-info">
+                                        顯示 <b>{filteredResults.length}</b> / {results.length} 個節點
+                                    </div>
                                 </div>
                             </div>
 
