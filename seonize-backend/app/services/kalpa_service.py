@@ -180,7 +180,7 @@ class KalpaService:
         selected_anchor = random.choice(anchor_variants)
         
         # 2. 【千人千面】動態人格設定 (Multi-Personality v3 - 產業適配)
-        persona = self._get_weaving_persona(node.pain_point, matrix.industry)
+        persona = KalpaService._get_weaving_persona(node.pain_point, matrix.industry)
 
         # 3. 構建 System Prompt (結構化加重術 + GEO/AIO 深度優化)
         system_prompt = f"""
