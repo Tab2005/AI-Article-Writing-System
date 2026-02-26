@@ -193,6 +193,7 @@ class KalpaService:
         3. **視覺化與表格**：解釋步驟時必須包含一個 Mermaid 流程圖，並包含一個 HTML 表格對比『核心問題』與『優化方案』。
         4. **💡 專家洞察 (Expert Insight)**：在文中插入一個具有深度見解的段落，開頭標註『💡 專家建議：』。
         5. **常見問答 (FAQ)**：在結尾前增加一個『## ❓ 常見問答 (FAQ)』區塊，包含 3 個關鍵問題與回答。
+        6. **🏁 完整性協定**：文章必須完整結束，嚴禁在 mid-sentence 或開放標籤處中斷。
         
         【核心指令：微上下文植入】
         在結論段落，以專業風險管理的角度，自然引導讀者點擊指定的權威頁面。
@@ -222,15 +223,21 @@ class KalpaService:
 
         try:
             logger.info(f"Starting weaving for node {node_id} (title: {node.target_title})")
-            # 使用 AIService 生成內容
+            # 使用 AIService 生成內容 (增加 max_tokens 確保長文完整性)
             content = await AIService.generate_content(
                 prompt=user_prompt,
                 system_prompt=system_prompt,
-                temperature=0.8
+                temperature=0.8,
+                max_tokens=8192
             )
             
             if not content:
                 raise ValueError("AIService returned empty content")
+
+            # 內容完整性修正：檢查是否以開放式符號中斷
+            if content.strip().endswith("- [") or content.strip().endswith("["):
+                logger.warning(f"Content for node {node_id} appears truncated. Attempting simple closure.")
+                content = content.strip().rstrip("-[") + "\n- [ ] (後續步驟請參考官方指南)"
 
             logger.info(f"Successfully generated content for node {node_id}")
             node.woven_content = content
