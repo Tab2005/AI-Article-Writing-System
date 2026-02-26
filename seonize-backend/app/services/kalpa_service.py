@@ -13,17 +13,35 @@ logger = logging.getLogger(__name__)
 
 class KalpaService:
     @staticmethod
-    def generate_matrix(entities: List[str], actions: List[str], pain_points: List[str], project_name: str = "Default_Project", title_template: Optional[str] = None) -> List[Dict[str, Any]]:
+    def generate_matrix(entities: List[str], actions: List[str], pain_points: List[str], project_name: str = "Default_Project", title_template: Optional[str] = None, exclusion_rules: Optional[Dict[str, List[str]]] = None) -> List[Dict[str, Any]]:
         """
         執行笛卡爾乘積運算，生成意圖矩陣 (Kalpa Matrix)
         """
         # 執行笛卡爾乘積 (Cartesian Product)
         combinations = list(itertools.product(entities, actions, pain_points))
+        total_initial = len(combinations)
         
         results = []
+        filtered_count = 0
+
         for e, a, p in combinations:
             # 確保內容沒有前後空格
             e, a, p = e.strip(), a.strip(), p.strip()
+
+            # --- 慧眼識珠：過濾邏輯 ---
+            is_valid = True
+            selected_rules = exclusion_rules if exclusion_rules is not None else {}
+            
+            for trigger, forbidden_words in selected_rules.items():
+                if trigger.lower() in e.lower():
+                    if any(word.lower() in a.lower() or word.lower() in p.lower() for word in forbidden_words):
+                        is_valid = False
+                        break
+            
+            if not is_valid:
+                filtered_count += 1
+                continue
+            # ------------------------
             
             # 生成標題邏輯
             if title_template:
@@ -46,6 +64,7 @@ class KalpaService:
                 "status": "pending"
             })
             
+        logger.info(f"💾 矩陣生成完畢：原組合 {total_initial} 個，經【慧眼識珠】過濾掉 {filtered_count} 個不合邏輯節點，剩餘 {len(results)} 個。")
         return results
 
     @staticmethod
@@ -159,32 +178,46 @@ class KalpaService:
             db.commit()
             
         selected_anchor = random.choice(anchor_variants)
-
-        # 2. 構建 System Prompt (結構化加重術)
-        system_prompt = f"""
-        你是一位在 {matrix.industry} 領域修煉多年的導師。
         
-        寫作規範要求：
-        - 結構層次：使用 H2, H3。
-        - **視覺化加強**：在解釋解決步驟時，必須包含一個用 Mermaid 語法編寫的流程圖，描述處理邏輯（語法必須被包裹在 ```mermaid 和 ``` 之間，例如：```mermaid\ngraph TD...```）。
-        - **數據權威**：包含一個簡單的 HTML 表格，對比『常見錯誤原因』與『對應方案』。
+        # 2. 【千人千面】動態人格設定 (Multi-Personality v3 - 產業適配)
+        persona = self._get_weaving_persona(node.pain_point, matrix.industry)
+
+        # 3. 構建 System Prompt (結構化加重術 + GEO/AIO 深度優化)
+        system_prompt = f"""
+        你現在的身份是：{persona['role']}。
+        你的寫作語氣：{persona['tone']}
+        
+        寫作規範要求 (GEO/AIO 友善架構)：
+        1. **快速摘要 (Summary Card)**：在文章最開頭，以『## 📋 快速摘要 (TL;DR)』為標題，用 100 字內總結針對『{node.target_title}』的核心方案。
+        2. **🎯 直接答案片段**：在每個 H2/H3 標題下方，緊接一段 50 字內的精煉回答，直接切入重點，避免廢話，以符合 AI Overviews 摘錄邏輯。
+        3. **視覺化與表格**：解釋步驟時必須包含一個 Mermaid 流程圖，並包含一個 HTML 表格對比『核心問題』與『優化方案』。
+        4. **💡 專家洞察 (Expert Insight)**：在文中插入一個具有深度見解的段落，開頭標註『💡 專家建議：』。
+        5. **常見問答 (FAQ)**：在結尾前增加一個『## ❓ 常見問答 (FAQ)』區塊，包含 3 個關鍵問題與回答。
         
         【核心指令：微上下文植入】
-        在結論段落，以風險管理的角度，引導讀者點擊指定的權威頁面。
+        在結論段落，以專業風險管理的角度，自然引導讀者點擊指定的權威頁面。
         """
 
-        # 3. 構建 User Prompt
+        # 4. 構建 User Prompt
         user_prompt = f"""
-        請針對標題『{node.target_title}』撰寫專業指南。
+        {persona['intro']}
         
-        實體：{node.entity} | 動作：{node.action} | 痛點：{node.pain_point}
+        請針對標題『{node.target_title}』撰寫專業解決方案指南。
         
-        關鍵要求：
-        1. 插入一個 Mermaid 流程圖 (語法必須包裹在 ```mermaid 代碼塊內)。
-        2. 插入一個 HTML 對照表格。
-        3. 結尾自然植入連結：[{selected_anchor}]({matrix.money_page_url or "https://example.com"})
+        核心要素：
+        - 產業背景：{matrix.industry}
+        - 實體：{node.entity}
+        - 動作：{node.action}
+        - 痛點：{node.pain_point}
         
-        請注意時效性，使用 2026 年為背景。
+        文章必須包含：
+        1. 針對 {node.pain_point} 的深度解析與同理。
+        2. 完全符合 {persona['role']} 背景的專業建議，嚴禁使用無關產業的術語（除非是類比）。
+        3. Mermaid 流程圖語法 (包裹在 ```mermaid 內)。
+        4. HTML 對照表格。
+        5. 結尾自然植入連結：[{selected_anchor}]({matrix.money_page_url or "https://example.com"})
+        
+        請注意時效性，背景設定為 2026 年最新趨勢與實踐方案。
         """
 
         try:
@@ -244,15 +277,18 @@ class KalpaService:
         你是一位精通 SEO 內容行銷與產業建模的專家。
         你的任務是針對使用者提供的『主題』，進行因果矩陣建模。
         
-        請回傳一個包含以下四個欄位的 JSON 物件：
+        請回傳一個包含以下五個欄位的 JSON 物件：
         1. entities (實體)：該產業的核心對象、平台、工具或軟體（例如：MetaMask, 幣安）。
         2. actions (動作)：使用者對這些實體執行的具體行為（例如：入金, 提現, 註冊）。
         3. pain_points (痛點)：執行動作時最常遇到的困難、錯誤、恐懼或不便（例如：失敗, 等很久, 報錯）。
         4. suggested_title_template (建議標題模板)：為該主題量身打造的一個意圖標題模板。必須包含預留位置 {entity}, {action}, {pain_point}。
            請發揮創意，設計一個引人入勝、能解決痛點且具備 2026 年時效性的標題。
            【注意】：標題內容請保持連貫，預留位置前後「不要」有空格（除非是英文詞彙），確保讀起來流暢。
-           避免使用「怎麼辦？」或「修復步驟」等陳舊詞彙。
            例如："2026實戰：當{entity}{action}遭遇{pain_point}時的終極優化方案"
+        5. exclusion_rules (排除規則)：這是一個 JSON 物件，定義該產業中不合理的組合。
+           格式為 { "實體關鍵字": ["禁止出現的動作或痛點詞彙"] }。
+           例如針對『加密貨幣錢包』，規則可能是：{"MetaMask": ["KYC認證", "提現"], "冷錢包": ["入金"]}。
+           請根據您對主題『主題』的專業理解，列出 3-5 條最關鍵的邏輯排除規則，避免產生低品質組合。
 
         每個欄位前三項請提供約 6-10 個最具代表性的詞彙。
         回傳格式必須為純 JSON，不得包含任何 Markdown 標籤或額外解釋。
@@ -295,5 +331,52 @@ class KalpaService:
         db.delete(matrix)
         db.commit()
         return True
+
+    @staticmethod
+    def _get_weaving_persona(pain_point: str, industry: str) -> Dict[str, str]:
+        """
+        【千人千面 v3】根據痛點內容與產業背景，動態生成 AI 寫作人格設定
+        """
+        pp = pain_point.lower()
+        ind = industry if industry else "相關領域"
+        
+        # 1. 失敗/故障類
+        if any(w in pp for w in ["失敗", "錯誤", "無法", "斷開", "崩潰", "fail", "error", "bug"]):
+            return {
+                "role": f"資深 {ind} 技術架構師",
+                "tone": "專業、簡潔、邏輯性極強，專注於『故障排除路徑』與『底層邏輯修復』。",
+                "intro": f"面對 {ind} 的技術故障，我們需要保持冷靜。這通常源於配置偏移或環境不相容。這篇文章會帶你從檢查實體狀態開始，快速定位並解決問題。"
+            }
+            
+        # 2. 金流/風險/安全類
+        if any(w in pp for w in ["風控", "資金", "拿不出來", "凍結", "申訴", "實名", "kyc", "安全", "危險", "詐騙", "風險"]):
+            return {
+                "role": f"資深 {ind} 安全合規顧問",
+                "tone": "嚴謹、安撫性強、極具權威感，專注於『合規路徑』與『資產/數據安全協議』。",
+                "intro": f"在 {ind} 領域，安全始終是核心。遇到風險提示或受限情況時，這往往是系統安全協議的觸發。接下來，我將依據 2026 最新標準引導您完成合規處置。"
+            }
+            
+        # 3. 效率/等待類
+        if any(w in pp for w in ["等很久", "慢", "沒反應", "延遲", "堵塞", "slow", "wait", "delay"]):
+            return {
+                "role": f"資深 {ind} 流程優化專家",
+                "tone": "親切、耐心、富有對比感，使用生動比喻（如排隊、塞車）來解釋底層延遲原因。",
+                "intro": f"我知道在處理 {ind} 相關事務時，『等待』是最折磨人的。這種延遲通常與處理高峰有關，讓我們拿起地圖，看看現在的『交通狀況』，並尋找最優的加速方案。"
+            }
+
+        # 4. 極速/教學/懶人類
+        if any(w in pp for w in ["一鍵", "懶人", "自動", "快速", "教學", "懶人包", "手把手"]):
+            return {
+                "role": f"{ind} 極簡主義效率導師",
+                "tone": "高效、去冗餘、指令化，強調『3 分鐘上手』與『全自動化配置』。",
+                "intro": f"時間在 {ind} 競爭中至關重要。我們跳過所有繁瑣的理論，直接進入最乾貨的操作環節，讓您在最短時間內達成自動化優化目標。"
+            }
+
+        # 預設：資深領域專家
+        return {
+            "role": f"資深 {ind} 諮詢官",
+            "tone": "中立、平衡、全面，提供 2026 年最新趨勢分析與客觀優化方案。",
+            "intro": f"針對 {ind} 領域的這個常見問題，我們進行了深度的調研與實測，這份 2026 年版本的優化指南將助您在解決方案中脫穎而出。"
+        }
 
 kalpa_service = KalpaService()

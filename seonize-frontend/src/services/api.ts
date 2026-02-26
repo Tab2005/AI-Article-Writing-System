@@ -333,6 +333,7 @@ export const kalpaApi = {
     actions: string[];
     pain_points: string[];
     title_template?: string;
+    exclusion_rules?: Record<string, string[]>;
   }) => request<KalpaNode[]>('/api/kalpa/generate', { method: 'POST', body: data }),
 
   save: (data: {
@@ -362,7 +363,13 @@ export const kalpaApi = {
   delete: (id: string) => request<void>(`/api/kalpa/delete/${id}`, { method: 'DELETE' }),
 
   brainstorm: (topic: string) =>
-    request<{ entities: string[]; actions: string[]; pain_points: string[] }>('/api/kalpa/brainstorm', { method: 'POST', body: { topic } }),
+    request<{
+      entities: string[];
+      actions: string[];
+      pain_points: string[];
+      suggested_title_template?: string;
+      exclusion_rules?: Record<string, string[]>;
+    }>('/api/kalpa/brainstorm', { method: 'POST', body: { topic } }),
 };
 
 // Health check

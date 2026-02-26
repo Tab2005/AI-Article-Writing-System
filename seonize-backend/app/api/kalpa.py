@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 from sqlalchemy.orm import Session
 from app.services.kalpa_service import kalpa_service
 from app.core.auth import get_current_admin
@@ -50,6 +50,7 @@ class KalpaGenerateRequest(BaseModel):
     actions: List[str]
     pain_points: List[str]
     title_template: Optional[str] = None
+    exclusion_rules: Optional[Dict[str, List[str]]] = None
 
 class KalpaNodeSchema(BaseModel):
     entity: str
@@ -84,7 +85,8 @@ async def generate_kalpa_matrix(
             actions=request.actions,
             pain_points=request.pain_points,
             project_name=request.project_name,
-            title_template=request.title_template
+            title_template=request.title_template,
+            exclusion_rules=request.exclusion_rules
         )
         return results
     except Exception as e:
@@ -172,3 +174,5 @@ async def get_kalpa_matrix(
     if not result:
         raise HTTPException(status_code=404, detail="找不到該矩陣")
     return result
+
+KalpaGenerateRequest.model_rebuild()

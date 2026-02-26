@@ -69,12 +69,13 @@ export const KalpaPage: React.FC = () => {
     const [entities, setEntities] = useState<string[]>([]);
     const [actions, setActions] = useState<string[]>([]);
     const [pains, setPains] = useState<string[]>([]);
+    const [titleTemplate, setTitleTemplate] = useState('');
+    const [exclusionRules, setExclusionRules] = useState<Record<string, string[]>>({});
 
     const [loading, setLoading] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
     const [weaveLoading, setWeaveLoading] = useState<string | null>(null);
     const [results, setResults] = useState<KalpaNode[]>([]);
-    const [titleTemplate, setTitleTemplate] = useState('');
     const [matrixId, setMatrixId] = useState<string | null>(null);
 
     const [previewNode, setPreviewNode] = useState<KalpaNode | null>(null);
@@ -87,6 +88,7 @@ export const KalpaPage: React.FC = () => {
         actions: string[];
         pain_points: string[];
         suggested_title_template?: string;
+        exclusion_rules?: Record<string, string[]>;
     } | null>(null);
 
     useEffect(() => {
@@ -120,8 +122,8 @@ export const KalpaPage: React.FC = () => {
             setEntities(tiandaoSuggestions.entities);
             setActions(tiandaoSuggestions.actions);
             setPains(tiandaoSuggestions.pain_points);
-            if (tiandaoSuggestions.suggested_title_template) {
-                setTitleTemplate(tiandaoSuggestions.suggested_title_template);
+            if (tiandaoSuggestions.exclusion_rules) {
+                setExclusionRules(tiandaoSuggestions.exclusion_rules);
             }
         } else {
             // 併入但不重複
@@ -130,6 +132,9 @@ export const KalpaPage: React.FC = () => {
             setPains(prev => Array.from(new Set([...prev, ...tiandaoSuggestions.pain_points])));
             if (!titleTemplate && tiandaoSuggestions.suggested_title_template) {
                 setTitleTemplate(tiandaoSuggestions.suggested_title_template);
+            }
+            if (tiandaoSuggestions.exclusion_rules) {
+                setExclusionRules(prev => ({ ...prev, ...tiandaoSuggestions.exclusion_rules }));
             }
         }
 
@@ -145,12 +150,14 @@ export const KalpaPage: React.FC = () => {
         const newActions = tiandaoSuggestions.actions;
         const newPains = tiandaoSuggestions.pain_points;
         const newTemplate = tiandaoSuggestions.suggested_title_template || titleTemplate;
+        const newExclusionRules = tiandaoSuggestions.exclusion_rules || exclusionRules;
 
         // 更新 UI 狀態
         setEntities(newEntities);
         setActions(newActions);
         setPains(newPains);
         if (newTemplate) setTitleTemplate(newTemplate);
+        if (tiandaoSuggestions.exclusion_rules) setExclusionRules(tiandaoSuggestions.exclusion_rules);
         setTiandaoSuggestions(null);
 
         // 2. 直接呼叫生成 API (使用 local 變數確保即時性)
@@ -161,7 +168,8 @@ export const KalpaPage: React.FC = () => {
                 entities: newEntities,
                 actions: newActions,
                 pain_points: newPains,
-                title_template: newTemplate
+                title_template: newTemplate,
+                exclusion_rules: newExclusionRules
             });
             setResults(data);
             setMatrixId(null);
@@ -184,6 +192,7 @@ export const KalpaPage: React.FC = () => {
             setResults([]);
             setMatrixId(null);
             setTiandaoSuggestions(null);
+            setExclusionRules({});
         }
     };
 
@@ -223,7 +232,8 @@ export const KalpaPage: React.FC = () => {
                 entities,
                 actions,
                 pain_points: pains,
-                title_template: titleTemplate
+                title_template: titleTemplate,
+                exclusion_rules: exclusionRules
             });
             setResults(data);
             setMatrixId(null); // Reset saved ID on new generation
@@ -416,56 +426,79 @@ export const KalpaPage: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        {tiandaoSuggestions.suggested_title_template && (
-                            <div className="tiandao-suggest-template" style={{
+
+                        {tiandaoSuggestions.exclusion_rules && Object.keys(tiandaoSuggestions.exclusion_rules).length > 0 && (
+                            <div className="tiandao-suggest-rules" style={{
                                 marginTop: 'var(--space-4)',
                                 padding: 'var(--space-3)',
-                                backgroundColor: 'rgba(var(--color-primary-rgb), 0.1)',
+                                backgroundColor: 'rgba(239, 68, 68, 0.05)',
                                 borderRadius: 'var(--radius-md)',
-                                border: '1px dashed var(--color-primary)'
+                                border: '1px dashed #ef4444'
                             }}>
-                                <label style={{ fontSize: '13px', color: 'var(--color-primary)', fontWeight: 'bold', display: 'block', marginBottom: 'var(--space-1)' }}>
-                                    ✨ 建議標題模板：
+                                <label style={{ fontSize: '12px', color: '#ef4444', fontWeight: 'bold', display: 'block', marginBottom: 'var(--space-1)' }}>
+                                    🛡️ 建議排除規則 (慧眼識珠)：
                                 </label>
-                                <code style={{ fontSize: '14px', color: 'var(--color-text)' }}>
-                                    {tiandaoSuggestions.suggested_title_template}
-                                </code>
+                                <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                                    {Object.entries(tiandaoSuggestions.exclusion_rules).map(([trigger, forbidden], idx) => (
+                                        <div key={idx} style={{ marginBottom: '2px' }}>
+                                            • 當實體含「<b>{trigger}</b>」時，排除含：{forbidden.join(', ')}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
+
                         {tiandaoSuggestions.suggested_title_template && (
-                            <div className="tiandao-simulation-preview" style={{
-                                marginTop: 'var(--space-4)',
-                                padding: 'var(--space-4)',
-                                backgroundColor: 'rgba(var(--color-primary-rgb), 0.05)',
-                                borderRadius: 'var(--radius-lg)',
-                                border: '1px solid rgba(var(--color-primary-rgb), 0.2)'
-                            }}>
-                                <div style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: 'bold', marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                                    <span>🔮 標題推演模擬 (範例)</span>
+                            <>
+                                <div className="tiandao-suggest-template" style={{
+                                    marginTop: 'var(--space-4)',
+                                    padding: 'var(--space-3)',
+                                    backgroundColor: 'rgba(var(--color-primary-rgb), 0.1)',
+                                    borderRadius: 'var(--radius-md)',
+                                    border: '1px dashed var(--color-primary)'
+                                }}>
+                                    <label style={{ fontSize: '13px', color: 'var(--color-primary)', fontWeight: 'bold', display: 'block', marginBottom: 'var(--space-1)' }}>
+                                        ✨ 建議標題模板：
+                                    </label>
+                                    <code style={{ fontSize: '14px', color: 'var(--color-text)' }}>
+                                        {tiandaoSuggestions.suggested_title_template}
+                                    </code>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                                    {tiandaoSuggestions.entities.slice(0, 3).map((entity, i) => {
-                                        const action = tiandaoSuggestions.actions[i] || tiandaoSuggestions.actions[0];
-                                        const pain = tiandaoSuggestions.pain_points[i] || tiandaoSuggestions.pain_points[0];
-                                        const simulatedTitle = (tiandaoSuggestions.suggested_title_template || '')
-                                            .replace('{entity}', entity)
-                                            .replace('{action}', action)
-                                            .replace('{pain_point}', pain);
-                                        return (
-                                            <div key={i} style={{
-                                                fontSize: '13px',
-                                                padding: 'var(--space-2) var(--space-3)',
-                                                backgroundColor: 'rgba(255,255,255,0.03)',
-                                                borderRadius: 'var(--radius-sm)',
-                                                borderLeft: '3px solid var(--color-primary)',
-                                                color: 'var(--color-text-secondary)'
-                                            }}>
-                                                {simulatedTitle}
-                                            </div>
-                                        );
-                                    })}
+
+                                <div className="tiandao-simulation-preview" style={{
+                                    marginTop: 'var(--space-4)',
+                                    padding: 'var(--space-4)',
+                                    backgroundColor: 'rgba(var(--color-primary-rgb), 0.05)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    border: '1px solid rgba(var(--color-primary-rgb), 0.2)'
+                                }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: 'bold', marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                                        <span>🔮 標題推演模擬 (範例)</span>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                        {tiandaoSuggestions.entities.slice(0, 3).map((entity, i) => {
+                                            const action = tiandaoSuggestions.actions[i] || tiandaoSuggestions.actions[0];
+                                            const pain = tiandaoSuggestions.pain_points[i] || tiandaoSuggestions.pain_points[0];
+                                            const simulatedTitle = (tiandaoSuggestions.suggested_title_template || '')
+                                                .replace('{entity}', entity)
+                                                .replace('{action}', action)
+                                                .replace('{pain_point}', pain);
+                                            return (
+                                                <div key={i} style={{
+                                                    fontSize: '13px',
+                                                    padding: 'var(--space-2) var(--space-3)',
+                                                    backgroundColor: 'rgba(255,255,255,0.03)',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    borderLeft: '3px solid var(--color-primary)',
+                                                    color: 'var(--color-text-secondary)'
+                                                }}>
+                                                    {simulatedTitle}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         )}
                         <div className="tiandao-actions" style={{ marginTop: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Button variant="outline" onClick={() => setTiandaoSuggestions(null)}>放棄建議</Button>
@@ -532,7 +565,45 @@ export const KalpaPage: React.FC = () => {
                                 <button className="preset-btn" onClick={() => setTitleTemplate('{entity}{action}{pain_point}：2026 專家深度分析與防坑指南')}>專業指南</button>
                                 <button className="preset-btn" onClick={() => setTitleTemplate('{entity}在{action}時遇到{pain_point}？這篇教你如何快速修復')}>實戰修復</button>
                                 <button className="preset-btn" onClick={() => setTitleTemplate('為什麼{entity}{action}會{pain_point}？2026 避坑清單與優化方案')}>避坑清單</button>
+                                <button className="preset-btn" style={{ color: '#ef4444' }} onClick={() => setExclusionRules({})}>清空過濾規則</button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="filter-logic-config" style={{ marginTop: 'var(--space-4)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
+                        <div className="config-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                                <span className="icon">🛡️</span>
+                                <span>慧眼識珠：過濾邏輯設定 (JSON 格式)</span>
+                            </div>
+                            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>AI 將自動生成，您也可手動調整</span>
+                        </div>
+                        <div style={{ padding: 'var(--space-4)' }}>
+                            <textarea
+                                style={{
+                                    width: '100%',
+                                    minHeight: '120px',
+                                    backgroundColor: 'rgba(0,0,0,0.2)',
+                                    color: '#10b981',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: 'var(--space-3)',
+                                    fontFamily: 'monospace',
+                                    fontSize: '13px',
+                                    outline: 'none',
+                                    resize: 'vertical'
+                                }}
+                                value={JSON.stringify(exclusionRules, null, 2)}
+                                onChange={(e) => {
+                                    try {
+                                        const parsed = JSON.parse(e.target.value);
+                                        setExclusionRules(parsed);
+                                    } catch (err) {
+                                        // 暫不處理編輯中的無效 JSON
+                                    }
+                                }}
+                                placeholder='{ "關鍵字": ["禁止詞1", "禁止詞2"] }'
+                            />
                         </div>
                     </div>
                 </details>
@@ -613,103 +684,107 @@ export const KalpaPage: React.FC = () => {
                 </div>
             </div>
 
-            {results.length > 0 && (
-                <div className="kalpa-results">
-                    <div className="results-header">
-                        <KPICard title="總意圖節點" value={results.length.toString()} icon={<span>📊</span>} />
-                        <KPICard title="儲存狀態" value={matrixId ? '已儲存' : '未儲存'} icon={<span>🔒</span>} />
-                    </div>
+            {
+                results.length > 0 && (
+                    <div className="kalpa-results">
+                        <div className="results-header">
+                            <KPICard title="總意圖節點" value={results.length.toString()} icon={<span>📊</span>} />
+                            <KPICard title="儲存狀態" value={matrixId ? '已儲存' : '未儲存'} icon={<span>🔒</span>} />
+                        </div>
 
-                    <div className="results-table-container card">
-                        <h3 className="card-title">矩陣節點預覽</h3>
-                        <DataTable columns={columns} data={results} />
+                        <div className="results-table-container card">
+                            <h3 className="card-title">矩陣節點預覽</h3>
+                            <DataTable columns={columns} data={results} />
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Preview Modal */}
-            {previewNode && (
-                <div className="modal-overlay" onClick={() => setPreviewNode(null)} style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000
-                }}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{
-                        maxWidth: '800px',
-                        width: '90%',
-                        maxHeight: '85vh',
-                        backgroundColor: 'var(--color-bg-card)',
-                        padding: 'var(--space-6)',
-                        borderRadius: 'var(--radius-xl)',
+            {
+                previewNode && (
+                    <div className="modal-overlay" onClick={() => setPreviewNode(null)} style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
                         display: 'flex',
-                        flexDirection: 'column',
-                        boxShadow: 'var(--shadow-xl)'
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000
                     }}>
-                        <div className="modal-header" style={{
+                        <div className="modal-content" onClick={e => e.stopPropagation()} style={{
+                            maxWidth: '800px',
+                            width: '90%',
+                            maxHeight: '85vh',
+                            backgroundColor: 'var(--color-bg-card)',
+                            padding: 'var(--space-6)',
+                            borderRadius: 'var(--radius-xl)',
                             display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: 'var(--space-4)',
-                            paddingBottom: 'var(--space-4)',
-                            borderBottom: '1px solid var(--color-border)'
+                            flexDirection: 'column',
+                            boxShadow: 'var(--shadow-xl)'
                         }}>
-                            <h3 className="card-title" style={{ marginBottom: 0 }}>文章預覽：{previewNode.target_title}</h3>
-                            <button onClick={() => setPreviewNode(null)} style={{
-                                background: 'none',
-                                border: 'none',
-                                fontSize: '24px',
-                                cursor: 'pointer',
-                                color: 'var(--color-text-muted)'
-                            }}>&times;</button>
-                        </div>
-                        <div className="modal-body" style={{
-                            overflowY: 'auto',
-                            padding: 'var(--space-2)',
-                            flex: 1
-                        }}>
-                            <div className="markdown-body">
-                                {previewNode.woven_content ? (
-                                    <>
-                                        <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.woven_content) }} />
-                                        <MermaidRenderer content={previewNode.woven_content} />
-                                    </>
-                                ) : (
-                                    <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 'var(--space-10)' }}>
-                                        尚無內容
+                            <div className="modal-header" style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: 'var(--space-4)',
+                                paddingBottom: 'var(--space-4)',
+                                borderBottom: '1px solid var(--color-border)'
+                            }}>
+                                <h3 className="card-title" style={{ marginBottom: 0 }}>文章預覽：{previewNode.target_title}</h3>
+                                <button onClick={() => setPreviewNode(null)} style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: '24px',
+                                    cursor: 'pointer',
+                                    color: 'var(--color-text-muted)'
+                                }}>&times;</button>
+                            </div>
+                            <div className="modal-body" style={{
+                                overflowY: 'auto',
+                                padding: 'var(--space-2)',
+                                flex: 1
+                            }}>
+                                <div className="markdown-body">
+                                    {previewNode.woven_content ? (
+                                        <>
+                                            <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.woven_content) }} />
+                                            <MermaidRenderer content={previewNode.woven_content} />
+                                        </>
+                                    ) : (
+                                        <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 'var(--space-10)' }}>
+                                            尚無內容
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="modal-footer" style={{
+                                marginTop: 'var(--space-4)',
+                                paddingTop: 'var(--space-4)',
+                                borderTop: '1px solid var(--color-border)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+                                    <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
+                                        使用法寶：<span style={{ color: 'var(--color-primary)' }}>{previewNode.anchor_used || '預設'}</span>
                                     </p>
-                                )}
-                            </div>
-                        </div>
-                        <div className="modal-footer" style={{
-                            marginTop: 'var(--space-4)',
-                            paddingTop: 'var(--space-4)',
-                            borderTop: '1px solid var(--color-border)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}>
-                            <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
-                                <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
-                                    使用法寶：<span style={{ color: 'var(--color-primary)' }}>{previewNode.anchor_used || '預設'}</span>
-                                </p>
-                            </div>
-                            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-                                <Button variant="outline" onClick={() => setPreviewNode(null)}>關閉</Button>
-                                <Button variant="primary" onClick={() => {
-                                    alert('功能開發中：將內容發佈至專案清單');
-                                }}>發佈文章</Button>
+                                </div>
+                                <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                                    <Button variant="outline" onClick={() => setPreviewNode(null)}>關閉</Button>
+                                    <Button variant="primary" onClick={() => {
+                                        alert('功能開發中：將內容發佈至專案清單');
+                                    }}>發佈文章</Button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

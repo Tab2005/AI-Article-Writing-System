@@ -231,6 +231,7 @@ class KalpaMatrix(Base):
     entities = Column(JSON, default=list)
     actions = Column(JSON, default=list)
     pain_points = Column(JSON, default=list)
+    anchor_variants = Column(JSON, default=list)  # 法寶袋：動態生成的錨點文字清單
     
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -244,6 +245,7 @@ class KalpaMatrix(Base):
             "entities": self.entities or [],
             "actions": self.actions or [],
             "pain_points": self.pain_points or [],
+            "anchor_variants": self.anchor_variants or [],
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
