@@ -442,3 +442,66 @@ h1,
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
+
+
+/* Advanced Config Collapsible Styles */
+.kalpa-advanced-config summary:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-primary) !important;
+}
+
+.kalpa-advanced-config[open] summary {
+  color: var(--color-primary) !important;
+  background-color: rgba(var(--color-primary-rgb), 0.1) !important;
+  margin-bottom: var(--space-4);
+}
+
+.kalpa-advanced-config summary::-webkit-details-marker {
+  display: none;
+}
+
+.title-template-config {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+}
+
+.title-template-config .config-header {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.template-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.template-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.preset-btn {
+  padding: var(--space-1) var(--space-3);
+  font-size: 11px;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.preset-btn:hover {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}

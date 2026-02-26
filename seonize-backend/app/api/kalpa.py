@@ -49,6 +49,7 @@ class KalpaGenerateRequest(BaseModel):
     entities: List[str]
     actions: List[str]
     pain_points: List[str]
+    title_template: Optional[str] = None
 
 class KalpaNodeSchema(BaseModel):
     entity: str
@@ -82,7 +83,8 @@ async def generate_kalpa_matrix(
             entities=request.entities,
             actions=request.actions,
             pain_points=request.pain_points,
-            project_name=request.project_name
+            project_name=request.project_name,
+            title_template=request.title_template
         )
         return results
     except Exception as e:

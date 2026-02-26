@@ -74,6 +74,7 @@ export const KalpaPage: React.FC = () => {
     const [saveLoading, setSaveLoading] = useState(false);
     const [weaveLoading, setWeaveLoading] = useState<string | null>(null);
     const [results, setResults] = useState<KalpaNode[]>([]);
+    const [titleTemplate, setTitleTemplate] = useState('');
     const [matrixId, setMatrixId] = useState<string | null>(null);
 
     const [previewNode, setPreviewNode] = useState<KalpaNode | null>(null);
@@ -85,6 +86,7 @@ export const KalpaPage: React.FC = () => {
         entities: string[];
         actions: string[];
         pain_points: string[];
+        suggested_title_template?: string;
     } | null>(null);
 
     useEffect(() => {
@@ -118,15 +120,57 @@ export const KalpaPage: React.FC = () => {
             setEntities(tiandaoSuggestions.entities);
             setActions(tiandaoSuggestions.actions);
             setPains(tiandaoSuggestions.pain_points);
+            if (tiandaoSuggestions.suggested_title_template) {
+                setTitleTemplate(tiandaoSuggestions.suggested_title_template);
+            }
         } else {
             // 併入但不重複
             setEntities(prev => Array.from(new Set([...prev, ...tiandaoSuggestions.entities])));
             setActions(prev => Array.from(new Set([...prev, ...tiandaoSuggestions.actions])));
             setPains(prev => Array.from(new Set([...prev, ...tiandaoSuggestions.pain_points])));
+            if (!titleTemplate && tiandaoSuggestions.suggested_title_template) {
+                setTitleTemplate(tiandaoSuggestions.suggested_title_template);
+            }
         }
 
         setTiandaoSuggestions(null); // 套用後關閉預覽
         setBrainstormTopic(''); // 清空輸入
+    };
+
+    const handleOneClickApplyAndGenerate = async () => {
+        if (!tiandaoSuggestions) return;
+
+        // 1. 同步更動狀態 (雖然 useState 是非同步，但我們在下一個呼叫中使用最新值)
+        const newEntities = tiandaoSuggestions.entities;
+        const newActions = tiandaoSuggestions.actions;
+        const newPains = tiandaoSuggestions.pain_points;
+        const newTemplate = tiandaoSuggestions.suggested_title_template || titleTemplate;
+
+        // 更新 UI 狀態
+        setEntities(newEntities);
+        setActions(newActions);
+        setPains(newPains);
+        if (newTemplate) setTitleTemplate(newTemplate);
+        setTiandaoSuggestions(null);
+
+        // 2. 直接呼叫生成 API (使用 local 變數確保即時性)
+        setLoading(true);
+        try {
+            const data = await kalpaApi.generate({
+                project_name: projectName || brainstormTopic || 'New Project',
+                entities: newEntities,
+                actions: newActions,
+                pain_points: newPains,
+                title_template: newTemplate
+            });
+            setResults(data);
+            setMatrixId(null);
+            if (!projectName && brainstormTopic) setProjectName(brainstormTopic);
+        } catch (error) {
+            console.error('One-click generate failed:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleClearAll = () => {
@@ -179,6 +223,7 @@ export const KalpaPage: React.FC = () => {
                 entities,
                 actions,
                 pain_points: pains,
+                title_template: titleTemplate
             });
             setResults(data);
             setMatrixId(null); // Reset saved ID on new generation
@@ -371,11 +416,69 @@ export const KalpaPage: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="tiandao-actions">
+                        {tiandaoSuggestions.suggested_title_template && (
+                            <div className="tiandao-suggest-template" style={{
+                                marginTop: 'var(--space-4)',
+                                padding: 'var(--space-3)',
+                                backgroundColor: 'rgba(var(--color-primary-rgb), 0.1)',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px dashed var(--color-primary)'
+                            }}>
+                                <label style={{ fontSize: '13px', color: 'var(--color-primary)', fontWeight: 'bold', display: 'block', marginBottom: 'var(--space-1)' }}>
+                                    ✨ 建議標題模板：
+                                </label>
+                                <code style={{ fontSize: '14px', color: 'var(--color-text)' }}>
+                                    {tiandaoSuggestions.suggested_title_template}
+                                </code>
+                            </div>
+                        )}
+                        {tiandaoSuggestions.suggested_title_template && (
+                            <div className="tiandao-simulation-preview" style={{
+                                marginTop: 'var(--space-4)',
+                                padding: 'var(--space-4)',
+                                backgroundColor: 'rgba(var(--color-primary-rgb), 0.05)',
+                                borderRadius: 'var(--radius-lg)',
+                                border: '1px solid rgba(var(--color-primary-rgb), 0.2)'
+                            }}>
+                                <div style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: 'bold', marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                                    <span>🔮 標題推演模擬 (範例)</span>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                    {tiandaoSuggestions.entities.slice(0, 3).map((entity, i) => {
+                                        const action = tiandaoSuggestions.actions[i] || tiandaoSuggestions.actions[0];
+                                        const pain = tiandaoSuggestions.pain_points[i] || tiandaoSuggestions.pain_points[0];
+                                        const simulatedTitle = (tiandaoSuggestions.suggested_title_template || '')
+                                            .replace('{entity}', entity)
+                                            .replace('{action}', action)
+                                            .replace('{pain_point}', pain);
+                                        return (
+                                            <div key={i} style={{
+                                                fontSize: '13px',
+                                                padding: 'var(--space-2) var(--space-3)',
+                                                backgroundColor: 'rgba(255,255,255,0.03)',
+                                                borderRadius: 'var(--radius-sm)',
+                                                borderLeft: '3px solid var(--color-primary)',
+                                                color: 'var(--color-text-secondary)'
+                                            }}>
+                                                {simulatedTitle}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                        <div className="tiandao-actions" style={{ marginTop: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Button variant="outline" onClick={() => setTiandaoSuggestions(null)}>放棄建議</Button>
-                            <div className="tiandao-apply-group">
+                            <div className="tiandao-apply-group" style={{ display: 'flex', gap: 'var(--space-3)' }}>
                                 <Button variant="secondary" onClick={() => applyTiandaoSuggestions(false)}>併入現有項目</Button>
-                                <Button variant="cta" onClick={() => applyTiandaoSuggestions(true)}>取代目前項目</Button>
+                                <Button
+                                    variant="cta"
+                                    onClick={handleOneClickApplyAndGenerate}
+                                    loading={loading}
+                                    icon={<span>⚡</span>}
+                                >
+                                    一鍵推演全陣
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -394,7 +497,47 @@ export const KalpaPage: React.FC = () => {
                     </p>
                 </div>
 
-                <div className="kalpa-config__row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: 'var(--space-4)' }}>
+                <details className="kalpa-advanced-config" style={{ marginBottom: 'var(--space-6)' }}>
+                    <summary style={{
+                        cursor: 'pointer',
+                        padding: 'var(--space-2) var(--space-4)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: '14px',
+                        color: 'var(--color-text-muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-2)',
+                        userSelect: 'none',
+                        width: 'fit-content',
+                        transition: 'all 0.2s ease'
+                    }}>
+                        <span className="icon">⚙️</span>
+                        <span>進階標題設定 (點擊展開)</span>
+                    </summary>
+
+                    <div className="title-template-config" style={{ marginTop: 'var(--space-4)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
+                        <div className="config-header">
+                            <span className="icon">🏷️</span>
+                            <span>意圖標題模板 (建議搭配預留位置: {'{entity}'}, {'{action}'}, {'{pain_point}'})</span>
+                        </div>
+                        <div className="template-input-group">
+                            <Input
+                                placeholder="例如：{entity}{action}{pain_point}怎麼辦？2026 最新解決教學與修復步驟"
+                                value={titleTemplate}
+                                onChange={(e) => setTitleTemplate(e.target.value)}
+                            />
+                            <div className="template-presets">
+                                <button className="preset-btn" onClick={() => setTitleTemplate('{entity}{action}{pain_point}怎麼辦？2026 最新解決教學與修復步驟')}>預設</button>
+                                <button className="preset-btn" onClick={() => setTitleTemplate('{entity}{action}{pain_point}：2026 專家深度分析與防坑指南')}>專業指南</button>
+                                <button className="preset-btn" onClick={() => setTitleTemplate('{entity}在{action}時遇到{pain_point}？這篇教你如何快速修復')}>實戰修復</button>
+                                <button className="preset-btn" onClick={() => setTitleTemplate('為什麼{entity}{action}會{pain_point}？2026 避坑清單與優化方案')}>避坑清單</button>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <div className="kalpa-config__row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
                     <Input
                         label="專案名稱"
                         placeholder="輸入專案名稱..."
@@ -436,7 +579,7 @@ export const KalpaPage: React.FC = () => {
                     />
                 </div>
 
-                <div className="kalpa-config__actions">
+                <div className="kalpa-config__actions" style={{ marginTop: 'var(--space-6)', display: 'flex', gap: 'var(--space-3)' }}>
                     <Button
                         variant="cta"
                         onClick={handleGenerate}

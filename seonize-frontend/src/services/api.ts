@@ -332,6 +332,7 @@ export const kalpaApi = {
     entities: string[];
     actions: string[];
     pain_points: string[];
+    title_template?: string;
   }) => request<KalpaNode[]>('/api/kalpa/generate', { method: 'POST', body: data }),
 
   save: (data: {
