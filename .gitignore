@@ -53,10 +53,14 @@ yarn-error.log*
 
 # DB
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
+seonize_tmp.db
 
 # Seonize Specific
 seonize-backend/seonize.db
 seonize-backend/__pycache__/
 seonize-frontend/node_modules/
 seonize-frontend/dist/
+db_models.py
