@@ -370,6 +370,13 @@ export const kalpaApi = {
       suggested_title_template?: string;
       exclusion_rules?: Record<string, string[]>;
     }>('/api/kalpa/brainstorm', { method: 'POST', body: { topic } }),
+
+  batchWeave: (nodeIds: string[]) =>
+    request<{ success: boolean; message: string }>('/api/kalpa/batch-weave', {
+      method: 'POST',
+      body: { node_ids: nodeIds },
+      showLoading: false,
+    }),
 };
 
 // Health check

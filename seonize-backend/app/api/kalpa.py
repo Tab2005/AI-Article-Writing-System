@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
 from sqlalchemy.orm import Session
@@ -10,6 +10,9 @@ router = APIRouter()
 
 class BrainstormRequest(BaseModel):
     topic: str
+
+class BatchWeaveRequest(BaseModel):
+    node_ids: List[str]
 
 @router.post("/brainstorm")
 async def brainstorm_kalpa_elements(
@@ -145,6 +148,21 @@ async def weave_kalpa_node(
         raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"編織失敗: {str(e)}")
+
+@router.post("/batch-weave")
+async def batch_weave_kalpa_nodes(
+    request: BatchWeaveRequest,
+    background_tasks: BackgroundTasks,
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    批量啟動「神諭編織」 (背景執行)
+    """
+    if not request.node_ids:
+        raise HTTPException(status_code=400, detail="未提供要編織的節點 ID")
+        
+    background_tasks.add_task(kalpa_service.batch_weave_task, request.node_ids)
+    return {"success": True, "message": f"已將 {len(request.node_ids)} 個任務加入背景隊列"}
 
 @router.get("/articles/all")
 async def list_all_woven_articles(

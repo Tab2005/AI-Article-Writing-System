@@ -254,6 +254,44 @@ class KalpaService:
         return node
 
     @staticmethod
+    async def batch_weave_nodes(db: Session, node_ids: List[str]) -> Dict[str, Any]:
+        """
+        批量執行「神諭編織」
+        使用 Semaphore 控制並發數量，避免觸發 API 頻率限制。
+        """
+        import asyncio
+        semaphore = asyncio.Semaphore(3) # 最高並發 3
+        
+        results = {"success": 0, "failed": 0, "total": len(node_ids)}
+        
+        async def Task(node_id):
+            async with semaphore:
+                try:
+                    await KalpaService.weave_node(db, node_id)
+                    results["success"] += 1
+                except Exception as e:
+                    logger.error(f"Batch weaving failed for node {node_id}: {e}")
+                    results["failed"] += 1
+
+        # 建立所有任務
+        await asyncio.gather(*(Task(nid) for nid in node_ids))
+        return results
+
+    @staticmethod
+    async def batch_weave_task(node_ids: List[str]):
+        """
+        供 FastAPI BackgroundTasks 使用的背景任務
+        """
+        from app.core.database import SessionLocal
+        db = SessionLocal()
+        try:
+            await KalpaService.batch_weave_nodes(db, node_ids)
+        except Exception as e:
+            logger.error(f"Background batch weave task failed: {e}")
+        finally:
+            db.close()
+
+    @staticmethod
     def list_all_articles(db: Session, matrix_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         取得所有已編織完成的文章，整合專案名稱。

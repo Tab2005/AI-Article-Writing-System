@@ -80,6 +80,12 @@ export const KalpaPage: React.FC = () => {
 
     const [previewNode, setPreviewNode] = useState<KalpaNode | null>(null);
 
+    // 批量處理與篩選狀態
+    const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+    const [filterEntity, setFilterEntity] = useState<string>('');
+    const [filterAction, setFilterAction] = useState<string>('');
+    const [filterPain, setFilterPain] = useState<string>('');
+
     // 天道解析狀態
     const [brainstormTopic, setBrainstormTopic] = useState('');
     const [isBrainstorming, setIsBrainstorming] = useState(false);
@@ -298,6 +304,47 @@ export const KalpaPage: React.FC = () => {
         }
     };
 
+    const handleBatchWeave = async () => {
+        if (selectedNodeIds.length === 0) return;
+        if (!matrixId) {
+            alert('請先點擊「儲存專案」，才能啟動批量編織功能。');
+            return;
+        }
+
+        if (!window.confirm(`確定要將選中的 ${selectedNodeIds.length} 個節點加入批量編織隊列嗎？`)) return;
+
+        try {
+            const res = await kalpaApi.batchWeave(selectedNodeIds);
+            alert(res.message || `已啟動 ${selectedNodeIds.length} 個任務，背景編製中...`);
+            // 立即將這些節點狀態設為「weaving」以供 UI 回饋
+            setResults(prev => prev.map(n => selectedNodeIds.includes(n.id || '') ? { ...n, status: 'weaving' } : n));
+            setSelectedNodeIds([]);
+        } catch (error) {
+            console.error('Batch weave failed:', error);
+            alert('批量編織啟動失敗，請檢查網路連線。');
+        }
+    };
+
+    const filteredResults = results.filter(n => {
+        return (filterEntity === '' || n.entity === filterEntity) &&
+            (filterAction === '' || n.action === filterAction) &&
+            (filterPain === '' || n.pain_point === filterPain);
+    });
+
+    const toggleSelectNode = (nodeId: string) => {
+        setSelectedNodeIds(prev =>
+            prev.includes(nodeId) ? prev.filter(id => id !== nodeId) : [...prev, nodeId]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedNodeIds.length === filteredResults.length) {
+            setSelectedNodeIds([]);
+        } else {
+            setSelectedNodeIds(filteredResults.map(n => n.id || '').filter(id => id !== ''));
+        }
+    };
+
     const exportCSV = () => {
         if (results.length === 0) return;
 
@@ -321,6 +368,30 @@ export const KalpaPage: React.FC = () => {
     };
 
     const columns = [
+        {
+            key: 'selection',
+            header: (
+                <input
+                    type="checkbox"
+                    checked={selectedNodeIds.length > 0 && selectedNodeIds.length === filteredResults.length}
+                    ref={input => {
+                        if (input) {
+                            input.indeterminate = selectedNodeIds.length > 0 && selectedNodeIds.length < filteredResults.length;
+                        }
+                    }}
+                    onChange={toggleSelectAll}
+                />
+            ),
+            width: '40px',
+            render: (_: any, row: KalpaNode) => (
+                <input
+                    type="checkbox"
+                    checked={selectedNodeIds.includes(row.id || '')}
+                    onChange={() => toggleSelectNode(row.id || '')}
+                    disabled={!row.id}
+                />
+            )
+        },
         { key: 'entity', header: '實體', width: '100px' },
         { key: 'action', header: '動作', width: '100px' },
         { key: 'pain_point', header: '痛點', width: '120px' },
@@ -693,8 +764,101 @@ export const KalpaPage: React.FC = () => {
                         </div>
 
                         <div className="results-table-container card">
-                            <h3 className="card-title">矩陣節點預覽</h3>
-                            <DataTable columns={columns} data={results} />
+                            <div className="results-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+                                <h3 className="card-title" style={{ margin: 0 }}>矩陣節點預覽</h3>
+                                <div className="batch-actions" style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                                    {selectedNodeIds.length > 0 && (
+                                        <Button
+                                            variant="cta"
+                                            size="sm"
+                                            onClick={handleBatchWeave}
+                                            icon={<span>⚡</span>}
+                                        >
+                                            批量編織選中項 ({selectedNodeIds.length})
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="table-filters" style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: 'var(--space-4)',
+                                marginBottom: 'var(--space-4)',
+                                padding: 'var(--space-3)',
+                                backgroundColor: 'rgba(255,255,255,0.03)',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--color-border)'
+                            }}>
+                                <div className="filter-group">
+                                    <label style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>實體篩選</label>
+                                    <select
+                                        value={filterEntity}
+                                        onChange={(e) => setFilterEntity(e.target.value)}
+                                        className="filter-select"
+                                        style={{
+                                            backgroundColor: 'rgba(0,0,0,0.2)',
+                                            color: 'var(--color-text)',
+                                            border: '1px solid var(--color-border)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            padding: '4px 8px',
+                                            fontSize: '13px',
+                                            outline: 'none',
+                                            minWidth: '120px'
+                                        }}
+                                    >
+                                        <option value="">全部實體</option>
+                                        {entities.map(e => <option key={e} value={e}>{e}</option>)}
+                                    </select>
+                                </div>
+                                <div className="filter-group">
+                                    <label style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>動作篩選</label>
+                                    <select
+                                        value={filterAction}
+                                        onChange={(e) => setFilterAction(e.target.value)}
+                                        className="filter-select"
+                                        style={{
+                                            backgroundColor: 'rgba(0,0,0,0.2)',
+                                            color: 'var(--color-text)',
+                                            border: '1px solid var(--color-border)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            padding: '4px 8px',
+                                            fontSize: '13px',
+                                            outline: 'none',
+                                            minWidth: '120px'
+                                        }}
+                                    >
+                                        <option value="">全部動作</option>
+                                        {actions.map(a => <option key={a} value={a}>{a}</option>)}
+                                    </select>
+                                </div>
+                                <div className="filter-group">
+                                    <label style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>痛點篩選</label>
+                                    <select
+                                        value={filterPain}
+                                        onChange={(e) => setFilterPain(e.target.value)}
+                                        className="filter-select"
+                                        style={{
+                                            backgroundColor: 'rgba(0,0,0,0.2)',
+                                            color: 'var(--color-text)',
+                                            border: '1px solid var(--color-border)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            padding: '4px 8px',
+                                            fontSize: '13px',
+                                            outline: 'none',
+                                            minWidth: '120px'
+                                        }}
+                                    >
+                                        <option value="">全部痛點</option>
+                                        {pains.map(p => <option key={p} value={p}>{p}</option>)}
+                                    </select>
+                                </div>
+                                <div className="filter-info" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                                    顯示 {filteredResults.length} / {results.length} 個節點
+                                </div>
+                            </div>
+
+                            <DataTable columns={columns} data={filteredResults} />
                         </div>
                     </div>
                 )
