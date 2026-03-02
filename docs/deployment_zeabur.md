@@ -20,6 +20,8 @@
 | :--- | :--- | :--- |
 | `DATABASE_URL` | PostgreSQL 連線字串 (由 Zeabur 自動產生) | `postgresql://user:pass@host:port/db` |
 | `ALLOWED_ORIGINS` | 允許的前端網址 (跨域) | `["https://your-frontend.zeabur.app"]` |
+| `SECRET_KEY` | 系統加密金鑰 (用於 API Key 加密) | `任意隨機長字串` |
+| `ADMIN_PASSWORD` | 後端管理員預設密碼 | `預設為 admin123` |
 | `AI_PROVIDER` | 使用的 AI 供應商 | `gemini` |
 | `GEMINI_API_KEY` | Google Gemini API Key | `AIzaSy...` |
 | `GOOGLE_SEARCH_API_KEY` | Google Search API Key | `...` |
@@ -36,38 +38,40 @@
 
 ---
 
-## 3. 資料庫自動轉換與遷移
+## 3. 自動化排程發布說明
 
-由於生產環境使用 PostgreSQL，而本地開發使用 SQLite，您可以透過以下兩種方式進行數據遷移：
-
-### 方法 A：自動初始化 (僅結構)
-如果您不需要遷移舊數據，系統在啟動時會自動偵測 `DATABASE_URL`：
-*   如果為 `postgresql://`，系統會自動在 PostgreSQL 中建立所有必要的表格。
-*   **優點**：簡單、無痛啟動。
-*   **缺點**：原本在本地的專案記錄、研究歷史將遺失。
-
-### 方法 B：數據遷移腳本 (Data Migration)
-如果您需要將本地 `seonize.db` 的數據移至 Zeabur，我們提供了一個簡單的遷移腳本 `migrate_to_pg.py` (需手動執行)：
-
-1. 安裝必要套件：`pip install sqlalchemy psycopg2-binary`
-2. 配置 `DATABASE_URL` 指向遠端 PostgreSQL。
-3. 執行 `python scripts/migrate_to_pg.py`。
-*(腳本將逐筆讀取 SQLite 資料並寫入 PostgreSQL)*
+Seonize 的自動循環排程引擎（每小時、每天派發文章）**已整合在後端服務的啟動流程中**：
+*   **無需額外配置 Worker**：只要後端服務在線，排程掃描就會自動運作。
+*   **資料庫一致性**：排程狀態儲存在 PostgreSQL 中，因此即使服務重啟，排程也會自動恢復。
 
 ---
 
-## 4. 部署步驟
+## 4. 資料庫數據遷移 (SQLite to PG)
+
+如果您需要將本地數據移至雲端：
+1. **本地執行**：在根目錄找到 `migrate_to_pg.py`。
+2. **環境準備**：`pip install SQLAlchemy psycopg2-binary`。
+3. **遷移指令**：
+   ```bash
+   # 設定環境變數指向遠端 PG (從 Zeabur 獲取 Connection String)
+   $env:DATABASE_URL="postgresql://user:pass@host:port/db" 
+   python migrate_to_pg.py
+   ```
+
+---
+
+## 5. 部署具體步驟
 
 1. **連接 GitHub**：在 Zeabur 選擇您的專案倉庫。
 2. **設置 Root Directory**：
-   - 後端設為 `seonize-backend`。
-   - 前端設為 `seonize-frontend`。
+   - 後端專案：`seonize-backend`
+   - 前端專案：`seonize-frontend`
 3. **配置部署指令**：
-   - 後端：`pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000`
-   - 前端：`npm install && npm run build` (Zeabur 會自動識別靜態站點)。
-4. **綁定域名**：分別為前後端生成 `.zeabur.app` 網域名稱。
+   - 後端 (Start Command): `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+   - 前端: Zeabur 會自動識別 `package.json` 並執行 `npm run build`。
+4. **綁定域名**：分別為前後端生成 `.zeabur.app` 網域。
 
 ---
 
 > [!IMPORTANT]
-> 請確保後端的 `ALLOWED_ORIGINS` 包含前端的最終網址，否則登入與 API 調用將被瀏覽器阻擋。
+> 部署完成後，請務必先訪問後端 `/api/docs` 驗證 API 是否正常連通，再進入前端進行操作。
