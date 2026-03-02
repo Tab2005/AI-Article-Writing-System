@@ -16,3 +16,4 @@ export { KalpaEyeLayout } from './KalpaEyeLayout';
 export { KalpaHistoryPage } from './KalpaHistoryPage';
 export { KalpaArticlesPage } from './KalpaArticlesPage';
 export { NotFoundPage } from './NotFoundPage';
+export { default as CMSPage } from './CMSPage';

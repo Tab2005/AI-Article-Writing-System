@@ -20,6 +20,7 @@ import {
   KalpaHistoryPage,
   KalpaArticlesPage,
   NotFoundPage,
+  CMSPage,
 } from './pages';
 import './index.css';
 
@@ -72,6 +73,7 @@ function App() {
                 <Route path="history" element={<KalpaHistoryPage />} />
                 <Route path="articles" element={<KalpaArticlesPage />} />
               </Route>
+              <Route path="/cms" element={<CMSPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

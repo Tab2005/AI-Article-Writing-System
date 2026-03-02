@@ -25,7 +25,7 @@ const API_CONFIG = {
 };
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   headers?: Record<string, string>;
   timeout?: number; // 自定義超時
@@ -312,6 +312,13 @@ export interface KalpaNode {
   woven_content?: string;
   anchor_used?: string;
   woven_at?: string;
+  // CMS 發布資訊
+  cms_config_id?: string;
+  cms_post_id?: string;
+  publish_status?: 'draft' | 'scheduled' | 'published' | 'failed';
+  cms_publish_url?: string;
+  scheduled_at?: string;
+  published_at?: string;
 }
 
 export interface KalpaMatrix {
@@ -323,6 +330,7 @@ export interface KalpaMatrix {
   actions: string[];
   pain_points: string[];
   created_at: string;
+  cms_config_id?: string;
   nodes?: KalpaNode[];
 }
 
@@ -337,13 +345,15 @@ export const kalpaApi = {
   }) => request<KalpaNode[]>('/api/kalpa/generate', { method: 'POST', body: data }),
 
   save: (data: {
+    id?: string;
     project_name: string;
     industry: string;
     money_page_url: string;
     entities: string[];
     actions: string[];
     pain_points: string[];
-    nodes: KalpaNode[];
+    nodes: any[];
+    cms_config_id?: string;
   }) => request<{ success: boolean; matrix_id: string }>('/api/kalpa/save', { method: 'POST', body: data }),
 
   list: () => request<KalpaMatrix[]>('/api/kalpa/list'),
@@ -377,6 +387,8 @@ export const kalpaApi = {
       body: { node_ids: nodeIds },
       showLoading: false,
     }),
+
+  getNode: (id: string) => request<KalpaNode>(`/api/kalpa/node/${id}`),
 };
 
 // Health check
@@ -442,4 +454,42 @@ export const settingsApi = {
       method: 'POST',
       body: data,
     }),
+};
+
+// CMS API
+export interface CMSConfig {
+  id: string;
+  name: string;
+  platform: string;
+  api_url: string;
+  username?: string;
+  is_active: boolean;
+  auto_publish_enabled: boolean;
+  frequency_type: 'hour' | 'day' | 'week';
+  frequency_count: number;
+  last_auto_published_at?: string;
+}
+
+export const cmsApi = {
+  listConfigs: () => request<CMSConfig[]>('/api/cms/configs'),
+
+  createConfig: (data: any) =>
+    request<CMSConfig>('/api/cms/configs', { method: 'POST', body: data }),
+
+  updateConfig: (id: string, data: any) =>
+    request<CMSConfig>(`/api/cms/configs/${id}`, { method: 'PUT', body: data }),
+
+  deleteConfig: (id: string) =>
+    request<void>(`/api/cms/configs/${id}`, { method: 'DELETE' }),
+
+  testConnection: (id: string) =>
+    request<{ success: boolean; message?: string }>(`/api/cms/test-connection/${id}`, { method: 'POST' }),
+
+  publish: (data: {
+    target_type: string;
+    target_id: string;
+    config_id: string;
+    status: string;
+    scheduled_at?: string | null;
+  }) => request<any>('/api/cms/publish', { method: 'POST', body: data }),
 };

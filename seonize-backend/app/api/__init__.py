@@ -7,6 +7,7 @@ from .settings import router as settings_router
 from .prompts import router as prompts_router
 from .auth import router as auth_router
 from .kalpa import router as kalpa_router
+from .cms import router as cms_router
 
 
 __all__ = [
@@ -18,6 +19,6 @@ __all__ = [
     "prompts_router",
     "auth_router",
     "kalpa_router",
-
+    "cms_router",
 ]
 

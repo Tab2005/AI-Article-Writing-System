@@ -63,6 +63,7 @@ class KalpaNodeSchema(BaseModel):
     status: str
 
 class KalpaSaveRequest(BaseModel):
+    id: Optional[str] = None
     project_name: str
     industry: str = "Crypto"
     money_page_url: str = ""
@@ -70,6 +71,7 @@ class KalpaSaveRequest(BaseModel):
     actions: List[str]
     pain_points: List[str]
     nodes: List[dict]
+    cms_config_id: Optional[str] = None
 
 @router.post("/generate", response_model=List[KalpaNodeSchema])
 async def generate_kalpa_matrix(
@@ -102,22 +104,29 @@ async def save_kalpa_matrix(
     current_admin: str = Depends(get_current_admin)
 ):
     """
-    儲存因果矩陣與節點到資料庫
+    儲存因果矩陣與節點到資料庫 (支援更新)
     """
+    print(f"DEBUG: KalpaSaveRequest received. Fields: {request.model_fields.keys()}")
+    print(f"DEBUG: request object attributes: {dir(request)}")
     try:
         matrix = kalpa_service.save_matrix(
             db=db,
+            project_id=request.id,
             project_name=request.project_name,
             industry=request.industry,
             money_page_url=request.money_page_url,
             entities=request.entities,
             actions=request.actions,
             pain_points=request.pain_points,
-            nodes=request.nodes
+            nodes=request.nodes,
+            cms_config_id=request.cms_config_id
         )
         return {"success": True, "matrix_id": matrix.id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"儲存失敗: {str(e)}")
+        import traceback
+        error_detail = traceback.format_exc()
+        print(error_detail) # 在伺服器日誌印出
+        raise HTTPException(status_code=500, detail=f"儲存失敗: {str(e)}\n{error_detail}")
 
 @router.get("/list")
 async def list_kalpa_matrices(
@@ -143,11 +152,27 @@ async def weave_kalpa_node(
     """
     try:
         node = await kalpa_service.weave_node(db, node_id)
+        db.refresh(node)
         return {"success": True, "node": node.to_dict()}
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"編織失敗: {str(e)}")
+
+@router.get("/node/{node_id}")
+async def get_kalpa_node(
+    node_id: str,
+    db: Session = Depends(get_db),
+    current_admin: str = Depends(get_current_admin)
+):
+    """
+    取得單一編織節點詳細資訊
+    """
+    from app.models.db_models import KalpaNode
+    node = db.query(KalpaNode).filter(KalpaNode.id == node_id).first()
+    if not node:
+        raise HTTPException(status_code=404, detail="節點不存在")
+    return node.to_dict()
 
 @router.post("/batch-weave")
 async def batch_weave_kalpa_nodes(
@@ -194,3 +219,4 @@ async def get_kalpa_matrix(
     return result
 
 KalpaGenerateRequest.model_rebuild()
+KalpaSaveRequest.model_rebuild()

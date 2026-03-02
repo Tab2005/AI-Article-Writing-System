@@ -123,6 +123,55 @@ export const ProjectsPage: React.FC = () => {
       render: (value: unknown) => new Date(String(value)).toLocaleString('zh-TW'),
     },
     {
+      key: 'publish_status',
+      header: '分發狀態',
+      width: '150px',
+      render: (val: unknown, row: ProjectState) => {
+        const status = String(val || 'draft');
+        const statusMap: Record<string, { label: string, color: string, bg: string }> = {
+          published: { label: '已發布', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+          scheduled: { label: '已預約', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+          failed: { label: '發布失敗', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+          draft: { label: '未發布', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)' }
+        };
+        const cfg = statusMap[status] || statusMap.draft;
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: cfg.color,
+              backgroundColor: cfg.bg,
+              width: 'fit-content',
+              border: `1px solid ${cfg.color}33`,
+              lineHeight: '1.2'
+            }}>
+              {cfg.label}
+            </span>
+            {status === 'published' && row.cms_publish_url && (
+              <a
+                href={row.cms_publish_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{ fontSize: '11px', color: 'var(--color-primary)', textDecoration: 'none' }}
+              >
+                🔗 查看內容
+              </a>
+            )}
+            {status === 'scheduled' && row.scheduled_at && (
+              <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>
+                {new Date(row.scheduled_at).toLocaleString('zh-TW')}
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
       key: 'actions',
       header: '操作',
       width: '120px',

@@ -25,10 +25,12 @@ from app.api import (
     auth_router,
     settings_router as settings_api_router,
     kalpa_router,
+    cms_router,
 )
 from app.core.config import settings as app_settings
 from app.core.database import init_db
 from app.core.cache import CacheManager
+from app.services.scheduler_service import start_scheduler
 
 
 @asynccontextmanager
@@ -44,6 +46,10 @@ async def lifespan(app: FastAPI):
     init_db()  # 初始化資料庫
     logger.info(f"Database initialized: {app_settings.DATABASE_URL}")
     CacheManager.get_instance()  # 初始化快取
+    
+    # 啟動 CMS 排程器
+    start_scheduler()
+    
     logger.info("Seonize Backend ready!")
     
     yield
@@ -79,6 +85,7 @@ app.include_router(settings_api_router, prefix="/api/settings", tags=["Settings"
 app.include_router(prompts_router, prefix="/api/prompts", tags=["Prompts"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(kalpa_router, prefix="/api/kalpa", tags=["Kalpa Matrix"])
+app.include_router(cms_router, prefix="/api/cms", tags=["CMS Integration"])
 
 
 @app.get("/")

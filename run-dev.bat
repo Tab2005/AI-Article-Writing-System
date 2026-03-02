@@ -9,9 +9,12 @@ echo ========================================
 
 SET "ROOT_DIR=%~dp0"
 
-REM 啟動後端 (使用 start /b 在背景執行於同一視窗)
+REM 清理 Python 快取以確保代碼更新生效
+for /d /r . %%d in (__pycache__) do @if exist "%%d" rd /s /q "%%d"
+
+REM 啟動後端 (加入 --reload 以便開發時自動生效)
 echo [1/2] 正在啟動後端服務 (FastAPI) http://localhost:8000...
-start /b cmd /c "cd /d "%ROOT_DIR%seonize-backend" && ".\venv\Scripts\python" -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+start /b cmd /c "cd /d "%ROOT_DIR%seonize-backend" && ".\venv\Scripts\python" -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
 REM 等待 3 秒讓後端初始化
 timeout /t 3 /nobreak > nul

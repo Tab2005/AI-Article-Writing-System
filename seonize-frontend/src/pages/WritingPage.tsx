@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, KPICard, MermaidRenderer } from '../components/ui';
+import PublishModal from '../components/PublishModal';
 import { projectsApi, writingApi } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import type { ProjectState, OutlineSection, OptimizationMode } from '../types';
@@ -31,6 +32,7 @@ export const WritingPage: React.FC = () => {
   const [keywordDensity, setKeywordDensity] = useState(2.0);
   const [optimizationMode, setOptimizationMode] = useState<OptimizationMode>('seo');
   const [previewMode, setPreviewMode] = useState<'render' | 'markdown'>('render');
+  const [showPublishModal, setShowPublishModal] = useState(false);
 
   // 載入專案資料
   const loadProject = useCallback(async () => {
@@ -285,8 +287,20 @@ export const WritingPage: React.FC = () => {
           <Button variant="cta" onClick={() => saveToProject()}>
             💾 儲存全文
           </Button>
+          <Button variant="primary" onClick={() => setShowPublishModal(true)} disabled={!project}>
+            🚀 發布至 CMS
+          </Button>
         </div>
       </div>
+
+      {showPublishModal && projectId && (
+        <PublishModal
+          targetType="project"
+          targetId={projectId}
+          onClose={() => setShowPublishModal(false)}
+          onSuccess={() => loadProject()}
+        />
+      )}
 
       {/* 寫作設定 */}
       <div className="writing-settings">

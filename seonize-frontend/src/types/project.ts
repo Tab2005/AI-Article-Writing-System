@@ -43,4 +43,11 @@ export interface ProjectState {
     keyword_density: Record<string, number>;
     research_data?: Record<string, any>;
     eeat_score?: number;
+    cms_config_id?: string;
+    // CMS 發布資訊
+    cms_post_id?: string;
+    publish_status?: 'draft' | 'scheduled' | 'published' | 'failed';
+    cms_publish_url?: string;
+    scheduled_at?: string;
+    published_at?: string;
 }

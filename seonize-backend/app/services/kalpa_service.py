@@ -68,33 +68,80 @@ class KalpaService:
         return results
 
     @staticmethod
-    def save_matrix(db: Session, project_name: str, entities: List[str], actions: List[str], pain_points: List[str], nodes: List[Dict[str, Any]], industry: str = "Crypto", money_page_url: str = "") -> KalpaMatrix:
+    def save_matrix(db: Session, project_name: str, entities: List[str], actions: List[str], pain_points: List[str], nodes: List[Dict[str, Any]], industry: str = "Crypto", money_page_url: str = "", cms_config_id: Optional[str] = None, project_id: Optional[str] = None) -> KalpaMatrix:
         """
-        儲存生成的矩陣到資料庫
+        儲存生成的矩陣到資料庫 (支援更新)
         """
-        matrix = KalpaMatrix(
-            project_name=project_name,
-            industry=industry,
-            money_page_url=money_page_url,
-            entities=entities,
-            actions=actions,
-            pain_points=pain_points
-        )
-        db.add(matrix)
-        db.flush() # 取得 ID
-
-        for node_data in nodes:
-            node = KalpaNode(
-                matrix_id=matrix.id,
-                entity=node_data.get("entity"),
-                action=node_data.get("action"),
-                pain_point=node_data.get("pain_point"),
-                target_title=node_data.get("target_title"),
-                status="pending"
+        if project_id:
+            matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == project_id).first()
+            if not matrix:
+                # 找不到就新建 (預防萬一)
+                matrix = KalpaMatrix(id=project_id, project_name=project_name)
+                db.add(matrix)
+            else:
+                matrix.project_name = project_name
+                matrix.industry = industry
+                matrix.money_page_url = money_page_url
+                matrix.entities = entities
+                matrix.actions = actions
+                matrix.pain_points = pain_points
+                matrix.cms_config_id = cms_config_id
+                matrix.updated_at = datetime.now(timezone.utc)
+        else:
+            matrix = KalpaMatrix(
+                project_name=project_name,
+                industry=industry,
+                money_page_url=money_page_url,
+                entities=entities,
+                actions=actions,
+                pain_points=pain_points,
+                cms_config_id=cms_config_id
             )
-            db.add(node)
+            db.add(matrix)
         
-        db.commit()
+        db.flush() # 確保取得/確認 ID
+
+        # 處理節點：批量更新優化
+        logger.info(f"💾 正在更新矩陣節點，專案 ID: {matrix.id}, 節點總數: {len(nodes)}")
+        
+        try:
+            # 先清理舊節點，使用 synchronize_session=False 提升效能
+            db.query(KalpaNode).filter(KalpaNode.matrix_id == matrix.id).delete(synchronize_session=False)
+
+            new_nodes = []
+            for node_data in nodes:
+                # 解析日期格式 (如果有)
+                woven_at = None
+                if node_data.get("woven_at"):
+                    try:
+                        woven_at = datetime.fromisoformat(node_data["woven_at"].replace('Z', '+00:00'))
+                    except: pass
+
+                node = KalpaNode(
+                    matrix_id=matrix.id,
+                    entity=node_data.get("entity"),
+                    action=node_data.get("action"),
+                    pain_point=node_data.get("pain_point"),
+                    target_title=node_data.get("target_title"),
+                    status=node_data.get("status", "pending"),
+                    woven_content=node_data.get("woven_content"),
+                    anchor_used=node_data.get("anchor_used"),
+                    woven_at=woven_at,
+                    cms_config_id=node_data.get("cms_config_id"),
+                    cms_post_id=node_data.get("cms_post_id"),
+                    publish_status=node_data.get("publish_status", "draft"),
+                    cms_publish_url=node_data.get("cms_publish_url")
+                )
+                new_nodes.append(node)
+            
+            db.add_all(new_nodes)
+            db.commit()
+            logger.info(f"✅ 矩陣儲存成功！節點數: {len(new_nodes)}")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"❌ 節點儲存失敗: {str(e)}")
+            raise e
+
         db.refresh(matrix)
         return matrix
 

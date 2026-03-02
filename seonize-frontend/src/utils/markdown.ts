@@ -9,7 +9,7 @@ export const parseMarkdown = (text: string): string => {
     // Case 1: "H2: Title" -> "## Title"
     // Case 2: "## H2: Title" -> "## Title"
     let processed = text
-        .replace(/^(?:H([1-6])[:：]\s?)(.*$)/gim, (match, level, content) => {
+        .replace(/^(?:H([1-6])[:：]\s?)(.*$)/gim, (_, level, content) => {
             return '#'.repeat(parseInt(level)) + ' ' + content;
         })
         .replace(/^(#{1,6})\s+H[1-6][:：]\s?(.*$)/gim, '$1 $2');

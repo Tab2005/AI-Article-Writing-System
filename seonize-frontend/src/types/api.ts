@@ -196,4 +196,5 @@ export interface ProjectUpdate {
     research_data?: Record<string, any>;
     full_content?: string;
     word_count?: number;
+    cms_config_id?: string;
 }

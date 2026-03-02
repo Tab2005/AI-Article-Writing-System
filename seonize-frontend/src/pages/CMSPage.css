@@ -1,0 +1,362 @@
+.cms-page {
+    padding: var(--space-6);
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* 複用 ProjectsPage 的 Header 樣式 */
+.projects-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.projects-header__content {
+    flex: 1;
+}
+
+.projects-title {
+    font-size: var(--text-3xl);
+    font-weight: var(--font-bold);
+    color: var(--color-text);
+    margin: 0 0 var(--space-2) 0;
+}
+
+.projects-subtitle {
+    font-size: var(--text-base);
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.projects-content {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+}
+
+.cms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-6);
+}
+
+.cms-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    transition: all 0.2s ease;
+}
+
+.cms-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    border-color: var(--color-primary);
+}
+
+.cms-card__platform {
+    align-self: flex-start;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    padding: var(--space-1) var(--space-3);
+    background: var(--color-primary-light, rgba(59, 130, 246, 0.1));
+    color: var(--color-primary);
+    border-radius: var(--radius-full);
+}
+
+.cms-card__name {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text);
+}
+
+.cms-card__url {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    word-break: break-all;
+}
+
+.cms-card__actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+}
+
+/* Modal Styling - 升級感 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background: var(--color-bg-card);
+    padding: var(--space-8);
+    border-radius: var(--radius-2xl);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--color-border);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: var(--space-6);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+}
+
+.form-group {
+    margin-bottom: var(--space-5);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-base);
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.loading-state,
+.empty-state {
+    padding: var(--space-12);
+    text-align: center;
+    color: var(--color-text-secondary);
+}
+/* �ާ@�����϶� */
+.cms-guide {
+    background: rgba(59, 130, 246, 0.05);
+    border: 1px dashed var(--color-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.cms-guide__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: var(--space-2);
+}
+
+.cms-guide__list {
+    margin: 0;
+    padding-left: var(--space-5);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+
+.cms-guide__list li {
+    margin-bottom: var(--space-1);
+}
+
+.cms-guide__list strong {
+    color: var(--color-text);
+}
+
+/* 自動排程視覺樣式 */
+.cms-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-4);
+}
+
+.cms-card__platform {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--color-primary);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+}
+
+.cms-card__status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+}
+
+.cms-card__status.is-active {
+    color: var(--color-success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    background: #94a3b8;
+    border-radius: 50%;
+}
+
+.is-active .status-dot {
+    background: var(--color-success);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    animation: status-pulse 2s infinite;
+}
+
+@keyframes status-pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.cms-card__schedule {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+/* Modal 佈局優化 */
+.cms-modal {
+    max-width: 800px !important;
+}
+
+.cms-form-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+
+.cms-form-section {
+    padding: var(--space-4);
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+}
+
+.cms-form-section h3 {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    margin-bottom: var(--space-4);
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.cms-form-section--highlight {
+    background: rgba(59, 130, 246, 0.03);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.form-group-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-4);
+}
+
+.form-group-toggle label {
+    margin: 0;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.cms-auto-settings {
+    transition: all 0.3s ease;
+}
+
+.cms-auto-settings.is-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(1);
+}
+
+.cms-auto-hint {
+    margin-top: var(--space-4);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    font-style: italic;
+}
+
+.btn-toggle-auto {
+    font-weight: 700 !important;
+}

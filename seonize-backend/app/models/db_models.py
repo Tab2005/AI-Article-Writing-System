@@ -53,6 +53,14 @@ class Project(Base):
     keyword_density = Column(JSON, default=dict)
     eeat_score = Column(Float, nullable=True)
     
+    # CMS 發布資訊
+    cms_config_id = Column(String(36), nullable=True) # 關聯至 CMSConfig.id
+    cms_post_id = Column(String(100), nullable=True)
+    publish_status = Column(String(20), default="draft")  # draft, scheduled, published, failed
+    cms_publish_url = Column(Text, nullable=True)
+    scheduled_at = Column(DateTime, nullable=True)
+    published_at = Column(DateTime, nullable=True)
+    
     # 時間戳記
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -78,6 +86,12 @@ class Project(Base):
             "word_count": self.word_count or 0,
             "keyword_density": self.keyword_density or {},
             "eeat_score": self.eeat_score,
+            "cms_config_id": self.cms_config_id,
+            "cms_post_id": self.cms_post_id,
+            "publish_status": self.publish_status,
+            "cms_publish_url": self.cms_publish_url,
+            "scheduled_at": self.scheduled_at.replace(tzinfo=timezone.utc).isoformat() if self.scheduled_at else None,
+            "published_at": self.published_at.replace(tzinfo=timezone.utc).isoformat() if self.published_at else None,
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
             "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
@@ -218,6 +232,47 @@ class PromptTemplate(Base):
         }
 
 
+class CMSConfig(Base):
+    """CMS 站點設定資料表"""
+    __tablename__ = "cms_configs"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(100), nullable=False)
+    platform = Column(String(20), nullable=False)  # ghost, wordpress
+    api_url = Column(Text, nullable=False)
+    
+    # Auth 資訊 (加密儲存)
+    api_key = Column(Text, nullable=True)         # Ghost Admin API Key 或 WP App Password
+    username = Column(String(100), nullable=True) # WP 專用
+    
+    is_active = Column(Boolean, default=True)
+    
+    # 自動循環發布設定
+    auto_publish_enabled = Column(Boolean, default=False)
+    frequency_type = Column(String(20), default="day") # hour, day, week
+    frequency_count = Column(Integer, default=1)      # 單位時間內的發布篇數
+    last_auto_published_at = Column(DateTime, nullable=True)
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "platform": self.platform,
+            "api_url": self.api_url,
+            "username": self.username,
+            "is_active": self.is_active,
+            "auto_publish_enabled": self.auto_publish_enabled,
+            "frequency_type": self.frequency_type,
+            "frequency_count": self.frequency_count,
+            "last_auto_published_at": self.last_auto_published_at.replace(tzinfo=timezone.utc).isoformat() if self.last_auto_published_at else None,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
+        }
+
+
 class KalpaMatrix(Base):
     """因果矩陣專案資料表"""
     __tablename__ = "kalpa_matrices"
@@ -233,6 +288,9 @@ class KalpaMatrix(Base):
     pain_points = Column(JSON, default=list)
     anchor_variants = Column(JSON, default=list)  # 法寶袋：動態生成的錨點文字清單
     
+    # CMS 發布資訊
+    cms_config_id = Column(String(36), nullable=True) # 預設發布站點
+    
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -246,6 +304,7 @@ class KalpaMatrix(Base):
             "actions": self.actions or [],
             "pain_points": self.pain_points or [],
             "anchor_variants": self.anchor_variants or [],
+            "cms_config_id": self.cms_config_id,
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
             "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
@@ -263,12 +322,20 @@ class KalpaNode(Base):
     pain_point = Column(String(100))
     target_title = Column(Text)
     
-    # 編織結果
+    # 編織與發布結果
     status = Column(String(20), default="pending")  # pending, weaving, completed, failed
     woven_content = Column(Text, nullable=True)
     anchor_used = Column(String(255), nullable=True)
     woven_at = Column(DateTime, nullable=True)
     
+    # CMS 發布資訊
+    cms_config_id = Column(String(36), nullable=True)
+    cms_post_id = Column(String(100), nullable=True)
+    publish_status = Column(String(20), default="draft")  # draft, scheduled, published, failed
+    cms_publish_url = Column(Text, nullable=True)
+    scheduled_at = Column(DateTime, nullable=True)
+    published_at = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -284,5 +351,11 @@ class KalpaNode(Base):
             "woven_content": self.woven_content,
             "anchor_used": self.anchor_used,
             "woven_at": self.woven_at.replace(tzinfo=timezone.utc).isoformat() if self.woven_at else None,
+            "cms_config_id": self.cms_config_id,
+            "cms_post_id": self.cms_post_id,
+            "publish_status": self.publish_status,
+            "cms_publish_url": self.cms_publish_url,
+            "scheduled_at": self.scheduled_at.replace(tzinfo=timezone.utc).isoformat() if self.scheduled_at else None,
+            "published_at": self.published_at.replace(tzinfo=timezone.utc).isoformat() if self.published_at else None,
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
         }

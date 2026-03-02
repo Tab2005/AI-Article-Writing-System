@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard, MermaidRenderer } from '../components/ui';
-import { kalpaApi } from '../services/api';
-import type { KalpaNode } from '../services/api';
+import { kalpaApi, cmsApi } from '../services/api';
+import type { KalpaNode, CMSConfig } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import './KalpaPage.css';
 
@@ -71,6 +71,8 @@ export const KalpaPage: React.FC = () => {
     const [pains, setPains] = useState<string[]>([]);
     const [titleTemplate, setTitleTemplate] = useState('');
     const [exclusionRules, setExclusionRules] = useState<Record<string, string[]>>({});
+    const [cmsConfigId, setCmsConfigId] = useState<string>('');
+    const [cmsConfigs, setCmsConfigs] = useState<CMSConfig[]>([]);
 
     const [loading, setLoading] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
@@ -98,6 +100,7 @@ export const KalpaPage: React.FC = () => {
     } | null>(null);
 
     useEffect(() => {
+        fetchConfigs();
         const id = searchParams.get('id');
         if (id) {
             loadMatrix(id);
@@ -105,8 +108,18 @@ export const KalpaPage: React.FC = () => {
             // Reset for new matrix
             setResults([]);
             setMatrixId(null);
+            setCmsConfigId('');
         }
     }, [searchParams]);
+
+    const fetchConfigs = async () => {
+        try {
+            const data = await cmsApi.listConfigs();
+            setCmsConfigs(data);
+        } catch (error) {
+            console.error('Failed to fetch CMS configs:', error);
+        }
+    };
 
     const handleBrainstorm = async () => {
         if (!brainstormTopic.trim()) return;
@@ -216,6 +229,7 @@ export const KalpaPage: React.FC = () => {
             setPains(matrix.pain_points || []);
             setResults(matrix.nodes || []);
             setMatrixId(id);
+            setCmsConfigId(matrix.cms_config_id || '');
         } catch (error) {
             console.error('Failed to load matrix:', error);
             alert('載入專案失敗');
@@ -255,13 +269,15 @@ export const KalpaPage: React.FC = () => {
         setSaveLoading(true);
         try {
             const res = await kalpaApi.save({
+                id: matrixId || undefined,
                 project_name: projectName,
                 industry,
                 money_page_url: moneyPageUrl,
                 entities,
                 actions,
                 pain_points: pains,
-                nodes: results
+                nodes: results,
+                cms_config_id: cmsConfigId
             });
             if (res.success) {
                 setMatrixId(res.matrix_id);
@@ -710,6 +726,28 @@ export const KalpaPage: React.FC = () => {
                         value={moneyPageUrl}
                         onChange={(e) => setMoneyPageUrl(e.target.value)}
                     />
+                    <div className="input-field-group">
+                        <label className="input-label">預設發布站點</label>
+                        <select
+                            value={cmsConfigId}
+                            onChange={(e) => setCmsConfigId(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: 'var(--space-2) var(--space-4)',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--color-border)',
+                                background: 'var(--color-bg-secondary)',
+                                color: 'var(--color-text)',
+                                fontSize: '14px',
+                                height: '42px'
+                            }}
+                        >
+                            <option value="">不預設</option>
+                            {cmsConfigs.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 <div className="kalpa-config__grid">

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Input, Select } from '../components/ui';
-import { projectsApi } from '../services/api';
+import PublishModal from '../components/PublishModal';
+import { projectsApi, cmsApi } from '../services/api';
+import type { CMSConfig } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import type { ProjectState } from '../types';
 import { SearchIntent, WritingStyle } from '../types';
@@ -17,14 +19,20 @@ export const ProjectDetailPage: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [previewMode, setPreviewMode] = useState<'render' | 'markdown'>('render');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [cmsConfigs, setCmsConfigs] = useState<CMSConfig[]>([]);
+  const [showPublishModal, setShowPublishModal] = useState(false);
 
   const loadProject = useCallback(async () => {
     if (!projectId) return;
 
     try {
       setLoading(true);
-      const projectData = await projectsApi.get(projectId);
+      const [projectData, cmsData] = await Promise.all([
+        projectsApi.get(projectId),
+        cmsApi.listConfigs()
+      ]);
       setProject(projectData);
+      setCmsConfigs(cmsData);
     } catch (error) {
       console.error('載入專案失敗:', error);
       // 如果專案不存在，跳轉回儀表板
@@ -50,6 +58,7 @@ export const ProjectDetailPage: React.FC = () => {
         selected_title: project.selected_title,
         intent: project.intent,
         style: project.style,
+        cms_config_id: project.cms_config_id,
       });
       setEditing(false);
     } catch (error) {
@@ -214,6 +223,35 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
 
             <div className="setting-item">
+              <label className="setting-label">預設發布站點</label>
+              {editing ? (
+                <Select
+                  value={project.cms_config_id || ''}
+                  onChange={(e) =>
+                    setProject((prev) =>
+                      prev
+                        ? {
+                          ...prev,
+                          cms_config_id: e.target.value,
+                        }
+                        : null
+                    )
+                  }
+                  options={[
+                    { value: '', label: '不預設' },
+                    ...cmsConfigs.map(c => ({ value: c.id, label: c.name }))
+                  ]}
+                />
+              ) : (
+                <div className="setting-value">
+                  {project.cms_config_id
+                    ? cmsConfigs.find(c => c.id === project.cms_config_id)?.name || '已失效站點'
+                    : '未設定'}
+                </div>
+              )}
+            </div>
+
+            <div className="setting-item">
               <label className="setting-label">寫作風格</label>
               {editing ? (
                 <Select
@@ -317,6 +355,14 @@ export const ProjectDetailPage: React.FC = () => {
             <div className="section-header-with-actions">
               <h2 className="section-title">文章預覽</h2>
               <div className="preview-actions">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowPublishModal(true)}
+                  style={{ marginRight: 'var(--space-2)' }}
+                >
+                  🚀 發布至 CMS
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -487,6 +533,14 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showPublishModal && project && (
+        <PublishModal
+          targetType="project"
+          targetId={project.project_id}
+          onClose={() => setShowPublishModal(false)}
+        />
       )}
     </div>
   );
