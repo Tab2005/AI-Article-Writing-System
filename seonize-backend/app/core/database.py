@@ -79,13 +79,39 @@ def get_db_context():
 
 
 def init_db():
-    """初始化資料庫 - 建立所有表格"""
+    """初始化資料庫 - 建立所有表格並套用遷移"""
     from app.models.db_models import (
         User, Project, Settings, SerpCache, KeywordCache, 
         CompetitiveCache, PromptTemplate, CMSConfig, 
         KalpaMatrix, KalpaNode, CreditLog
     )
+    
+    # 1. 建立基本結構 (SQLite 且資料庫不存在時特別有用)
     Base.metadata.create_all(bind=engine)
+    
+    # 2. 執行 Alembic 自動遷移 (適用於生產環境結構升級)
+    try:
+        from alembic.config import Config
+        from alembic import command
+        
+        # 尋找 alembic.ini 路徑
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        ini_path = os.path.join(base_dir, "alembic.ini")
+        
+        if os.path.exists(ini_path):
+            logger.info("Running database migrations...")
+            alembic_cfg = Config(ini_path)
+            # 配置 alembic 使用目前的 DATABASE_URL
+            alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Database migrations complete.")
+        else:
+            logger.warning(f"alembic.ini not found at {ini_path}, skipping automatic migrations.")
+            
+    except Exception as e:
+        logger.error(f"Failed to run database migrations: {e}")
+        # 在某些受限環境下可能會失敗，但不應阻礙應用程式啟動 (除非表格真的缺損)
+
     logger.info(f"Database initialized: {DATABASE_URL}")
 
 
