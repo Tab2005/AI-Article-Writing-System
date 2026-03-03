@@ -344,7 +344,7 @@ SERP 標題：
                 "summary": "",
             }
     @classmethod
-    async def generate_ai_titles(cls, keyword: str, titles: list[str], intent: str = "informational") -> list[dict]:
+    async def generate_ai_titles(cls, keyword: str, titles: list[str], intent: str = "informational", user_id: str = None) -> list[dict]:
         """基於 SERP 競品標題與 GEO 策略生成 AI 建議標題"""
         
         # 1. 優先從新模板系統讀取啟用的模板
@@ -352,12 +352,16 @@ SERP 標題：
         try:
             from app.core.database import SessionLocal
             from app.models.db_models import PromptTemplate
+            from sqlalchemy import or_
             db = SessionLocal()
             try:
+                # 優先順序：使用者的活躍模板 > 系統預設活躍模板
                 active_template = db.query(PromptTemplate).filter(
                     PromptTemplate.category == "title_generation",
-                    PromptTemplate.is_active == True
-                ).first()
+                    PromptTemplate.is_active == True,
+                    or_(PromptTemplate.user_id == user_id, PromptTemplate.user_id == None) if user_id else PromptTemplate.user_id == None
+                ).order_by(PromptTemplate.user_id.desc()).first()
+                
                 if active_template:
                     custom_prompt = active_template.content
             finally:

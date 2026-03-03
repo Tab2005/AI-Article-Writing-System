@@ -69,7 +69,11 @@ class TitleGenerationResponse(BaseModel):
 
 
 @router.post("/serp", response_model=ResearchResponse)
-async def research_serp(request: ResearchRequest, db: Session = Depends(get_db)):
+async def research_serp(
+    request: ResearchRequest, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
     """
     執行 SERP 研究 (僅限登入使用者)
     """
@@ -388,7 +392,8 @@ async def generate_titles(
     suggestions = await AIService.generate_ai_titles(
         keyword=request.keyword,
         titles=titles,
-        intent=request.intent
+        intent=request.intent,
+        user_id=current_user.id
     )
     
     # 2. 持久化至使用者的 KeywordCache

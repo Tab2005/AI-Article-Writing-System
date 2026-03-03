@@ -46,15 +46,21 @@ export const PromptPage: React.FC = () => {
 
       // 為每個 category 初始化 activePrompts
       const prompts: Record<string, string> = {};
-      const categories = Array.from(
-        new Set(data.map((t: PromptTemplate) => t.category))
-      ) as string[];
+      const loadedTemplatesMap: Record<string, PromptTemplate> = {};
+      const namesMap: Record<string, string> = {};
+      const categories = CATEGORY_ORDER;
 
       categories.forEach((category: string) => {
         const categoryTemplates = data.filter((t: PromptTemplate) => t.category === category);
-        const active = categoryTemplates.find((t: PromptTemplate) => t.is_active);
+        // 優先權：我的活躍模板 > 系統活躍模板 > 第一個模板
+        const myActive = categoryTemplates.find((t: PromptTemplate) => t.is_active && t.user_id);
+        const systemActive = categoryTemplates.find((t: PromptTemplate) => t.is_active && !t.user_id);
+        const active = myActive || systemActive;
+
         if (active) {
           prompts[category] = active.content;
+          loadedTemplatesMap[category] = active;
+          namesMap[category] = active.name;
         } else if (categoryTemplates.length > 0) {
           prompts[category] = categoryTemplates[0].content;
         } else {
@@ -63,6 +69,8 @@ export const PromptPage: React.FC = () => {
       });
 
       setActivePrompts(prompts);
+      setLoadedTemplates(loadedTemplatesMap);
+      setNewTemplateNames(namesMap);
     } catch (error) {
       console.error('Failed to load templates:', error);
     } finally {
@@ -126,9 +134,9 @@ export const PromptPage: React.FC = () => {
     }
   };
 
-  const handleActivate = async (id: number) => {
+  const handleActivate = async (templateId: number, active: boolean = true) => {
     try {
-      await promptsApi.update(id, { is_active: true });
+      await promptsApi.update(templateId, { is_active: active });
       setMessage({ type: 'success', text: '模板已啟用' });
       loadTemplates();
       setTimeout(() => setMessage(null), 3000);
@@ -157,15 +165,8 @@ export const PromptPage: React.FC = () => {
     setTimeout(() => setMessage(null), 2000);
   };
 
-  // 按指定順序排序 categories
-  const categories = Array.from(new Set(allTemplates.map((t) => t.category))).sort((a, b) => {
-    const indexA = CATEGORY_ORDER.indexOf(a);
-    const indexB = CATEGORY_ORDER.indexOf(b);
-    if (indexA === -1 && indexB === -1) return 0;
-    if (indexA === -1) return 1;
-    if (indexB === -1) return -1;
-    return indexA - indexB;
-  });
+  // 使用 CATEGORY_ORDER 作為顯示來源，確保始終顯示核心分類
+  const categories = CATEGORY_ORDER;
 
   if (loading) {
     return (
@@ -226,11 +227,27 @@ export const PromptPage: React.FC = () => {
                         onClick={() => handleLoadTemplate(category, t)}
                       >
                         <div className="template-item__info">
-                          <span className="template-item__name">{t.name}</span>
+                          <span className="template-item__name">
+                            {!t.user_id && <span className="system-badge">系統</span>}
+                            {t.name}
+                          </span>
                           {t.is_active && <span className="template-item__badge">使用中</span>}
                         </div>
                         <div className="template-item__actions">
-                          {!t.is_active && (
+                          {t.is_active ? (
+                            t.user_id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleActivate(t.id, false);
+                                }}
+                              >
+                                停用
+                              </Button>
+                            )
+                          ) : (
                             <Button
                               variant="secondary"
                               size="sm"
@@ -242,23 +259,25 @@ export const PromptPage: React.FC = () => {
                               啟用
                             </Button>
                           )}
-                          <button
-                            className="template-action-btn"
-                            onClick={(e) => handleDelete(e, t.id)}
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                          {t.user_id && (
+                            <button
+                              className="template-action-btn"
+                              onClick={(e) => handleDelete(e, t.id)}
                             >
-                              <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                            </svg>
-                          </button>
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))
@@ -292,17 +311,15 @@ export const PromptPage: React.FC = () => {
                     fullWidth
                   />
                   <div className="prompt-card__actions-row">
-                    {loadedTemplates[category] && (
-                      <Button
-                        variant="secondary"
-                        onClick={() => handleUpdateExisting(category)}
-                        loading={savingCategory === category}
-                        disabled={!activePrompts[category]}
-                        fullWidth
-                      >
-                        儲存變更
-                      </Button>
-                    )}
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleUpdateExisting(category)}
+                      loading={savingCategory === category}
+                      disabled={!activePrompts[category] || !loadedTemplates[category]?.user_id}
+                      fullWidth
+                    >
+                      儲存變更
+                    </Button>
                     <Button
                       variant="cta"
                       onClick={() => handleSaveAsNew(category)}
@@ -316,7 +333,7 @@ export const PromptPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          );
+          )
         })}
       </div>
     </div>

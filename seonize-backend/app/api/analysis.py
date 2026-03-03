@@ -6,6 +6,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from app.models.project import SearchIntent, WritingStyle
 from app.core.auth import get_current_user
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.core.database import get_db
 import logging
 from app.services.credit_service import CreditService, CREDIT_COSTS
@@ -208,11 +209,12 @@ async def generate_outline(
         if db_project.research_data:
             research_data = db_project.research_data
         
-        # 2. 從指令倉庫載入 Prompt Template
+        # 2. 從指令倉庫載入 Prompt Template（優先取用使用者的，次之取用系統預設）
         prompt_template = db.query(PromptTemplate).filter(
             PromptTemplate.category == "outline_generation",
-            PromptTemplate.is_active == True
-        ).first()
+            PromptTemplate.is_active == True,
+            or_(PromptTemplate.user_id == current_user.id, PromptTemplate.user_id == None)
+        ).order_by(PromptTemplate.user_id.desc()).first()
         
         prompt_content = prompt_template.content if prompt_template else None
             

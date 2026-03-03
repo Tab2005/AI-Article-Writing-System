@@ -405,6 +405,7 @@ export interface PromptTemplate {
   category: string;
   name: string;
   content: string;
+  user_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

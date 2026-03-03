@@ -6,6 +6,7 @@ from app.services.ai_service import AIService
 from app.services.credit_service import CreditService, CREDIT_COSTS
 from app.core.auth import get_current_user
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.core.database import get_db
 import re
 
@@ -123,11 +124,13 @@ async def generate_section(
             parts.append("AI 概覽重點: " + str(rd['ai_overview'])[:500])
         research_context = "\n".join(parts)
 
-    # 從指令倉庫載入 Prompt Template
+    # 2. 從指令倉庫載入 Prompt Template（優先取用使用者的，次之取用系統預設）
     template = db.query(PromptTemplate).filter(
         PromptTemplate.category == "content_writing",
-        PromptTemplate.is_active == True
-    ).first()
+        PromptTemplate.is_active == True,
+        or_(PromptTemplate.user_id == current_user.id, PromptTemplate.user_id == None)
+    ).order_by(PromptTemplate.user_id.desc()).first()
+    
     if template:
         prompt_content = template.content
         
@@ -194,7 +197,16 @@ async def generate_full_article(
     """
     生成完整文章 (僅限擁有者)
     """
-    from app.models.db_models import Project
+    from app.models.db_models import Project, PromptTemplate
+    # 0. 從指令倉庫載入 Prompt Template（優先取用使用者的，次之取用系統預設）
+    template = db.query(PromptTemplate).filter(
+        PromptTemplate.category == "content_writing",
+        PromptTemplate.is_active == True,
+        or_(PromptTemplate.user_id == current_user.id, PromptTemplate.user_id == None)
+    ).order_by(PromptTemplate.user_id.desc()).first()
+    
+    prompt_content = template.content if template else None
+
     # 驗證專案所有權
     db_project = db.query(Project).filter(
         Project.id == request.project_id,
@@ -218,12 +230,24 @@ async def generate_full_article(
         summaries: List[str] = []
         all_keywords: List[str] = []
 
+        # 準備研究數據文本
+        research_context = ""
+        if db_project and db_project.research_data:
+            rd = db_project.research_data
+            parts = []
+            if rd.get('paa'): parts.append("PAA: " + "; ".join(rd['paa'][:5]))
+            if rd.get('related_searches'): parts.append("相關: " + ", ".join(rd['related_searches'][:5]))
+            research_context = "\n".join(parts)
+
         for section in request.sections:
             result = await AIService.generate_section_content(
                 heading=section.heading,
                 keywords=section.keywords,
                 previous_summary=summaries[-1] if summaries else "",
-                optimization_mode=request.optimization_mode,
+                optimization_mode=request.optimization_mode.value,
+                h1=request.h1,
+                custom_prompt=prompt_content,
+                research_context=research_context
             )
             full_content += f"## {result['heading']}\n\n{result['content']}\n\n"
             summaries.append(result["summary"])
