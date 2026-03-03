@@ -49,6 +49,7 @@ else:
         pool_pre_ping=True,
         pool_size=5,
         max_overflow=10,
+        pool_timeout=5, # 增加逾時防止啟動掛死
         echo=False,
     )
 
@@ -83,7 +84,7 @@ def get_db_context():
 
 
 def init_db():
-    """初始化資料庫 - 建立所有表格並套用遷移"""
+    """初始化資料庫 - 適應性建立表格並套用遷移"""
     import traceback
     from app.models.db_models import (
         User, Project, Settings, SerpCache, KeywordCache, 
@@ -91,54 +92,45 @@ def init_db():
         KalpaMatrix, KalpaNode, CreditLog
     )
     
-    logger.info(f"Connecting to database: {DATABASE_URL}")
+    # 遮蔽敏感資訊的日誌
+    display_url = DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL
+    logger.info(f"Connecting to database: {display_url}")
     
-    # 1. 建立基本結構 (SQLite 且資料庫不存在時特別有用)
-    try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("Base metadata created.")
-    except Exception as e:
-        logger.error(f"Failed to create base metadata: {e}")
-        logger.error(traceback.format_exc())
+    # 1. 建立基本結構 (僅 SQLite 模式下啟動，生產環境交給 Alembic)
+    if IS_SQLITE:
+        try:
+            Base.metadata.create_all(bind=engine)
+            logger.info("SQLite base metadata created.")
+        except Exception as e:
+            logger.error(f"Failed to create base metadata: {e}")
     
-    # 2. 執行 Alembic 自動遷移 (適用於生產環境結構升級)
+    # 2. 執行 Alembic 自動遷移 (生產環境結構升級的核心)
     try:
         from alembic.config import Config
         from alembic import command
         
-        # 尋找 alembic.ini 路徑
-        # 考慮到 Zeabur 的 Root Directory 設定，嘗試多個可能的路徑
-        current_file_dir = os.path.dirname(os.path.abspath(__file__))
-        possible_base_dirs = [
-            os.path.dirname(os.path.dirname(os.path.dirname(current_file_dir))), # ../../../
-            os.path.join(current_file_dir, "..", ".."), # ../../
-            os.getcwd() # 目前工作目錄
-        ]
+        # 尋找 alembic.ini (使用相對路徑容錯)
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        ini_path = os.path.join(base_dir, "alembic.ini")
         
-        ini_path = None
-        for base in possible_base_dirs:
-            test_path = os.path.join(base, "alembic.ini")
-            logger.info(f"Checking for alembic.ini at: {test_path}")
-            if os.path.exists(test_path):
-                ini_path = test_path
-                break
-        
-        if ini_path:
-            logger.info(f"Found alembic.ini at {ini_path}. Running migrations...")
+        # 如果第一級找不到，試試當前目錄或上一級 (適應 Zeabur 的 root 變動)
+        if not os.path.exists(ini_path):
+            ini_path = os.path.join(os.getcwd(), "alembic.ini")
+            
+        if os.path.exists(ini_path):
+            logger.info(f"Running migrations using {ini_path}...")
             alembic_cfg = Config(ini_path)
-            # 配置 alembic 使用目前的 DATABASE_URL
             alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
             command.upgrade(alembic_cfg, "head")
-            logger.info("Database migrations complete.")
+            logger.info("Alembic upgrade completed.")
         else:
-            logger.warning("alembic.ini not found in search paths, skipping automatic migrations.")
+            logger.warning("alembic.ini not found, skipping auto-migration.")
             
     except Exception as e:
-        logger.error(f"Error during automatic database migrations: {e}")
-        logger.error(traceback.format_exc())
-        # 在某些受限環境下可能會失敗，但不應阻礙應用程式啟動 (除非表格真的缺損)
+        logger.error(f"Migration error (non-fatal): {e}")
+        # 不讓遷移錯誤阻斷進程啟動，以便進入 /api/health 診斷
 
-    logger.info("Database initialization sequence finished.")
+    logger.info("Initialization sequence finished.")
 
 
 def get_database_info() -> dict:
