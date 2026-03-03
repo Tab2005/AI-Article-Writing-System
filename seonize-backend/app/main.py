@@ -11,12 +11,11 @@ sys.stderr.reconfigure(line_buffering=True)
 print("🚀 Seonize Backend pre-init starting...")
 
 try:
-    # 配置基礎日誌
+    # 配置基礎日誌 (僅輸出到 stdout/stderr 以符合容器最佳實務)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         handlers=[
-            logging.FileHandler("backend_diagnostic.log", encoding="utf-8"),
             logging.StreamHandler(sys.stdout)
         ]
     )

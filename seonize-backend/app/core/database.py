@@ -11,8 +11,10 @@ from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
-# 從環境變數取得資料庫 URL，預設使用 SQLite
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./seonize.db")
+from app.core.config import settings
+
+# 從統一配置中心取得資料庫 URL
+DATABASE_URL = settings.DATABASE_URL
 
 # 修正 PostgreSQL 協定頭 (SQLAlchemy 2.0+ 強制要求使用 postgresql://)
 if DATABASE_URL.startswith("postgres://"):
