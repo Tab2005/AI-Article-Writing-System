@@ -19,6 +19,20 @@ try:
             logging.StreamHandler(sys.stdout)
         ]
     )
+    
+    # 臨時強效清理：確保資料庫設定與新策略同步
+    try:
+        from app.core.database import SessionLocal
+        from app.models.db_models import Settings
+        db = SessionLocal()
+        current_provider = Settings.get_value(db, "ai_provider")
+        if current_provider != "zeabur":
+            print(f"🧹 DB Cleanup: Resetting provider from {current_provider} to zeabur")
+            Settings.set_value(db, "ai_provider", "zeabur")
+            Settings.set_value(db, "ai_model", "gpt-4o-mini")
+        db.close()
+    except Exception as db_err:
+        print(f"⚠️ Initial DB cleanup skipped: {db_err}")
 
     logger = logging.getLogger(__name__)
 
