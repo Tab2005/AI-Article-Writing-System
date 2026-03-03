@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 # 從環境變數取得資料庫 URL，預設使用 SQLite
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./seonize.db")
 
+# 修正 PostgreSQL 協定頭 (SQLAlchemy 2.0+ 強制要求使用 postgresql://)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # 判斷資料庫類型
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
 IS_POSTGRES = DATABASE_URL.startswith("postgresql")
@@ -80,14 +84,22 @@ def get_db_context():
 
 def init_db():
     """初始化資料庫 - 建立所有表格並套用遷移"""
+    import traceback
     from app.models.db_models import (
         User, Project, Settings, SerpCache, KeywordCache, 
         CompetitiveCache, PromptTemplate, CMSConfig, 
         KalpaMatrix, KalpaNode, CreditLog
     )
     
+    logger.info(f"Connecting to database: {DATABASE_URL}")
+    
     # 1. 建立基本結構 (SQLite 且資料庫不存在時特別有用)
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Base metadata created.")
+    except Exception as e:
+        logger.error(f"Failed to create base metadata: {e}")
+        logger.error(traceback.format_exc())
     
     # 2. 執行 Alembic 自動遷移 (適用於生產環境結構升級)
     try:
@@ -95,24 +107,38 @@ def init_db():
         from alembic import command
         
         # 尋找 alembic.ini 路徑
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        ini_path = os.path.join(base_dir, "alembic.ini")
+        # 考慮到 Zeabur 的 Root Directory 設定，嘗試多個可能的路徑
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        possible_base_dirs = [
+            os.path.dirname(os.path.dirname(os.path.dirname(current_file_dir))), # ../../../
+            os.path.join(current_file_dir, "..", ".."), # ../../
+            os.getcwd() # 目前工作目錄
+        ]
         
-        if os.path.exists(ini_path):
-            logger.info("Running database migrations...")
+        ini_path = None
+        for base in possible_base_dirs:
+            test_path = os.path.join(base, "alembic.ini")
+            logger.info(f"Checking for alembic.ini at: {test_path}")
+            if os.path.exists(test_path):
+                ini_path = test_path
+                break
+        
+        if ini_path:
+            logger.info(f"Found alembic.ini at {ini_path}. Running migrations...")
             alembic_cfg = Config(ini_path)
             # 配置 alembic 使用目前的 DATABASE_URL
             alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
             command.upgrade(alembic_cfg, "head")
             logger.info("Database migrations complete.")
         else:
-            logger.warning(f"alembic.ini not found at {ini_path}, skipping automatic migrations.")
+            logger.warning("alembic.ini not found in search paths, skipping automatic migrations.")
             
     except Exception as e:
-        logger.error(f"Failed to run database migrations: {e}")
+        logger.error(f"Error during automatic database migrations: {e}")
+        logger.error(traceback.format_exc())
         # 在某些受限環境下可能會失敗，但不應阻礙應用程式啟動 (除非表格真的缺損)
 
-    logger.info(f"Database initialized: {DATABASE_URL}")
+    logger.info("Database initialization sequence finished.")
 
 
 def get_database_info() -> dict:
