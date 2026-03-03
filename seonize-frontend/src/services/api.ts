@@ -163,9 +163,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
 // Auth API
 export const authApi = {
-  login: (password: string) => {
+  login: (email: string, password: string) => {
     const formData = new URLSearchParams();
-    formData.append('username', 'admin');
+    formData.append('username', email); // FastAPI OAuth2PasswordRequestForm 預設使用 'username' 欄位
     formData.append('password', password);
 
     return fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -176,13 +176,18 @@ export const authApi = {
       body: formData.toString(),
     }).then(async (res) => {
       if (!res.ok) {
-        const error = await res.json();
+        const error = await res.json().catch(() => ({ detail: '登入失敗' }));
         throw new Error(error.detail || '登入失敗');
       }
       return res.json();
     });
   },
-  validate: () => request<{ status: string }>('/api/auth/validate'),
+  register: (data: { email: string; password: string; username?: string }) =>
+    request<{ message: string; user_id: string }>('/api/auth/register', {
+      method: 'POST',
+      body: data,
+    }),
+  validate: () => request<{ status: string; user: any }>('/api/auth/validate'),
 };
 
 // Projects API

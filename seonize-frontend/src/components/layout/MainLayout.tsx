@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { useNavigate, NavLink, Outlet, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import InsufficientCreditsModal from '../common/InsufficientCreditsModal';
+import { useApiWithCredits } from '../../hooks/useApiWithCredits';
 import './MainLayout.css';
 
 interface NavItem {
@@ -7,6 +10,7 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   children?: { path: string; label: string }[];
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -214,8 +218,31 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    path: '/admin/users',
+    label: '用戶管理',
+    adminOnly: true,
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
     path: '/settings',
     label: '系統設定',
+    adminOnly: true,
     icon: (
       <svg
         width="20"
@@ -236,7 +263,14 @@ const navItems: NavItem[] = [
 
 export const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['/kalpa-eye']);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const toggleMenu = (path: string, e: React.MouseEvent) => {
     if (!sidebarOpen) {
@@ -249,8 +283,22 @@ export const MainLayout: React.FC = () => {
     e.stopPropagation();
   };
 
+  const filteredNavItems = navItems.filter(item =>
+    !item.adminOnly || (user?.role === 'super_admin')
+  );
+
+  const { creditsModal, closeCreditsModal } = useApiWithCredits();
+
   return (
     <div className="main-layout">
+      {/* 全域點數不足提示 Modal */}
+      <InsufficientCreditsModal
+        isOpen={creditsModal.isOpen}
+        required={creditsModal.required}
+        available={creditsModal.available}
+        message={creditsModal.message}
+        onClose={closeCreditsModal}
+      />
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'sidebar--open' : 'sidebar--closed'}`}>
         <div className="sidebar__header">
@@ -279,7 +327,7 @@ export const MainLayout: React.FC = () => {
         </div>
 
         <nav className="sidebar__nav">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const hasChildren = item.children && item.children.length > 0;
             const isExpanded = expandedMenus.includes(item.path);
 
@@ -328,6 +376,48 @@ export const MainLayout: React.FC = () => {
         </nav>
 
         <div className="sidebar__footer">
+          {user && (
+            <div className="sidebar__user">
+              <Link
+                to="/profile"
+                className="sidebar__user-avatar"
+                title="查看個人資料"
+              >
+                {user.username.charAt(0).toUpperCase()}
+                <div className="sidebar__user-avatar-badge">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                </div>
+              </Link>
+              {sidebarOpen && (
+                <div className="sidebar__user-info">
+                  <Link to="/profile" className="sidebar__user-name-link">
+                    <span className="sidebar__user-name">{user.username}</span>
+                  </Link>
+                  <div className="sidebar__user-role">
+                    <span className={`sidebar__user-credits ${user.credits < 50 ? 'sidebar__user-credits--low' : ''}`}>
+                      💎 {user.credits}
+                    </span>
+                    {user.role === 'super_admin' && <span className="sidebar__role-badge">ADMIN</span>}
+                  </div>
+                </div>
+              )}
+              {sidebarOpen && (
+                <button
+                  className="sidebar__logout-btn"
+                  onClick={handleLogout}
+                  title="登出"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" x2="9" y1="12" y2="12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
           {sidebarOpen && (
             <div className="sidebar__version">
               <span>v1.0.0</span>

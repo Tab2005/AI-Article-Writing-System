@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Any
 from pydantic import BaseModel
 from app.core.database import get_db
-from app.core.auth import get_current_admin
+from app.core.auth import get_current_user
 from app.models.db_models import CMSConfig
 from app.services.cms_service import cms_manager
 from app.core.security import encrypt_value
 
-router = APIRouter(dependencies=[Depends(get_current_admin)])
+# 配置路由依賴為全域登入
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 class CMSConfigRequest(BaseModel):
     name: str
@@ -40,12 +41,21 @@ class CMSPublishRequest(BaseModel):
     scheduled_at: Optional[str] = None # ISO format
 
 @router.get("/configs", response_model=List[CMSConfigResponse])
-async def list_cms_configs(db: Session = Depends(get_db)):
-    configs = db.query(CMSConfig).all()
+async def list_cms_configs(
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """取得當前使用者所有 CMS 設定"""
+    configs = db.query(CMSConfig).filter(CMSConfig.user_id == current_user.id).all()
     return [c.to_dict() for c in configs]
 
 @router.post("/configs", response_model=CMSConfigResponse)
-async def create_cms_config(request: CMSConfigRequest, db: Session = Depends(get_db)):
+async def create_cms_config(
+    request: CMSConfigRequest, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """建立 CMS 設定 (關聯使用者)"""
     config = CMSConfig(
         name=request.name,
         platform=request.platform,
@@ -54,7 +64,8 @@ async def create_cms_config(request: CMSConfigRequest, db: Session = Depends(get
         api_key=encrypt_value(request.api_key) if request.api_key else None,
         auto_publish_enabled=request.auto_publish_enabled,
         frequency_type=request.frequency_type,
-        frequency_count=request.frequency_count
+        frequency_count=request.frequency_count,
+        user_id=current_user.id
     )
     db.add(config)
     db.commit()
@@ -62,19 +73,39 @@ async def create_cms_config(request: CMSConfigRequest, db: Session = Depends(get
     return config.to_dict()
 
 @router.delete("/configs/{config_id}")
-async def delete_cms_config(config_id: str, db: Session = Depends(get_db)):
-    config = db.query(CMSConfig).filter(CMSConfig.id == config_id).first()
+async def delete_cms_config(
+    config_id: str, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """刪除 CMS 設定 (僅限擁有者)"""
+    config = db.query(CMSConfig).filter(
+        CMSConfig.id == config_id,
+        CMSConfig.user_id == current_user.id
+    ).first()
+    
     if not config:
-        raise HTTPException(status_code=404, detail="Config not found")
+        raise HTTPException(status_code=404, detail="找不到設定或權限不足")
+    
     db.delete(config)
     db.commit()
     return {"success": True}
 
 @router.put("/configs/{config_id}", response_model=CMSConfigResponse)
-async def update_cms_config(config_id: str, request: CMSConfigRequest, db: Session = Depends(get_db)):
-    config = db.query(CMSConfig).filter(CMSConfig.id == config_id).first()
+async def update_cms_config(
+    config_id: str, 
+    request: CMSConfigRequest, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """更新 CMS 設定 (僅限擁有者)"""
+    config = db.query(CMSConfig).filter(
+        CMSConfig.id == config_id,
+        CMSConfig.user_id == current_user.id
+    ).first()
+    
     if not config:
-        raise HTTPException(status_code=404, detail="Config not found")
+        raise HTTPException(status_code=404, detail="找不到設定或權限不足")
     
     config.name = request.name
     config.platform = request.platform
@@ -93,38 +124,53 @@ async def update_cms_config(config_id: str, request: CMSConfigRequest, db: Sessi
     return config.to_dict()
 
 @router.post("/test-connection/{config_id}")
-async def test_cms_connection(config_id: str, db: Session = Depends(get_db)):
-    config = db.query(CMSConfig).filter(CMSConfig.id == config_id).first()
+async def test_cms_connection(
+    config_id: str, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """測試 CMS 連線 (僅限擁有者)"""
+    config = db.query(CMSConfig).filter(
+        CMSConfig.id == config_id,
+        CMSConfig.user_id == current_user.id
+    ).first()
+    
     if not config:
-        raise HTTPException(status_code=404, detail="Config not found")
+        raise HTTPException(status_code=404, detail="找不到設定或權限不足")
     
     client = cms_manager.get_client(config)
     if not client:
-        return {"success": False, "message": "Invalid platform"}
+        return {"success": False, "message": "無效的平台"}
     
     success = await client.test_connection()
     return {"success": success}
 
 @router.post("/publish")
-async def publish_to_cms(request: CMSPublishRequest, db: Session = Depends(get_db)):
+async def publish_to_cms(
+    request: CMSPublishRequest, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """發布文章至 CMS (僅限擁有者)"""
     import datetime
     scheduled_at = None
     if request.scheduled_at:
         try:
             scheduled_at = datetime.datetime.fromisoformat(request.scheduled_at.replace('Z', '+00:00'))
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format")
+            raise HTTPException(status_code=400, detail="無效的時間格式")
 
     result = await cms_manager.publish_article(
         db, 
         request.target_type, 
         request.target_id, 
         request.config_id, 
+        current_user.id, # 傳遞使用者 ID
         request.status, 
         scheduled_at
     )
     
     if not result["success"]:
-        raise HTTPException(status_code=500, detail=result.get("message", "Publish failed"))
+        raise HTTPException(status_code=500, detail=result.get("message", "發布失敗"))
     
     return result

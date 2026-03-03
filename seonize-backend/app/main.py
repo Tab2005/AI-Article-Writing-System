@@ -26,6 +26,7 @@ from app.api import (
     settings_router as settings_api_router,
     kalpa_router,
     cms_router,
+    users_router,
 )
 from app.core.config import settings as app_settings
 from app.core.database import init_db
@@ -86,6 +87,7 @@ app.include_router(prompts_router, prefix="/api/prompts", tags=["Prompts"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(kalpa_router, prefix="/api/kalpa", tags=["Kalpa Matrix"])
 app.include_router(cms_router, prefix="/api/cms", tags=["CMS Integration"])
+app.include_router(users_router, prefix="/api/admin/users", tags=["Admin - User Management"])
 
 
 @app.get("/")

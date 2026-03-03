@@ -18,11 +18,40 @@ def get_uuid_type():
     return PG_UUID(as_uuid=True)
 
 
+class User(Base):
+    """使用者資料表"""
+    __tablename__ = "users"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    username = Column(String(100), nullable=True)
+    hashed_password = Column(String(255), nullable=False)
+    role = Column(String(20), default="user")  # super_admin, vip, user
+    credits = Column(Integer, default=0)
+    membership_level = Column(Integer, default=1)
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "email": self.email,
+            "username": self.username,
+            "role": self.role,
+            "credits": self.credits,
+            "membership_level": self.membership_level,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
+        }
+
+
 class Project(Base):
     """專案資料表"""
     __tablename__ = "projects"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=True, index=True) # 歸屬使用者
     primary_keyword = Column(String(255), nullable=False, index=True)
     country = Column(String(10), default="TW")
     language = Column(String(10), default="zh-TW")
@@ -69,6 +98,7 @@ class Project(Base):
         """轉換為字典"""
         return {
             "project_id": self.id,
+            "user_id": self.user_id,
             "primary_keyword": self.primary_keyword,
             "country": self.country,
             "language": self.language,
@@ -172,6 +202,7 @@ class KeywordCache(Base):
     __tablename__ = "keyword_cache"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(36), nullable=True, index=True) # 歸屬使用者
     keyword = Column(String(255), nullable=False, index=True)
     location_code = Column(Integer, nullable=False)
     language_code = Column(String(10), nullable=False)
@@ -213,6 +244,7 @@ class PromptTemplate(Base):
     __tablename__ = "prompt_templates"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(36), nullable=True, index=True) # 歸屬使用者 (NULL 代表系統預設)
     category = Column(String(50), nullable=False, index=True) # title_generation, outline_generation, etc.
     name = Column(String(100), nullable=False)
     content = Column(Text, nullable=False)
@@ -223,6 +255,7 @@ class PromptTemplate(Base):
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "category": self.category,
             "name": self.name,
             "content": self.content,
@@ -237,6 +270,7 @@ class CMSConfig(Base):
     __tablename__ = "cms_configs"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=True, index=True) # 歸屬使用者
     name = Column(String(100), nullable=False)
     platform = Column(String(20), nullable=False)  # ghost, wordpress
     api_url = Column(Text, nullable=False)
@@ -259,6 +293,7 @@ class CMSConfig(Base):
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "name": self.name,
             "platform": self.platform,
             "api_url": self.api_url,
@@ -278,6 +313,7 @@ class KalpaMatrix(Base):
     __tablename__ = "kalpa_matrices"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=True, index=True) # 歸屬使用者
     project_name = Column(String(255), nullable=False, index=True)
     industry = Column(String(100), default="Crypto")
     money_page_url = Column(Text, nullable=True)
@@ -297,6 +333,7 @@ class KalpaMatrix(Base):
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "project_name": self.project_name,
             "industry": self.industry,
             "money_page_url": self.money_page_url,
@@ -315,6 +352,7 @@ class KalpaNode(Base):
     __tablename__ = "kalpa_nodes"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), nullable=True, index=True) # 歸屬使用者
     matrix_id = Column(String(36), nullable=False, index=True)
     
     entity = Column(String(100))
@@ -342,6 +380,7 @@ class KalpaNode(Base):
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "matrix_id": self.matrix_id,
             "entity": self.entity,
             "action": self.action,
@@ -357,5 +396,27 @@ class KalpaNode(Base):
             "cms_publish_url": self.cms_publish_url,
             "scheduled_at": self.scheduled_at.replace(tzinfo=timezone.utc).isoformat() if self.scheduled_at else None,
             "published_at": self.published_at.replace(tzinfo=timezone.utc).isoformat() if self.published_at else None,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
+        }
+
+
+class CreditLog(Base):
+    """點數異動記錄表（扣點 / 退款歷程）"""
+    __tablename__ = "credit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(36), nullable=False, index=True)
+    delta = Column(Integer, nullable=False)      # 正數=入帳/退還, 負數=扣除
+    balance = Column(Integer, nullable=False)    # 操作後餘額快照
+    operation = Column(String(150), nullable=True)  # 操作名稱
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "delta": self.delta,
+            "balance": self.balance,
+            "operation": self.operation,
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
         }

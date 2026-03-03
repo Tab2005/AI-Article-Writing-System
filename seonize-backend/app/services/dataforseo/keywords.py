@@ -24,9 +24,15 @@ class DataForSEOKeywordService(DataForSEOBase):
             return []
 
     @classmethod
-    async def get_keyword_ideas(cls, keyword: str, language_code: str = "zh_TW", location_code: int = 2158, db = None, login = None, password = None, force_refresh: bool = False) -> Dict[str, Any]:
+    async def get_keyword_ideas(cls, keyword: str, user_id: str, language_code: str = "zh_TW", location_code: int = 2158, db = None, login = None, password = None, force_refresh: bool = False) -> Dict[str, Any]:
         if db and not force_refresh:
-            cache = db.query(KeywordCache).filter(KeywordCache.keyword == keyword, KeywordCache.location_code == location_code, KeywordCache.language_code == language_code).first()
+            # 加入 user_id 過濾
+            cache = db.query(KeywordCache).filter(
+                KeywordCache.keyword == keyword, 
+                KeywordCache.location_code == location_code, 
+                KeywordCache.language_code == language_code,
+                KeywordCache.user_id == user_id
+            ).first()
             if cache:
                 return {
                     "seed_keyword_data": cls._flatten_keyword_data(cache.seed_data),
@@ -53,12 +59,25 @@ class DataForSEOKeywordService(DataForSEOBase):
                 suggestions = [cls._flatten_keyword_data(s) for s in result_list[1:] if s]
                 
                 if db:
-                    cache = db.query(KeywordCache).filter(KeywordCache.keyword == keyword, KeywordCache.location_code == location_code, KeywordCache.language_code == language_code).first()
+                    cache = db.query(KeywordCache).filter(
+                        KeywordCache.keyword == keyword, 
+                        KeywordCache.location_code == location_code, 
+                        KeywordCache.language_code == language_code,
+                        KeywordCache.user_id == user_id
+                    ).first()
                     if cache:
                         cache.seed_data, cache.suggestions = seed_data, suggestions
                         cache.created_at, cache.expires_at = datetime.now(timezone.utc), datetime.now(timezone.utc) + timedelta(days=30)
                     else:
-                        db.add(KeywordCache(keyword=keyword, location_code=location_code, language_code=language_code, seed_data=seed_data, suggestions=suggestions, expires_at=datetime.now(timezone.utc) + timedelta(days=30)))
+                        db.add(KeywordCache(
+                            user_id=user_id,
+                            keyword=keyword, 
+                            location_code=location_code, 
+                            language_code=language_code, 
+                            seed_data=seed_data, 
+                            suggestions=suggestions, 
+                            expires_at=datetime.now(timezone.utc) + timedelta(days=30)
+                        ))
                     db.commit()
                 
                 return {

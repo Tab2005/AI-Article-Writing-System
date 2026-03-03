@@ -1,19 +1,16 @@
-"""
-Seonize Backend - Writing API Router
-內容生成 API
-"""
-
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from app.models.project import OptimizationMode
 from app.services.ai_service import AIService
-from app.core.auth import get_current_admin
+from app.services.credit_service import CreditService, CREDIT_COSTS
+from app.core.auth import get_current_user
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 import re
 
-router = APIRouter(dependencies=[Depends(get_current_admin)])
+# 配置路由依賴為全域登入
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 def calculate_readability(content: str) -> float:
@@ -93,18 +90,29 @@ class WritingResponse(BaseModel):
 
 
 @router.post("/generate-section", response_model=WritingResponse)
-async def generate_section(request: WritingRequest, db: Session = Depends(get_db)):
+async def generate_section(
+    request: WritingRequest, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
     """
-    生成單一章節內容 - 整合指令倉庫
+    生成單一章節內容 (僅限擁有者)
     """
-    from app.models.db_models import PromptTemplate
+    from app.models.db_models import PromptTemplate, Project
     
+    # 1. 驗證專案所有權
+    db_project = db.query(Project).filter(
+        Project.id == request.project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
+    if not db_project:
+        raise HTTPException(status_code=403, detail="找不到專案或權限不足")
+
     prompt_content = None
     research_context = ""
-    # 從資料庫獲取專案的研究數據與背景
-    from app.models.db_models import Project
-    db_project = db.query(Project).filter(Project.id == request.project_id).first()
-    if db_project and db_project.research_data:
+    
+    if db_project.research_data:
         rd = db_project.research_data
         parts = []
         if rd.get('paa'):
@@ -123,25 +131,42 @@ async def generate_section(request: WritingRequest, db: Session = Depends(get_db
     if template:
         prompt_content = template.content
         
-    result = await AIService.generate_section_content(
-        heading=request.section.heading,
-        keywords=request.section.keywords,
-        previous_summary=request.section.previous_summary,
-        optimization_mode=request.optimization_mode.value,
-        target_word_count=request.target_word_count,
-        keyword_density=request.keyword_density,
-        h1=request.h1,
-        custom_prompt=prompt_content,
-        research_context=research_context
-    )
+    # ── 點數檢查與扣減 ──────────────────────────
+    COST = CREDIT_COSTS["writing_section"]
+    tx = CreditService.deduct(db, current_user, COST, "生成段落")
+    # ────────────────────────────────────────────
 
-    return WritingResponse(
-        heading=result["heading"],
-        content=result["content"],
-        word_count=result["word_count"],
-        embedded_keywords=result["embedded_keywords"],
-        summary=result["summary"],
-    )
+    try:
+        result = await AIService.generate_section_content(
+            heading=request.section.heading,
+            keywords=request.section.keywords,
+            previous_summary=request.section.previous_summary,
+            optimization_mode=request.optimization_mode.value,
+            target_word_count=request.target_word_count,
+            keyword_density=request.keyword_density,
+            h1=request.h1,
+            custom_prompt=prompt_content,
+            research_context=research_context
+        )
+
+        # 驗證 AI 回傳內容有效性
+        if not result or not result.get("content", "").strip():
+            CreditService.refund(db, current_user, COST, "AI 生成段落內容為空")
+            raise HTTPException(status_code=500, detail="AI 生成內容為空，已退還點數。")
+
+        return WritingResponse(
+            heading=result["heading"],
+            content=result["content"],
+            word_count=result["word_count"],
+            embedded_keywords=result["embedded_keywords"],
+            summary=result["summary"],
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        if not tx.get("skipped"):
+            CreditService.refund(db, current_user, COST, f"generate_section 異常: {str(e)[:80]}")
+        raise HTTPException(status_code=500, detail=f"段落生成失敗，已退還點數。原因：{str(e)}")
 
 
 class FullArticleRequest(BaseModel):
@@ -161,46 +186,80 @@ class FullArticleResponse(BaseModel):
 
 
 @router.post("/generate-full", response_model=FullArticleResponse)
-async def generate_full_article(request: FullArticleRequest):
+async def generate_full_article(
+    request: FullArticleRequest,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
     """
-    生成完整文章（批次處理所有章節）
+    生成完整文章 (僅限擁有者)
     """
-    full_content = f"# {request.h1}\n\n"
-    summaries: List[str] = []
-    all_keywords: List[str] = []
+    from app.models.db_models import Project
+    # 驗證專案所有權
+    db_project = db.query(Project).filter(
+        Project.id == request.project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
+    if not db_project:
+        raise HTTPException(status_code=403, detail="找不到專案或權限不足")
 
-    for section in request.sections:
-        result = await AIService.generate_section_content(
-            heading=section.heading,
-            keywords=section.keywords,
-            previous_summary=summaries[-1] if summaries else "",
-            optimization_mode=request.optimization_mode,
+    # ── 點數檢查與扣減 ──────────────────────────
+    # 1. 權限檢查：全篇生成需一般會員以上
+    CreditService.check_feature_access(current_user, "writing_full")
+    
+    # 2. 扣減點數
+    COST = CREDIT_COSTS["writing_full"]
+    tx = CreditService.deduct(db, current_user, COST, "生成完整文章")
+    # ────────────────────────────────────────────
+
+    try:
+        full_content = f"# {request.h1}\n\n"
+        summaries: List[str] = []
+        all_keywords: List[str] = []
+
+        for section in request.sections:
+            result = await AIService.generate_section_content(
+                heading=section.heading,
+                keywords=section.keywords,
+                previous_summary=summaries[-1] if summaries else "",
+                optimization_mode=request.optimization_mode,
+            )
+            full_content += f"## {result['heading']}\n\n{result['content']}\n\n"
+            summaries.append(result["summary"])
+            all_keywords.extend(section.keywords)
+
+        if not full_content.strip():
+            CreditService.refund(db, current_user, COST, "AI 完整文章內容為空")
+            raise HTTPException(status_code=500, detail="AI 生成內容為空，已退還點數。")
+
+        word_count = len(full_content.replace(" ", "").replace("\n", ""))
+
+        def calc_density(content: str, keywords: List[str]) -> Dict[str, float]:
+            density: Dict[str, float] = {}
+            content_no_space = content.replace(" ", "").replace("\n", "")
+            total_len = max(len(content_no_space), 1)
+            for kw in set([k for k in keywords if k]):
+                count = content_no_space.count(kw)
+                density[kw] = round((count * len(kw)) / total_len * 100, 2)
+            return density
+
+        keyword_density = calc_density(full_content, all_keywords)
+
+        return FullArticleResponse(
+            title=request.h1,
+            content=full_content,
+            word_count=word_count,
+            keyword_density=keyword_density,
+            meta_title=f"{request.h1} | Seonize SEO 優質內容",
+            meta_description=f"深入了解{request.h1}，本文提供完整指南、實用技巧與專業建議。"
         )
-        full_content += f"## {result['heading']}\n\n{result['content']}\n\n"
-        summaries.append(result["summary"])
-        all_keywords.extend(section.keywords)
-
-    word_count = len(full_content.replace(" ", "").replace("\n", ""))
-
-    def calc_density(content: str, keywords: List[str]) -> Dict[str, float]:
-        density: Dict[str, float] = {}
-        content_no_space = content.replace(" ", "").replace("\n", "")
-        total_len = max(len(content_no_space), 1)
-        for kw in set([k for k in keywords if k]):
-            count = content_no_space.count(kw)
-            density[kw] = round((count * len(kw)) / total_len * 100, 2)
-        return density
-
-    keyword_density = calc_density(full_content, all_keywords)
-
-    return FullArticleResponse(
-        title=request.h1,
-        content=full_content,
-        word_count=word_count,
-        keyword_density=keyword_density,
-        meta_title=f"{request.h1} | Seonize SEO 優質內容",
-        meta_description=f"深入了解{request.h1}，本文提供完整指南、實用技巧與專業建議。"
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        if not tx.get("skipped"):
+            CreditService.refund(db, current_user, COST, f"generate_full 異常: {str(e)[:80]}")
+        raise HTTPException(status_code=500, detail=f"文章生成失敗，已退還點數。原因：{str(e)}")
 
 
 class SEOCheckRequest(BaseModel):
@@ -220,8 +279,7 @@ class SEOCheckResponse(BaseModel):
 @router.post("/seo-check", response_model=SEOCheckResponse)
 async def check_seo(request: SEOCheckRequest):
     """
-    SEO 體檢與優化建議
-    第五階段：SEO 體檢與優化
+    SEO 體檢與優化建議 (僅限登入使用者)
     """
     content = request.content
     word_count = len(content.replace(" ", "").replace("\n", ""))
@@ -236,19 +294,16 @@ async def check_seo(request: SEOCheckRequest):
         kw_count = content.lower().count(kw.lower())
         keyword_density[kw] = round((kw_count / max(word_count, 1)) * 100, 2)
     
-    # Mock E-E-A-T signals detection - 加強偵測邏輯
+    # Mock E-E-A-T signals detection
     eeat_signals = []
     content_lower = content.lower()
     
-    # 經驗與專業 (Experience/Expertise)
     if any(kw in content_lower for kw in ["專家", "經驗", "實測", "親身", "筆者", "觀點"]):
         eeat_signals.append("Experience/Expertise (經驗與專業信號)")
         
-    # 權威性 (Authoritativeness)
     if any(kw in content_lower for kw in ["研究", "數據", "調查", "報告", "根據", "指出", "顯示", "學術"]):
         eeat_signals.append("Authoritativeness (權威與引述信號)")
         
-    # 信任度 (Trustworthiness)
     if any(kw in content_lower for kw in ["來源", "引用", "參考資料", "連結", "官方"]):
         eeat_signals.append("Trustworthiness (信任與來源信號)")
     
@@ -269,23 +324,37 @@ async def check_seo(request: SEOCheckRequest):
         eeat_signals=eeat_signals,
         suggestions=suggestions
     )
+
 @router.post("/projects/{project_id}/analyze-competition")
-async def analyze_competition(project_id: str, db: Session = Depends(get_db)):
+async def analyze_competition(
+    project_id: str, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
     """
-    對專案的關鍵字進行 SERP 競爭對手深度分析 (H2/H3 抓取)
+    對專案的關鍵字進行 SERP 競爭對手深度分析 (僅限擁有者)
     """
-    from app.models.db_models import Project, Settings
+    from app.models.db_models import Project
     from app.services.dataforseo_service import DataForSEOService
     import asyncio
     
-    # 1. 取得 SERP 結果
+    # 1. 驗證專案所有權
+    db_project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
+    if not db_project:
+        raise HTTPException(status_code=403, detail="找不到專案或權限不足")
+
+    # 2. 取得 SERP 結果
     serp_data = db_project.research_data or {}
     results = serp_data.get("results", [])
     
     if not results:
         return {"error": "請先執行基礎研究以獲取搜尋結果列表", "competitors": []}
 
-    # 2. 針對前 5 名競爭對手進行深度抓取
+    # 3. 針對前 5 名競爭對手進行深度抓取
     competitor_analysis = []
     top_competitors = results[:5]
     
@@ -293,7 +362,8 @@ async def analyze_competition(project_id: str, db: Session = Depends(get_db)):
     for comp in top_competitors:
         url = comp.get("url")
         if url:
-            tasks.append(DataForSEOService.get_page_structure(url, login, password, db))
+            # 修改處：這裡之前可能有引用錯誤，確保參數傳遞正確
+            tasks.append(DataForSEOService.get_page_structure(url))
     
     # 並行執行抓取任務
     analysis_results = await asyncio.gather(*tasks)

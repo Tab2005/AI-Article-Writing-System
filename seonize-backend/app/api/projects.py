@@ -4,15 +4,16 @@ Seonize Backend - Projects API Router
 """
 
 from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List
+from typing import List, Any
 from sqlalchemy.orm import Session
 from app.models.project import ProjectState, ProjectCreate, ProjectUpdate
 from app.models.db_models import Project
 from app.core.database import get_db
-from app.core.auth import get_current_admin
+from app.core.auth import get_current_user
 from datetime import datetime, timezone
 
-router = APIRouter(dependencies=[Depends(get_current_admin)])
+# 修改為僅需登入，但在路由內部過濾數據
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 def db_to_project_state(db_project: Project) -> ProjectState:
@@ -43,14 +44,19 @@ def db_to_project_state(db_project: Project) -> ProjectState:
 
 
 @router.post("/", response_model=ProjectState, status_code=status.HTTP_201_CREATED)
-async def create_project(project_data: ProjectCreate, db: Session = Depends(get_db)):
+async def create_project(
+    project_data: ProjectCreate, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
     """建立新專案"""
-    # 建立資料庫記錄
+    # 建立資料庫記錄，並關聯使用者
     db_project = Project(
         primary_keyword=project_data.primary_keyword,
         country=project_data.country,
         language=project_data.language,
         optimization_mode=project_data.optimization_mode,
+        user_id=current_user.id  # 注入使用者 ID
     )
     
     db.add(db_project)
@@ -61,32 +67,54 @@ async def create_project(project_data: ProjectCreate, db: Session = Depends(get_
 
 
 @router.get("/", response_model=List[ProjectState])
-async def list_projects(db: Session = Depends(get_db)):
-    """列出所有專案"""
-    db_projects = db.query(Project).order_by(Project.created_at.desc()).all()
+async def list_projects(
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """列出該使用者的所有專案"""
+    # 強制過濾 user_id
+    query = db.query(Project).filter(Project.user_id == current_user.id)
+    db_projects = query.order_by(Project.created_at.desc()).all()
     return [db_to_project_state(db_project) for db_project in db_projects]
 
 
 @router.get("/{project_id}", response_model=ProjectState)
-async def get_project(project_id: str, db: Session = Depends(get_db)):
-    """取得專案詳情"""
-    db_project = db.query(Project).filter(Project.id == project_id).first()
+async def get_project(
+    project_id: str, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """取得專案詳情（僅限擁有者）"""
+    db_project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
     if not db_project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project {project_id} not found"
+            detail=f"Project {project_id} not found or access denied"
         )
     return db_to_project_state(db_project)
 
 
 @router.patch("/{project_id}", response_model=ProjectState)
-async def update_project(project_id: str, project_update: ProjectUpdate, db: Session = Depends(get_db)):
-    """更新專案"""
-    db_project = db.query(Project).filter(Project.id == project_id).first()
+async def update_project(
+    project_id: str, 
+    project_update: ProjectUpdate, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """更新專案（僅限擁有者）"""
+    db_project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
     if not db_project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project {project_id} not found"
+            detail=f"Project {project_id} not found or access denied"
         )
     
     update_data = project_update.model_dump(exclude_unset=True)
@@ -102,13 +130,21 @@ async def update_project(project_id: str, project_update: ProjectUpdate, db: Ses
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_project(project_id: str, db: Session = Depends(get_db)):
-    """刪除專案"""
-    db_project = db.query(Project).filter(Project.id == project_id).first()
+async def delete_project(
+    project_id: str, 
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """刪除專案（僅限擁有者）"""
+    db_project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
     if not db_project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project {project_id} not found"
+            detail=f"Project {project_id} not found or access denied"
         )
     
     db.delete(db_project)

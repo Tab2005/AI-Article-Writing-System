@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, status
 from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
 from sqlalchemy.orm import Session
 from app.services.kalpa_service import kalpa_service
-from app.core.auth import get_current_admin
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.services.credit_service import CreditService, CREDIT_COSTS
 
-router = APIRouter()
+# 配置路由依賴為全域登入
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 class BrainstormRequest(BaseModel):
     topic: str
@@ -17,14 +19,14 @@ class BatchWeaveRequest(BaseModel):
 @router.post("/brainstorm")
 async def brainstorm_kalpa_elements(
     request: BrainstormRequest,
-    current_admin: str = Depends(get_current_admin)
+    current_user: Any = Depends(get_current_user)
 ):
     """
     天道解析：根據主題生成矩陣要素建議
     """
     import logging
     logger = logging.getLogger(__name__)
-    logger.info(f"Received brainstorm request for topic: {request.topic}")
+    logger.info(f"User {current_user.email} brainstorm topic: {request.topic}")
     
     try:
         results = await kalpa_service.brainstorm_elements(request.topic)
@@ -37,14 +39,14 @@ async def brainstorm_kalpa_elements(
 async def delete_kalpa_matrix(
     matrix_id: str,
     db: Session = Depends(get_db),
-    current_admin: str = Depends(get_current_admin)
+    current_user: Any = Depends(get_current_user)
 ):
     """
-    刪除指定的矩陣及其所有節點
+    刪除指定的矩陣及其所有節點 (僅限擁有者)
     """
-    success = kalpa_service.delete_matrix(db, matrix_id)
+    success = kalpa_service.delete_matrix(db, matrix_id, current_user.id)
     if not success:
-        raise HTTPException(status_code=404, detail="找不到該矩陣")
+        raise HTTPException(status_code=404, detail="找不到該矩陣或權限不足")
     return {"success": True, "message": "專案已刪除"}
 
 class KalpaGenerateRequest(BaseModel):
@@ -76,10 +78,10 @@ class KalpaSaveRequest(BaseModel):
 @router.post("/generate", response_model=List[KalpaNodeSchema])
 async def generate_kalpa_matrix(
     request: KalpaGenerateRequest,
-    current_admin: str = Depends(get_current_admin)
+    current_user: Any = Depends(get_current_user)
 ):
     """
-    生成因果矩陣端點 (不存檔)
+    生成因果矩陣端點 (不存檔，僅限登入使用者)
     """
     if not request.entities or not request.actions or not request.pain_points:
         raise HTTPException(status_code=400, detail="實體、動作與痛點列表均不能為空。")
@@ -101,13 +103,11 @@ async def generate_kalpa_matrix(
 async def save_kalpa_matrix(
     request: KalpaSaveRequest,
     db: Session = Depends(get_db),
-    current_admin: str = Depends(get_current_admin)
+    current_user: Any = Depends(get_current_user)
 ):
     """
-    儲存因果矩陣與節點到資料庫 (支援更新)
+    儲存因果矩陣與節點到資料庫 (支援更新，User 隔離)
     """
-    print(f"DEBUG: KalpaSaveRequest received. Fields: {request.model_fields.keys()}")
-    print(f"DEBUG: request object attributes: {dir(request)}")
     try:
         matrix = kalpa_service.save_matrix(
             db=db,
@@ -119,87 +119,122 @@ async def save_kalpa_matrix(
             actions=request.actions,
             pain_points=request.pain_points,
             nodes=request.nodes,
-            cms_config_id=request.cms_config_id
+            cms_config_id=request.cms_config_id,
+            user_id=current_user.id
         )
         return {"success": True, "matrix_id": matrix.id}
     except Exception as e:
-        import traceback
-        error_detail = traceback.format_exc()
-        print(error_detail) # 在伺服器日誌印出
-        raise HTTPException(status_code=500, detail=f"儲存失敗: {str(e)}\n{error_detail}")
+        raise HTTPException(status_code=500, detail=f"儲存失敗: {str(e)}")
 
 @router.get("/list")
 async def list_kalpa_matrices(
     db: Session = Depends(get_db),
-    current_admin: str = Depends(get_current_admin)
+    current_user: Any = Depends(get_current_user)
 ):
     """
-    列出所有已儲存的矩陣
+    列出該使用者所有已儲存的矩陣
     """
     from app.models.db_models import KalpaMatrix
-    matrices = db.query(KalpaMatrix).order_by(KalpaMatrix.created_at.desc()).all()
+    matrices = db.query(KalpaMatrix).filter(
+        KalpaMatrix.user_id == current_user.id
+    ).order_by(KalpaMatrix.created_at.desc()).all()
     return [m.to_dict() for m in matrices]
-
 
 @router.post("/weave/{node_id}")
 async def weave_kalpa_node(
     node_id: str,
     db: Session = Depends(get_db),
-    current_admin: str = Depends(get_current_admin)
+    current_user: Any = Depends(get_current_user)
 ):
     """
-    啟動「神諭編織」為節點生成文章
+    啟動「神諭編織」為節點生成文章 (僅限擁有者)
+    消耗 8 點，失敗時自動退還
     """
+    # 1. 權限檢查：單節點編織需一般會員以上
+    CreditService.check_feature_access(current_user, "kalpa_weave_node")
+
+    # 2. 扣除點數
+    COST = CREDIT_COSTS["kalpa_weave_node"]
+    tx = CreditService.deduct(db, current_user, COST, f"Kalpa 節點成稿 [{node_id[:8]}]")
     try:
-        node = await kalpa_service.weave_node(db, node_id)
-        db.refresh(node)
+        node = await kalpa_service.weave_node(db, node_id, current_user.id)
+        if not node or not getattr(node, 'woven_content', '').strip():
+            CreditService.refund(db, current_user, COST, "Kalpa 節點成稿內容為空")
+            raise HTTPException(status_code=500, detail="編織內容為空，已退還點數。")
         return {"success": True, "node": node.to_dict()}
+    except HTTPException:
+        raise
     except ValueError as ve:
-        raise HTTPException(status_code=404, detail=str(ve))
+        if not tx.get("skipped"):
+            CreditService.refund(db, current_user, COST, "weave_node 權限錯誤")
+        raise HTTPException(status_code=403, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"編織失敗: {str(e)}")
+        if not tx.get("skipped"):
+            CreditService.refund(db, current_user, COST, f"weave_node 異常: {str(e)[:80]}")
+        raise HTTPException(status_code=500, detail=f"編織失敗，已退還點數。原因：{str(e)}")
 
 @router.get("/node/{node_id}")
 async def get_kalpa_node(
     node_id: str,
     db: Session = Depends(get_db),
-    current_admin: str = Depends(get_current_admin)
+    current_user: Any = Depends(get_current_user)
 ):
     """
-    取得單一編織節點詳細資訊
+    取得單一編織節點詳細資訊 (僅限擁有者)
     """
-    from app.models.db_models import KalpaNode
-    node = db.query(KalpaNode).filter(KalpaNode.id == node_id).first()
+    from app.models.db_models import KalpaNode, KalpaMatrix
+    # 聯表查詢以驗證所有權
+    node = db.query(KalpaNode).join(KalpaMatrix).filter(
+        KalpaNode.id == node_id,
+        KalpaMatrix.user_id == current_user.id
+    ).first()
+    
     if not node:
-        raise HTTPException(status_code=404, detail="節點不存在")
+        raise HTTPException(status_code=404, detail="節點不存在或存取受限")
     return node.to_dict()
 
 @router.post("/batch-weave")
 async def batch_weave_kalpa_nodes(
     request: BatchWeaveRequest,
     background_tasks: BackgroundTasks,
-    current_admin: str = Depends(get_current_admin)
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
 ):
     """
-    批量啟動「神諭編織」 (背景執行)
+    批量啟動「神諭編織」(深度會員享有階梯折扣)
     """
+    # 1. 權限檢查：批量編織需深度會員
+    CreditService.check_feature_access(current_user, "kalpa_batch_weave")
+    
     if not request.node_ids:
         raise HTTPException(status_code=400, detail="未提供要編織的節點 ID")
-        
-    background_tasks.add_task(kalpa_service.batch_weave_task, request.node_ids)
-    return {"success": True, "message": f"已將 {len(request.node_ids)} 個任務加入背景隊列"}
+
+    node_count = len(request.node_ids)
+    COST = CreditService.calculate_batch_kalpa_cost(current_user, node_count)
+    user_id = current_user.id
+
+    tx = CreditService.deduct(db, current_user, COST, f"Kalpa 批量成稿 {node_count} 節點")
+
+    # 將任務加入背景，由背景服務精確處理部分退款
+    background_tasks.add_task(kalpa_service.batch_weave_task, request.node_ids, user_id, COST)
+    return {
+        "success": True,
+        "message": f"已將 {node_count} 個任務加入隊列",
+        "cost": COST,
+        "node_count": node_count
+    }
 
 @router.get("/articles/all")
 async def list_all_woven_articles(
     matrix_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_admin: str = Depends(get_current_admin)
+    current_user: Any = Depends(get_current_user)
 ):
     """
-    列出所有已編導完成的文章 (跨專案)
+    列出該使用者所有已編導完成的文章 (支援 專案過濾)
     """
     try:
-        articles = kalpa_service.list_all_articles(db, matrix_id)
+        articles = kalpa_service.list_all_articles(db, current_user.id, matrix_id)
         return articles
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文章查詢失敗: {str(e)}")
@@ -208,14 +243,14 @@ async def list_all_woven_articles(
 async def get_kalpa_matrix(
     matrix_id: str,
     db: Session = Depends(get_db),
-    current_admin: str = Depends(get_current_admin)
+    current_user: Any = Depends(get_current_user)
 ):
     """
-    取得特定矩陣的詳細內容與節點
+    取得指定矩陣的詳細內容與節點 (僅限擁有者)
     """
-    result = kalpa_service.get_matrix(db, matrix_id)
+    result = kalpa_service.get_matrix(db, matrix_id, current_user.id)
     if not result:
-        raise HTTPException(status_code=404, detail="找不到該矩陣")
+        raise HTTPException(status_code=404, detail="找不到該矩陣或存取受限")
     return result
 
 KalpaGenerateRequest.model_rebuild()

@@ -15,5 +15,7 @@ export { KalpaPage } from './KalpaPage';
 export { KalpaEyeLayout } from './KalpaEyeLayout';
 export { KalpaHistoryPage } from './KalpaHistoryPage';
 export { KalpaArticlesPage } from './KalpaArticlesPage';
+export { default as ProfilePage } from './ProfilePage';
+export { default as UserManagementPage } from './UserManagementPage';
 export { NotFoundPage } from './NotFoundPage';
 export { default as CMSPage } from './CMSPage';

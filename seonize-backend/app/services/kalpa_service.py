@@ -68,15 +68,18 @@ class KalpaService:
         return results
 
     @staticmethod
-    def save_matrix(db: Session, project_name: str, entities: List[str], actions: List[str], pain_points: List[str], nodes: List[Dict[str, Any]], industry: str = "Crypto", money_page_url: str = "", cms_config_id: Optional[str] = None, project_id: Optional[str] = None) -> KalpaMatrix:
+    def save_matrix(db: Session, project_name: str, entities: List[str], actions: List[str], pain_points: List[str], nodes: List[Dict[str, Any]], user_id: str, industry: str = "Crypto", money_page_url: str = "", cms_config_id: Optional[str] = None, project_id: Optional[str] = None) -> KalpaMatrix:
         """
-        儲存生成的矩陣到資料庫 (支援更新)
+        儲存生成的矩陣到資料庫 (支援更新與 User 隔離)
         """
         if project_id:
-            matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == project_id).first()
+            matrix = db.query(KalpaMatrix).filter(
+                KalpaMatrix.id == project_id,
+                KalpaMatrix.user_id == user_id
+            ).first()
             if not matrix:
-                # 找不到就新建 (預防萬一)
-                matrix = KalpaMatrix(id=project_id, project_name=project_name)
+                # 如果找不到且提供了 ID，可能是越權或 ID 錯誤
+                matrix = KalpaMatrix(id=project_id, project_name=project_name, user_id=user_id)
                 db.add(matrix)
             else:
                 matrix.project_name = project_name
@@ -95,7 +98,8 @@ class KalpaService:
                 entities=entities,
                 actions=actions,
                 pain_points=pain_points,
-                cms_config_id=cms_config_id
+                cms_config_id=cms_config_id,
+                user_id=user_id
             )
             db.add(matrix)
         
@@ -146,11 +150,14 @@ class KalpaService:
         return matrix
 
     @staticmethod
-    def get_matrix(db: Session, matrix_id: str) -> Optional[Dict[str, Any]]:
+    def get_matrix(db: Session, matrix_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """
-        取得已儲存的矩陣及其節點
+        取得已儲存的矩陣及其節點 (User 隔離)
         """
-        matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == matrix_id).first()
+        matrix = db.query(KalpaMatrix).filter(
+            KalpaMatrix.id == matrix_id,
+            KalpaMatrix.user_id == user_id
+        ).first()
         if not matrix:
             return None
         
@@ -200,18 +207,20 @@ class KalpaService:
             return ["查看更多專業指南", "點擊獲取專家建議", "2026 產業佈局清單", "專業避坑與優化方案", "從入門到精通的實戰筆記"]
 
     @staticmethod
-    async def weave_node(db: Session, node_id: str) -> KalpaNode:
+    async def weave_node(db: Session, node_id: str, user_id: str) -> KalpaNode:
         """
-        執行「神諭編織」：為節點生成專業指南文章
-        整合了 weaver.py 的邏輯，並使用系統統一配置的 AIService。
+        執行「神諭編織」：為節點生成專業指南文章 (User 隔離)
         """
         node = db.query(KalpaNode).filter(KalpaNode.id == node_id).first()
         if not node:
             raise ValueError("Node not found")
         
-        matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == node.matrix_id).first()
+        matrix = db.query(KalpaMatrix).filter(
+            KalpaMatrix.id == node.matrix_id,
+            KalpaMatrix.user_id == user_id
+        ).first()
         if not matrix:
-            raise ValueError("Associated matrix not found")
+            raise ValueError("Associated matrix not found or access denied")
 
         node.status = "weaving"
         db.commit()
@@ -301,51 +310,67 @@ class KalpaService:
         return node
 
     @staticmethod
-    async def batch_weave_nodes(db: Session, node_ids: List[str]) -> Dict[str, Any]:
+    async def batch_weave_nodes(db: Session, node_ids: List[str], user_id: str) -> Dict[str, Any]:
         """
-        批量執行「神諭編織」
-        使用 Semaphore 控制並發數量，避免觸發 API 頻率限制。
+        批量執行「神諭編織」 (User 隔離)
         """
         import asyncio
-        semaphore = asyncio.Semaphore(3) # 最高並發 3
+        semaphore = asyncio.Semaphore(3)
         
         results = {"success": 0, "failed": 0, "total": len(node_ids)}
         
         async def Task(node_id):
             async with semaphore:
                 try:
-                    await KalpaService.weave_node(db, node_id)
+                    await KalpaService.weave_node(db, node_id, user_id) 
                     results["success"] += 1
                 except Exception as e:
                     logger.error(f"Batch weaving failed for node {node_id}: {e}")
                     results["failed"] += 1
 
-        # 建立所有任務
         await asyncio.gather(*(Task(nid) for nid in node_ids))
         return results
 
     @staticmethod
-    async def batch_weave_task(node_ids: List[str]):
+    async def batch_weave_task(node_ids: List[str], user_id: str, total_cost: int = 0):
         """
-        供 FastAPI BackgroundTasks 使用的背景任務
+        背景任務：執行批量編織，並根據失敗狀況進行部分退款。
         """
         from app.core.database import SessionLocal
+        from app.services.credit_service import CreditService
         db = SessionLocal()
         try:
-            await KalpaService.batch_weave_nodes(db, node_ids)
+            from app.models.db_models import User
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                return
+
+            results = await KalpaService.batch_weave_nodes(db, node_ids, user_id)
+            
+            # 部分退款邏輯
+            if results["failed"] > 0 and total_cost > 0:
+                refund_per_node = total_cost / results["total"]
+                refund_amount = math.ceil(refund_per_node * results["failed"])
+                
+                CreditService.refund(
+                    db, user, refund_amount, 
+                    f"Kalpa 批量編織部分失敗 ({results['failed']}/{results['total']})"
+                )
         except Exception as e:
             logger.error(f"Background batch weave task failed: {e}")
+            # 如果整批任務沒跑完就崩潰，且沒跑出任何成功（或無法確認），則退還剩餘部分（這裏簡化處理，視情況全退或不退）
+            # 因為 batch_weave_nodes 內部有 try...except，通常會跑完。
         finally:
             db.close()
 
     @staticmethod
-    def list_all_articles(db: Session, matrix_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_all_articles(db: Session, user_id: str, matrix_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        取得所有已編織完成的文章，整合專案名稱。
+        取得所有已編織完成的文章，整合專案名稱 (User 隔離)
         """
         query = db.query(KalpaNode, KalpaMatrix.project_name)\
                   .join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id)\
-                  .filter(KalpaNode.status == "completed")
+                  .filter(KalpaNode.status == "completed", KalpaMatrix.user_id == user_id)
         
         if matrix_id:
             query = query.filter(KalpaNode.matrix_id == matrix_id)
@@ -409,11 +434,14 @@ class KalpaService:
             }
 
     @staticmethod
-    def delete_matrix(db: Session, matrix_id: str) -> bool:
+    def delete_matrix(db: Session, matrix_id: str, user_id: str) -> bool:
         """
-        刪除矩陣及其所有關聯節點
+        刪除矩陣及其所有關聯節點 (User 隔離)
         """
-        matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == matrix_id).first()
+        matrix = db.query(KalpaMatrix).filter(
+            KalpaMatrix.id == matrix_id,
+            KalpaMatrix.user_id == user_id
+        ).first()
         if not matrix:
             return False
             

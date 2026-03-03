@@ -4,6 +4,8 @@ import { Button, Input, DataTable, KPICard, MermaidRenderer } from '../component
 import { kalpaApi, cmsApi } from '../services/api';
 import type { KalpaNode, CMSConfig } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
+import { useAuth } from '../context/AuthContext';
+import CostConfirmModal from '../components/common/CostConfirmModal';
 import './KalpaPage.css';
 
 interface TagInputProps {
@@ -63,6 +65,18 @@ const TagInput: React.FC<TagInputProps> = ({ label, tags, setTags, placeholder }
 export const KalpaPage: React.FC = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
+
+    // 點數確認 Modal 狀態
+    const [costConfirm, setCostConfirm] = useState<{
+        open: boolean;
+        title: string;
+        description?: string;
+        cost: number;
+        discountInfo?: string;
+        onConfirm: () => void;
+    }>({ open: false, title: '', cost: 0, onConfirm: () => { } });
+
     const [projectName, setProjectName] = useState('');
     const [industry, setIndustry] = useState('');
     const [moneyPageUrl, setMoneyPageUrl] = useState('');
@@ -294,51 +308,68 @@ export const KalpaPage: React.FC = () => {
         }
     };
 
-    const handleWeave = async (node: KalpaNode) => {
+    const handleWeave = (node: KalpaNode) => {
         if (!node.id) {
             alert('請先點擊「儲存專案」，才能開始編織文章。');
             return;
         }
-
-        // 優化：立即更新本地狀態為「編織中」，讓使用者知道進度
-        setResults(prev => prev.map(n => n.id === node.id ? { ...n, status: 'weaving' } : n));
-        setWeaveLoading(node.id);
-
-        try {
-            const res = await kalpaApi.weave(node.id);
-            if (res.success) {
-                setResults(prev => prev.map(n => n.id === node.id ? res.node : n));
-                setPreviewNode(res.node);
-            }
-        } catch (error) {
-            console.error('Weaving failed:', error);
-            // 失敗時也要更新狀態，讓使用者可以重試
-            setResults(prev => prev.map(n => n.id === node.id ? { ...n, status: 'failed' } : n));
-            alert('編織失敗，請稍後再試。');
-        } finally {
-            setWeaveLoading(null);
-        }
+        setCostConfirm({
+            open: true,
+            title: '節點成稿確認',
+            description: `將為「${node.target_title.slice(0, 20)}…」以 AI 生成文章`,
+            cost: 8,
+            onConfirm: async () => {
+                setResults(prev => prev.map(n => n.id === node.id ? { ...n, status: 'weaving' } : n));
+                setWeaveLoading(node.id!);
+                try {
+                    const res = await kalpaApi.weave(node.id!);
+                    if (res.success) {
+                        setResults(prev => prev.map(n => n.id === node.id ? res.node : n));
+                        setPreviewNode(res.node);
+                    }
+                } catch (error: any) {
+                    setResults(prev => prev.map(n => n.id === node.id ? { ...n, status: 'failed' } : n));
+                    if (!error?.isCreditsError) alert('編織失敗，已退還點數。');
+                } finally {
+                    setWeaveLoading(null);
+                }
+            },
+        });
     };
 
-    const handleBatchWeave = async () => {
+    const handleBatchWeave = () => {
         if (selectedNodeIds.length === 0) return;
         if (!matrixId) {
             alert('請先點擊「儲存專案」，才能啟動批量編織功能。');
             return;
         }
-
-        if (!window.confirm(`確定要將選中的 ${selectedNodeIds.length} 個節點加入批量編織隊列嗎？`)) return;
-
-        try {
-            const res = await kalpaApi.batchWeave(selectedNodeIds);
-            alert(res.message || `已啟動 ${selectedNodeIds.length} 個任務，背景編製中...`);
-            // 立即將這些節點狀態設為「weaving」以供 UI 回饋
-            setResults(prev => prev.map(n => selectedNodeIds.includes(n.id || '') ? { ...n, status: 'weaving' } : n));
-            setSelectedNodeIds([]);
-        } catch (error) {
-            console.error('Batch weave failed:', error);
-            alert('批量編織啟動失敗，請檢查網路連線。');
+        const nodeCount = selectedNodeIds.length;
+        const memberLevel = user?.membership_level ?? 1;
+        let cost = nodeCount * 8;
+        let discountInfo: string | undefined;
+        if (memberLevel >= 3) {
+            if (nodeCount >= 20) { cost = Math.ceil(nodeCount * 8 * 0.70); discountInfo = `深度會員專屬 7 折，原價 ${nodeCount * 8} 點`; }
+            else if (nodeCount >= 6) { cost = Math.ceil(nodeCount * 8 * 0.80); discountInfo = `深度會員專屬 8 折，原價 ${nodeCount * 8} 點`; }
+            else if (nodeCount >= 2) { cost = Math.ceil(nodeCount * 8 * 0.85); discountInfo = `深度會員專屬 85 折，原價 ${nodeCount * 8} 點`; }
         }
+        setCostConfirm({
+            open: true,
+            title: `批量編織 ${nodeCount} 個節點`,
+            description: '節點將在背景排隊單獨出稿，進度可在面板下方查看。',
+            cost,
+            discountInfo,
+            onConfirm: async () => {
+                try {
+                    const ids = [...selectedNodeIds];
+                    const res = await kalpaApi.batchWeave(ids);
+                    alert(res.message || `已啟動 ${ids.length} 個任務...`);
+                    setResults(prev => prev.map(nd => ids.includes(nd.id || '') ? { ...nd, status: 'weaving' } : nd));
+                    setSelectedNodeIds([]);
+                } catch (error: any) {
+                    if (!error?.isCreditsError) alert('批量編織啟動失敗。');
+                }
+            },
+        });
     };
 
     const filteredResults = results.filter(n => {
@@ -473,6 +504,20 @@ export const KalpaPage: React.FC = () => {
 
     return (
         <div className="kalpa-page-content" style={{ animation: 'fadeIn 0.5s ease-out' }}>
+            {/* 點數確認 Modal */}
+            <CostConfirmModal
+                isOpen={costConfirm.open}
+                title={costConfirm.title}
+                description={costConfirm.description}
+                cost={costConfirm.cost}
+                currentCredits={user?.credits}
+                discountInfo={costConfirm.discountInfo}
+                onConfirm={() => {
+                    setCostConfirm(prev => ({ ...prev, open: false }));
+                    costConfirm.onConfirm();
+                }}
+                onCancel={() => setCostConfirm(prev => ({ ...prev, open: false }))}
+            />
             {/* 天道解析面板 */}
             <div className="tiandao-panel card">
                 <div className="tiandao-header">
@@ -822,9 +867,11 @@ export const KalpaPage: React.FC = () => {
                                             variant="cta"
                                             size="sm"
                                             onClick={handleBatchWeave}
-                                            icon={<span>⚡</span>}
+                                            icon={<span>{(user?.membership_level ?? 1) < 3 ? '🔒' : '⚡'}</span>}
+                                            disabled={(user?.membership_level ?? 1) < 3}
+                                            title={(user?.membership_level ?? 1) < 3 ? '此功能僅限「深度會員」使用' : ''}
                                         >
-                                            批量編織選中項 ({selectedNodeIds.length})
+                                            {(user?.membership_level ?? 1) < 3 ? '批量編織 (需深度會員)' : `批量編織選中項 (${selectedNodeIds.length})`}
                                         </Button>
                                     )}
                                 </div>

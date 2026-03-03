@@ -1,23 +1,20 @@
-"""
-Seonize Backend - Analysis API Router
-意圖分析與策略建議 API
-"""
-
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import jieba
 from sklearn.feature_extraction.text import TfidfVectorizer
 from app.models.project import SearchIntent, WritingStyle
-from app.core.auth import get_current_admin
+from app.core.auth import get_current_user
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 import logging
+from app.services.credit_service import CreditService, CREDIT_COSTS
 import uuid
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(get_current_admin)])
+# 配置路由依賴為全域登入
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 class AnalysisRequest(BaseModel):
@@ -52,14 +49,17 @@ class AnalysisResponse(BaseModel):
 
 
 @router.post("/intent", response_model=AnalysisResponse)
-async def analyze_intent(request: AnalysisRequest):
+async def analyze_intent(
+    request: AnalysisRequest,
+    current_user: Any = Depends(get_current_user)
+):
     """
-    執行意圖分析與策略建議
-    第二階段：意圖分析與策略建議
+    執行意圖分析與策略建議 (僅限登入使用者)
     """
-    # 意圖偵測邏輯 (簡化版)
+    # 意圖偵測邏輯 (保持不變)
     keyword_lower = request.keyword.lower()
     
+    # ... (略過中間邏輯) ...
     # 判斷意圖並計算信心分數
     signal_count = 0
     if any(word in keyword_lower for word in ["如何", "怎麼", "什麼是", "為什麼"]):
@@ -83,7 +83,6 @@ async def analyze_intent(request: AnalysisRequest):
         signals = ["預設為資訊型"]
         signal_count = 0
     
-    # 動態計算信心分數：基礎 0.6 + 每個匹配信號加 0.1，最多 0.95
     confidence = min(0.95, 0.6 + 0.1 * signal_count)
     
     # 關鍵字抽取：jieba + TF-IDF
@@ -102,7 +101,6 @@ async def analyze_intent(request: AnalysisRequest):
         tfidf_matrix = tfidf.fit_transform(corpus) if corpus else None
         feature_names = tfidf.get_feature_names_out().tolist() if (tfidf_matrix is not None and len(tfidf.vocabulary_) > 0) else []
     except ValueError:
-        # 處理 vocabulary 為空的情況
         tfidf_matrix = None
         feature_names = []
 
@@ -121,7 +119,6 @@ async def analyze_intent(request: AnalysisRequest):
         keyword_weights=keyword_scores,
     )
     
-    # Generate title suggestions with dynamic year and CTR scores
     from datetime import datetime
     current_year = datetime.now().year
     title_templates = [
@@ -132,16 +129,13 @@ async def analyze_intent(request: AnalysisRequest):
         f"想學{request.keyword}？這篇文章一次搞定",
     ]
     
-    # 動態計算 CTR 分數：基於標題中是否包含關鍵詞與年份
     title_suggestions = []
     for i, title in enumerate(title_templates):
-        # 基礎分數 0.7，包含關鍵字加 0.15，包含年份加 0.1，排名靠前加分
         base_score = 0.7
         if request.keyword in title:
             base_score += 0.15
         if str(current_year) in title:
             base_score += 0.1
-        # 排名靠前的標題略有加分
         rank_bonus = (5 - i) * 0.02
         ctr_score = min(0.95, base_score + rank_bonus)
         
@@ -164,7 +158,7 @@ async def analyze_intent(request: AnalysisRequest):
 
 
 class OutlineRequest(BaseModel):
-    project_id: str                      # 新增：關聯的專案 ID
+    project_id: str
     keyword: str
     intent: SearchIntent
     selected_keywords: List[str]
@@ -185,18 +179,33 @@ class OutlineResponse(BaseModel):
 
 
 @router.post("/outline", response_model=OutlineResponse)
-async def generate_outline(request: OutlineRequest, db: Session = Depends(get_db)):
+async def generate_outline(
+    request: OutlineRequest,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
     """
-    生成文章大綱 - 語義數據驅動版（整合指令倉庫）
+    生成文章大綱 (消耗 5 點)
     """
     from app.services.ai_service import AIService
     from app.models.db_models import Project, PromptTemplate
     
+    # 點數扣除
+    COST = CREDIT_COSTS["create_outline"]
+    tx = CreditService.deduct(db, current_user, COST, f"AI 大綱生成: {request.keyword}")
+
     research_data = {}
     try:
-        # 1. 嘗試載入專案中的研究數據 (PAA, 相關搜尋)
-        db_project = db.query(Project).filter(Project.id == request.project_id).first()
-        if db_project and db_project.research_data:
+        # 1. 驗證並載入專案中的研究數據
+        db_project = db.query(Project).filter(
+            Project.id == request.project_id,
+            Project.user_id == current_user.id
+        ).first()
+        
+        if not db_project:
+            raise HTTPException(status_code=403, detail="找不到專案或權限不足")
+            
+        if db_project.research_data:
             research_data = db_project.research_data
         
         # 2. 從指令倉庫載入 Prompt Template
@@ -205,13 +214,9 @@ async def generate_outline(request: OutlineRequest, db: Session = Depends(get_db
             PromptTemplate.is_active == True
         ).first()
         
-        if not prompt_template:
-            # 備用：使用預設 prompt
-            prompt_content = None
-        else:
-            prompt_content = prompt_template.content
+        prompt_content = prompt_template.content if prompt_template else None
             
-        # 3. 調用 AI 產出大綱（傳入 prompt_content）
+        # 3. 調用 AI 產出大綱
         ai_result = await AIService.generate_outline(
             keyword=request.keyword,
             intent=request.intent,
@@ -219,9 +224,6 @@ async def generate_outline(request: OutlineRequest, db: Session = Depends(get_db
             research_data=research_data,
             custom_prompt=prompt_content
         )
-        
-        # 偵錯：列印 AI 回傳結果
-        logger.debug(f"AI Outline Result: {ai_result}")
         
         # 4. 處理 AI 回傳結果
         from datetime import datetime
@@ -239,12 +241,12 @@ async def generate_outline(request: OutlineRequest, db: Session = Depends(get_db
         return OutlineResponse(
             h1=h1,
             sections=sections,
-            logic_chain=["AI 語義分佈", "PAA 織入", "GEO 優化結構", "✓ 使用指令倉庫模板"]
+            logic_chain=["AI 語義分佈", "PAA 織入", "GEO 優化結構", "✓ 權限校驗通過"]
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Outline generation failed: {e}")
-        # 備用機制 (保證 API 不會直接掛掉)
-        from datetime import datetime
         return OutlineResponse(
             h1=f"{datetime.now().year} {request.keyword}完整指南",
             sections=[],

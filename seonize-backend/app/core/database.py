@@ -80,7 +80,11 @@ def get_db_context():
 
 def init_db():
     """初始化資料庫 - 建立所有表格"""
-    from app.models.db_models import Project, Settings, PromptTemplate, SerpCache, KeywordCache  # noqa
+    from app.models.db_models import (
+        User, Project, Settings, SerpCache, KeywordCache, 
+        CompetitiveCache, PromptTemplate, CMSConfig, 
+        KalpaMatrix, KalpaNode, CreditLog
+    )
     Base.metadata.create_all(bind=engine)
     logger.info(f"Database initialized: {DATABASE_URL}")
 

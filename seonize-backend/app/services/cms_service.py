@@ -151,21 +151,37 @@ class CMSManager:
         return None
 
     @staticmethod
-    async def publish_article(db: Session, target_type: str, target_id: str, config_id: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None):
+    async def publish_article(db: Session, target_type: str, target_id: str, config_id: str, user_id: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None):
         """
-        發布文章的核心進入點
+        發布文章的核心進入點 (支援 User 隔離)
         target_type: 'project' 或 'kalpa_node'
         """
-        config = db.query(CMSConfig).filter(CMSConfig.id == config_id).first()
+        # 驗證 CMS 設定的所有權
+        config = db.query(CMSConfig).filter(
+            CMSConfig.id == config_id,
+            CMSConfig.user_id == user_id
+        ).first()
         if not config:
-            return {"success": False, "message": "找不到指定的 CMS 設定"}
+            return {"success": False, "message": "找不到指定的 CMS 設定或權限不足"}
 
         if target_type == "project":
-            item = db.query(Project).filter(Project.id == target_id).first()
+            # 驗證專案的所有權
+            item = db.query(Project).filter(
+                Project.id == target_id,
+                Project.user_id == user_id
+            ).first()
+            if not item:
+                return {"success": False, "message": "找不到指定的專案或權限不足"}
             title = item.selected_title or item.primary_keyword
             content = item.full_content
         else:
-            item = db.query(KalpaNode).filter(KalpaNode.id == target_id).first()
+            # 驗證 KalpaNode 透過 KalpaMatrix 的所有權
+            item = db.query(KalpaNode).join(KalpaMatrix).filter(
+                KalpaNode.id == target_id,
+                KalpaMatrix.user_id == user_id
+            ).first()
+            if not item:
+                return {"success": False, "message": "找不到指定的節點或權限不足"}
             title = item.target_title
             content = item.woven_content
 

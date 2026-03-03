@@ -32,6 +32,7 @@ class DataForSEOSerpService(DataForSEOBase):
                 results_data = cache.results
                 if isinstance(results_data, dict):
                     results_data["created_at"] = cache.created_at.isoformat() if cache.created_at else None
+                    results_data["cache_hit"] = True
                 return results_data
 
         mode = (serp_mode or "google_organic").lower()
@@ -67,6 +68,7 @@ class DataForSEOSerpService(DataForSEOBase):
                     )
                     db.add(new_cache)
                     db.commit()
+                parsed_results["cache_hit"] = False
                 return parsed_results
         except Exception as e:
             logger.error(f"SERP Request Exception: {e}", exc_info=True)

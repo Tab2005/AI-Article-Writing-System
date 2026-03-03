@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     ]
     
     # Database
-    DATABASE_URL: str = "sqlite:///./seonize.db"
+    # 使用絕對路徑以避免啟動目錄不同造成的資料庫遺失
+    # 這裡將資料庫固定在後端目錄內
+    _DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "seonize.db")
+    DATABASE_URL: str = f"sqlite:///{_DB_PATH}"
     
     # Redis Cache
     REDIS_URL: str = "redis://localhost:6379"

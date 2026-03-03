@@ -11,8 +11,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings
 
-# 密碼雜湊設定
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# 密碼雜湊設定 - 使用 pbkdf2_sha256 以獲得更好的環境相容性 (避免 bcrypt 4.0+ 與 passlib 的衝突)
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -35,11 +35,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-async def get_current_admin(token: str = Depends(oauth2_scheme)) -> str:
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> Any:
     """
-    FastAPI 依賴函數：驗證 Token 並確認身分
-    目前的實作採「單一管理員密碼」模式，因此驗證成功即視為管理員
+    FastAPI 依賴函數：驗證 Token 並獲取資料庫中的使用者物件
     """
+    from app.core.database import SessionLocal
+    from app.models.db_models import User
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="憑證失效或未登入，請重新登入。",
@@ -47,10 +49,28 @@ async def get_current_admin(token: str = Depends(oauth2_scheme)) -> str:
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None or username != "admin":
+        user_id: str = payload.get("sub")
+        if user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
     
-    return username
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user is None:
+            raise credentials_exception
+        return user
+    finally:
+        db.close()
+
+async def get_current_admin(current_user: Any = Depends(get_current_user)) -> Any:
+    """
+    驗證是否具備超級管理員權限
+    """
+    if current_user.role != "super_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="權限不足，僅限超級管理員存取。"
+        )
+    return current_user
