@@ -26,9 +26,9 @@ class SettingItem(BaseModel):
 
 
 class SettingsResponse(BaseModel):
-    ai_provider: str = "gemini"
+    ai_provider: str = "zeabur"
     ai_api_key: Optional[str] = None
-    ai_model: str = "gemini-2.0-flash"
+    ai_model: str = "gpt-4o-mini"
     ai_title_prompt: Optional[str] = None
     dataforseo_login: Optional[str] = None
     dataforseo_password: Optional[str] = None
@@ -38,9 +38,9 @@ class SettingsResponse(BaseModel):
 
 
 class UpdateSettingsRequest(BaseModel):
-    ai_provider: Optional[str] = None
+    ai_provider: Optional[str] = "zeabur"
     ai_api_key: Optional[str] = None
-    ai_model: Optional[str] = None
+    ai_model: Optional[str] = "gpt-4o-mini"
     ai_title_prompt: Optional[str] = None
     dataforseo_login: Optional[str] = None
     dataforseo_password: Optional[str] = None

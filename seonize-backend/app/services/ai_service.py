@@ -10,15 +10,13 @@ from pydantic import BaseModel
 
 
 class AIProvider(str, Enum):
-    GEMINI = "gemini"
     ZEABUR = "zeabur"
-    OPENAI = "openai"
 
 
 class AIConfig(BaseModel):
-    provider: AIProvider = AIProvider.GEMINI
+    provider: AIProvider = AIProvider.ZEABUR
     api_key: str = ""
-    model: str = "gemini-2.0-flash"
+    model: str = "gpt-4o-mini"
     temperature: float = 0.7
     max_tokens: int = 4096
 
@@ -60,9 +58,9 @@ class AIService:
             
             # 從環境變數載入預設設定
             cls._config = AIConfig(
-                provider=AIProvider(os.getenv("AI_PROVIDER", "gemini")),
-                api_key=os.getenv("GEMINI_API_KEY", ""),
-                model=os.getenv("AI_MODEL", "gemini-2.0-flash"),
+                provider=AIProvider(os.getenv("AI_PROVIDER", "zeabur")),
+                api_key=os.getenv("ZEABUR_AI_API_KEY", os.getenv("GEMINI_API_KEY", "")),
+                model=os.getenv("AI_MODEL", "gpt-4o-mini"),
             )
         return cls._config
     
@@ -73,49 +71,29 @@ class AIService:
     
     @classmethod
     def get_available_providers(cls) -> list[dict]:
-        """取得可用的 AI 提供者"""
+        """取得可用的 AI 提供者 (僅保留 Zeabur AI Hub)"""
         return [
-            {
-                "id": AIProvider.GEMINI,
-                "name": "Google Gemini",
-                "models": ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
-                "description": "Google 的最新 AI 模型",
-            },
             {
                 "id": AIProvider.ZEABUR,
                 "name": "Zeabur AI Hub",
                 "models": [
-                    # Claude 系列
-                    "claude-haiku-4-5", "claude-sonnet-4-5",
-                    # GPT 系列
-                    "gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini",
-                    # Gemini 系列
-                    "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-flash-image",
-                    # 其他系列
-                    "deepseek-v3.2-exp", "glm-4.6", "llama-3.3-70b", "gpt-oss-120b", "qwen-3-32"
+                    "gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet", 
+                    "gemini-1.5-flash", "deepseek-chat"
                 ],
                 "description": "Zeabur 提供的 AI 閘道服務 (支援多種先進模型)"
-            },
-            {
-                "id": AIProvider.OPENAI,
-                "name": "OpenAI",
-                "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
-                "description": "OpenAI GPT 系列模型",
-            },
+            }
         ]
     
     @classmethod
-    async def test_connection(cls, api_key: str, provider: str, model: str = None) -> dict:
+    async def test_connection(cls, api_key: str, provider: str, model: str = "gpt-4o-mini") -> dict:
         """測試 AI 連線"""
         try:
-            if provider == AIProvider.GEMINI:
-                from app.services.gemini_client import GeminiClient
-                client = GeminiClient(api_key)
-                result = await client.test_connection()
-                return {"success": result, "provider": provider, "message": "連線成功" if result else "連線失敗"}
-            elif provider == AIProvider.ZEABUR:
-                # Zeabur 測試邏輯
-                return {"success": True, "provider": provider, "message": "Zeabur 連線成功"}
+            if provider == AIProvider.ZEABUR:
+                from app.services.zeabur_client import ZeaburClient
+                client = ZeaburClient(api_key)
+                # 簡單生成測試
+                await client.generate("Hello", model=model or "gpt-4o-mini", max_tokens=5)
+                return {"success": True, "provider": provider, "message": "Zeabur AI Hub 連線成功"}
             else:
                 return {"success": False, "provider": provider, "message": "不支援的提供者"}
         except Exception as e:
@@ -132,17 +110,7 @@ class AIService:
         """生成內容"""
         config = cls.get_config()
         
-        if config.provider == AIProvider.GEMINI:
-            from app.services.gemini_client import GeminiClient
-            client = GeminiClient(config.api_key)
-            return await client.generate(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                model=config.model,
-                temperature=temperature or config.temperature,
-                max_tokens=max_tokens or config.max_tokens,
-            )
-        elif config.provider == AIProvider.ZEABUR:
+        if config.provider == AIProvider.ZEABUR:
             from app.services.zeabur_client import ZeaburClient
             client = ZeaburClient(config.api_key)
             return await client.generate(
