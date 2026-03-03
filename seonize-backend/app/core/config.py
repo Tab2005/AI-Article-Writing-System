@@ -7,6 +7,10 @@ from typing import List
 import os
 
 
+import json
+from pydantic import field_validator
+from typing import List, Union, Any
+
 class Settings(BaseSettings):
     # API Settings
     API_V1_STR: str = "/api/v1"
@@ -18,6 +22,20 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:5173",
     ]
+
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> Union[List[str], str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            if isinstance(v, str):
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    return [v]
+            return v
+        return v
     
     # Database
     # 使用絕對路徑以避免啟動目錄不同造成的資料庫遺失

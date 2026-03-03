@@ -1,37 +1,54 @@
 import logging
 import os
 
-# 配置日誌
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.FileHandler("backend_diagnostic.log", encoding="utf-8"),
-        logging.StreamHandler()
-    ]
-)
+import sys
+import traceback
 
-logger = logging.getLogger(__name__)
+# 立即刷新輸出以防止在崩潰時日誌丟失
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from app.api import (
-    projects_router,
-    research_router,
-    analysis_router,
-    prompts_router,
-    writing_router,
-    auth_router,
-    settings_router as settings_api_router,
-    kalpa_router,
-    cms_router,
-    users_router,
-)
-from app.core.config import settings as app_settings
-from app.core.database import init_db
-from app.core.cache import CacheManager
-from app.services.scheduler_service import start_scheduler
+print("🚀 Seonize Backend pre-init starting...")
+
+try:
+    # 配置基礎日誌
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[
+            logging.FileHandler("backend_diagnostic.log", encoding="utf-8"),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+    logger = logging.getLogger(__name__)
+
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    from contextlib import asynccontextmanager
+    
+    # 延遲導入 app 組件以捕獲導入錯誤
+    from app.api import (
+        projects_router,
+        research_router,
+        analysis_router,
+        prompts_router,
+        writing_router,
+        auth_router,
+        settings_router as settings_api_router,
+        kalpa_router,
+        cms_router,
+        users_router,
+    )
+    from app.core.config import settings as app_settings
+    from app.core.database import init_db
+    from app.core.cache import CacheManager
+    from app.services.scheduler_service import start_scheduler
+
+except Exception as e:
+    print(f"❌ CRITICAL ERROR DURING BOOTSTRAP: {e}", file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
+    sys.exit(1)
 
 
 @asynccontextmanager
