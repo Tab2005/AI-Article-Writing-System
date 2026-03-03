@@ -5,9 +5,9 @@ import './SettingsPage.css';
 
 export const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<SettingsData>({
-    ai_provider: 'gemini',
+    ai_provider: 'zeabur',
     ai_api_key: '',
-    ai_model: 'gemini-2.0-flash',
+    ai_model: 'gpt-4o-mini',
     dataforseo_login: '',
     dataforseo_password: '',
     dataforseo_serp_mode: 'google_organic',
@@ -59,12 +59,6 @@ export const SettingsPage: React.FC = () => {
     } catch {
       console.error('Failed to load providers');
       setProviders([
-        {
-          id: 'gemini',
-          name: 'Google Gemini',
-          models: ['gemini-2.0-flash', 'gemini-1.5-pro'],
-          description: '',
-        },
         { id: 'zeabur', name: 'Zeabur AI Hub', models: ['gpt-4o-mini', 'gpt-4o'], description: '' },
       ]);
     }
@@ -289,7 +283,7 @@ export const SettingsPage: React.FC = () => {
             </svg>
             AI 模組設定
           </h3>
-          <p className="settings-section__desc">配置 AI 內容生成服務，支援 Gemini、Zeabur AI Hub</p>
+          <p className="settings-section__desc">配置 AI 內容生成服務，使用 Zeabur AI Hub 整合引擎</p>
 
           {/* Section-specific message */}
           {message?.section === 'ai' && (
