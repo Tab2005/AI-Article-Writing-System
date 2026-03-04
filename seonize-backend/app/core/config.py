@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = f"sqlite:///{_DB_PATH}"
     
     # Redis Cache
-    REDIS_URL: str = "redis://localhost:6379"
+    REDIS_URL: str = ""
     CACHE_TTL: int = 3600  # 1 hour
     
     # Security
@@ -55,7 +55,16 @@ class Settings(BaseSettings):
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
-    
+
+    # AI Provider (雲端部署時可透過環境變數設定預設值；後台設定優先)
+    AI_PROVIDER: str = "zeabur"
+    ZEABUR_AI_API_KEY: str = ""    # Zeabur AI Hub API Key
+    AI_MODEL: str = "gpt-4o-mini"  # 預設模型
+
+    # DataForSEO (雲端部署時可透過環境變數設定預設值；後台設定優先)
+    DATAFORSEO_LOGIN: str = ""
+    DATAFORSEO_PASSWORD: str = ""
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,

@@ -58,9 +58,9 @@ class AIService:
             
             # 從環境變數載入預設設定
             cls._config = AIConfig(
-                provider=AIProvider(os.getenv("AI_PROVIDER", "zeabur")),
-                api_key=os.getenv("ZEABUR_AI_API_KEY", os.getenv("GEMINI_API_KEY", "")),
-                model=os.getenv("AI_MODEL", "gpt-4o-mini"),
+                provider=AIProvider(os.getenv("AI_PROVIDER", settings.AI_PROVIDER)),
+                api_key=os.getenv("ZEABUR_AI_API_KEY", settings.ZEABUR_AI_API_KEY) or os.getenv("GEMINI_API_KEY", ""),
+                model=os.getenv("AI_MODEL", settings.AI_MODEL),
             )
         return cls._config
     
@@ -77,8 +77,12 @@ class AIService:
                 "id": AIProvider.ZEABUR,
                 "name": "Zeabur AI Hub",
                 "models": [
-                    "gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet", 
-                    "gemini-1.5-flash", "deepseek-chat"
+                    "gpt-4o-mini", "gpt-4o", "o1-preview", "o1-mini", "o3-mini",
+                    "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus",
+                    "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash",
+                    "deepseek-chat", "deepseek-reasoner",
+                    "llama-3.1-405b", "llama-3.2-11b", "llama-3.2-90b",
+                    "mistral-large-latest", "pixtral-large-latest"
                 ],
                 "description": "Zeabur 提供的 AI 閘道服務 (支援多種先進模型)"
             }

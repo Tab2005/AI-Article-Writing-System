@@ -102,7 +102,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
         if (!response.ok) {
           if (response.status === 401) {
-            // Token 失效，清理並跳轉（不重試）
+            // 如果是驗證請求，不執行自動跳轉，讓 AuthContext 處理
+            if (endpoint === '/api/auth/validate') {
+              throw new Error('Unauthorized');
+            }
+
+            // 其他請求則維持原本的 Token 清理與跳轉邏輯
             localStorage.removeItem('seonize_token');
             uiBus.notify('登入逾期，請重新登入', 'warning');
             if (window.location.pathname !== '/login') {

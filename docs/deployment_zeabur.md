@@ -20,22 +20,26 @@
 ### 後端 (Backend)
 請在 Zeabur Backend 服務的環境變數設置中加入以下各項：
 
-| 變數名稱 | 說明 | 範例值 |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | PostgreSQL 連線字串 (由 Zeabur 自動產生) | `postgresql://user:pass@host:port/db` |
-| `ALLOWED_ORIGINS` | 允許的前端網址 (跨域) | `["https://your-frontend.zeabur.app"]` |
-| `SECRET_KEY` | 系統加密金鑰 (用於 API Key 加密) | `任意隨機長字串` |
-| `ADMIN_PASSWORD` | 後端管理員預設密碼 | `預設為 admin123` |
-| `AI_PROVIDER` | 使用的 AI 供應商 | `gemini` |
-| `GEMINI_API_KEY` | Google Gemini API Key | `AIzaSy...` |
-| `GOOGLE_SEARCH_API_KEY` | Google Search API Key | `...` |
-| `GOOGLE_SEARCH_CX` | Google Search Engine ID | `...` |
-| `DATAFORSEO_LOGIN` | DataForSEO 帳號 | `...` |
-| `DATAFORSEO_PASSWORD` | DataForSEO 密碼 | `...` |
+| 變數名稱 | 說明 | 是否必填 | 範例值 |
+| :--- | :--- | :---: | :--- |
+| `DATABASE_URL` | PostgreSQL 連線字串 (由 Zeabur 自動產生) | ✅ | `postgresql://user:pass@host:port/db` |
+| `ALLOWED_ORIGINS` | 允許的前端網址 (跨域) | ✅ | `["https://your-frontend.zeabur.app"]` |
+| `SECRET_KEY` | 系統加密金鑰 (用於 JWT & API Key 加密) | ✅ | 任意隨機長字串 |
+| `ADMIN_PASSWORD` | 後端管理員預設密碼 | ✅ | 建議設定強密碼 |
+| `ZEABUR_AI_API_KEY` | Zeabur AI Hub API Key （可在後台設定覆蓋） | ⭐ | `...` |
+| `AI_PROVIDER` | 使用的 AI 供應商 | ➖ | `zeabur`（預設值） |
+| `AI_MODEL` | 預設使用的 AI 模型 | ➖ | `gpt-4o-mini`（預設值） |
+| `DATAFORSEO_LOGIN` | DataForSEO API 帳號 （可在後台設定覆蓋） | ➖ | `info@example.com` |
+| `DATAFORSEO_PASSWORD` | DataForSEO API 密碼 （可在後台設定覆蓋） | ➖ | `...` |
+| `REDIS_URL` | Redis 連線字串 (留空則使用記憶體快取) | ➖ | `redis://...` |
+
+> **★ 說明**：標記 ⭐ 的項目建議透過環境變數提供初始值。系統啟動後也可在後台「系統設定」頁面修改，資料庫值優先於環境變數。
 
 ### 前端 (Frontend)
 請在 Zeabur Frontend 服務的環境變數設置中加入：
 
+| 變數名稱 | 說明 | 範例值 |
+| :--- | :--- | :--- |
 | `VITE_API_URL` | 後端 API 的公開網址 | `https://your-backend.zeabur.app` |
 
 ---

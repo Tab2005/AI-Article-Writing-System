@@ -138,7 +138,7 @@ async def update_profile(
 async def validate_token(current_user: User = Depends(get_current_user)):
     """驗證 Token 是否有效並回傳目前使用者資訊"""
     return {
-        "status": "ok",
+        "status": "success",
         "user": current_user.to_dict()
     }
 

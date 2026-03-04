@@ -47,20 +47,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Any:
         detail="憑證失效或未登入，請重新登入。",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    db = SessionLocal()
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
+        
         if user_id is None:
             raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    
-    db = SessionLocal()
-    try:
+            
         user = db.query(User).filter(User.id == user_id).first()
         if user is None:
             raise credentials_exception
+        
         return user
+    except JWTError:
+        raise credentials_exception
+    except Exception:
+        raise credentials_exception
     finally:
         db.close()
 

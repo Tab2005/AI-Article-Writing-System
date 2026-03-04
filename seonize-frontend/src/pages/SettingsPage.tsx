@@ -59,7 +59,19 @@ export const SettingsPage: React.FC = () => {
     } catch {
       console.error('Failed to load providers');
       setProviders([
-        { id: 'zeabur', name: 'Zeabur AI Hub', models: ['gpt-4o-mini', 'gpt-4o'], description: '' },
+        {
+          id: 'zeabur',
+          name: 'Zeabur AI Hub',
+          models: [
+            "gpt-4o-mini", "gpt-4o", "o1-preview", "o1-mini", "o3-mini",
+            "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus",
+            "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash",
+            "deepseek-chat", "deepseek-reasoner",
+            "llama-3.1-405b", "llama-3.2-11b", "llama-3.2-90b",
+            "mistral-large-latest", "pixtral-large-latest"
+          ],
+          description: 'Zeabur 提供的 AI 閘道服務 (支援多種先進模型)'
+        },
       ]);
     }
   };
@@ -90,7 +102,10 @@ export const SettingsPage: React.FC = () => {
         ai_model: settings.ai_model,
       });
 
-      setMessage({ type: 'success', text: 'AI 模組設定已儲存！', section: 'ai' });
+      setMessage({ type: 'success', text: 'AI 模組設定已儲存！正在重新載入可用模型...', section: 'ai' });
+      // 儲存後重新從後端取得最新模型清單（使用已儲存的 API Key）
+      await loadProviders();
+      setMessage({ type: 'success', text: 'AI 模組設定已儲存，模型清單已更新！', section: 'ai' });
     } catch {
       // 全域已顯示錯誤
     } finally {

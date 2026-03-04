@@ -153,9 +153,30 @@ async def update_settings(request: UpdateSettingsRequest, db: Session = Depends(
 
 
 @router.get("/providers", response_model=List[AIProviderInfo])
-async def get_ai_providers():
-    """取得可用的 AI 提供者列表"""
+async def get_ai_providers(db: Session = Depends(get_db)):
+    """取得可用的 AI 提供者列表（並嘗試自動從 Zeabur API 取得最新模型列表）"""
+    from app.services.zeabur_client import ZeaburClient
+    
+    # 取得靜態的提供者列表 (包含備用模型)
     providers = AIService.get_available_providers()
+    
+    # 嘗試用目前儲存的 API Key 向 Zeabur API 動態查詢最新模型
+    try:
+        api_key = Settings.get_value(db, "ai_api_key", None)
+        if api_key:
+            client = ZeaburClient(api_key)
+            dynamic_models = await client.get_models()
+            if dynamic_models:
+                for p in providers:
+                    if p["id"] == "zeabur":
+                        # 合併動態取得的模型與靜態備用列表，去除重複
+                        from app.services.zeabur_client import ZEABUR_FALLBACK_MODELS
+                        all_models = list(dict.fromkeys(dynamic_models + ZEABUR_FALLBACK_MODELS))
+                        p["models"] = all_models
+                        break
+    except Exception as e:
+        logger.warning(f"Failed to fetch dynamic models: {e}")
+    
     return [AIProviderInfo(**p) for p in providers]
 
 
@@ -173,33 +194,45 @@ async def test_ai_connection(request: TestConnectionRequest):
 @router.post("/test-dataforseo", response_model=TestConnectionResponse)
 async def test_dataforseo_connection(request: TestDataForSEORequest, db: Session = Depends(get_db)):
     """測試 DataForSEO API 連線"""
+    import httpx
+    import base64
+    
     login = request.login
     password = request.password
     
     # 如果是遮蔽碼，從資料庫讀取真實內容
     if "****" in login:
-        login = Settings.get_value(db, "dataforseo_login", login)
+        login = Settings.get_value(db, "dataforseo_login", login) or login
     if "****" in password:
-        password = Settings.get_value(db, "dataforseo_password", password)
+        password = Settings.get_value(db, "dataforseo_password", password) or password
+    
+    login = (login or "").strip()
+    password = (password or "").strip()
+    
+    if not login or not password:
+        return TestConnectionResponse(
+            success=False,
+            message="帳號或密碼不能為空",
+            provider="dataforseo",
+        )
 
     try:
-        import httpx
-        from app.services.dataforseo_service import DataForSEOService
-        headers = DataForSEOService._get_auth_header(login, password)
+        # 直接構建 Basic Auth 標頭（最可靠的方法）
+        auth_str = f"{login}:{password}"
+        encoded = base64.b64encode(auth_str.encode("utf-8")).decode("ascii")
+        headers = {
+            "Authorization": f"Basic {encoded}",
+            "Content-Type": "application/json",
+        }
         
-        if not headers:
-             return TestConnectionResponse(
-                success=False,
-                message="帳號或密碼不能為空",
-                provider="dataforseo",
-            )
-
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             response = await client.get(
-                "https://api.dataforseo.com/v3/user_node/me",
+                "https://api.dataforseo.com/v3/appendix/user_data",
                 headers=headers,
-                timeout=10.0
+                timeout=15.0
             )
+            
+            logger.info(f"DataForSEO test: HTTP {response.status_code}, body={response.text[:200]}")
             
             if response.status_code == 200:
                 return TestConnectionResponse(
@@ -207,18 +240,42 @@ async def test_dataforseo_connection(request: TestDataForSEORequest, db: Session
                     message="DataForSEO 連線成功",
                     provider="dataforseo",
                 )
-            else:
+            elif response.status_code == 401:
                 return TestConnectionResponse(
                     success=False,
-                    message=f"連線失敗：HTTP {response.status_code}",
+                    message="認證失敗：帳號或 API 密碼錯誤（請至 app.dataforseo.com/api-access 確認）",
                     provider="dataforseo",
                 )
+            elif response.status_code == 403:
+                return TestConnectionResponse(
+                    success=False,
+                    message="存取被拒：請確認帳號權限",
+                    provider="dataforseo",
+                )
+            else:
+                try:
+                    body = response.json()
+                    detail = body.get("status_message") or body.get("error", {}).get("message") or str(body)[:150]
+                except Exception:
+                    detail = response.text[:150] or "（無回應內容）"
+                return TestConnectionResponse(
+                    success=False,
+                    message=f"連線失敗：HTTP {response.status_code} - {detail}",
+                    provider="dataforseo",
+                )
+    except httpx.ConnectTimeout:
+        return TestConnectionResponse(
+            success=False,
+            message="連線逾時：請檢查網路連線",
+            provider="dataforseo",
+        )
     except Exception as e:
         return TestConnectionResponse(
             success=False,
             message=f"連線錯誤：{str(e)}",
             provider="dataforseo",
         )
+
 
 
 @router.get("/database-info")

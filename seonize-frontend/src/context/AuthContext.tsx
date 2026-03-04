@@ -37,14 +37,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         try {
             const response = await authApi.validate();
-            if (response.status === 'success' && response.user) {
+            const isSuccess = response.status === 'success' || response.status === 'ok';
+            if (isSuccess && response.user) {
                 setUser(response.user);
             } else {
                 localStorage.removeItem('seonize_token');
                 setUser(null);
             }
         } catch (error) {
-            console.error('Token validation failed:', error);
             localStorage.removeItem('seonize_token');
             setUser(null);
         } finally {
