@@ -22,7 +22,8 @@ try:
 
     logger = logging.getLogger(__name__)
 
-    from fastapi import FastAPI
+    from fastapi import FastAPI, Request
+    from fastapi.responses import JSONResponse
     from fastapi.middleware.cors import CORSMiddleware
     from contextlib import asynccontextmanager
     
@@ -135,6 +136,21 @@ app.include_router(kalpa_router, prefix="/api/kalpa", tags=["Kalpa Matrix"])
 app.include_router(cms_router, prefix="/api/cms", tags=["CMS Integration"])
 app.include_router(users_router, prefix="/api/admin/users", tags=["Admin - User Management"])
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """捕捉所有未處理的異常並記錄日誌"""
+    logger.error(f"捕捉到全域異常: {exc}")
+    logger.error(f"請求路徑: {request.url.path}")
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "message": "伺服器內部錯誤",
+            "detail": str(exc)
+        },
+    )
 
 @app.get("/")
 async def root():
