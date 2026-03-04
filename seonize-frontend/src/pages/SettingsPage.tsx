@@ -63,11 +63,11 @@ export const SettingsPage: React.FC = () => {
           id: 'zeabur',
           name: 'Zeabur AI Hub',
           models: [
-            "gpt-4o-mini", "gpt-4o", "o1-preview", "o1-mini", "o3-mini",
-            "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus",
-            "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash",
-            "deepseek-chat", "deepseek-reasoner",
-            "llama-3.1-405b", "llama-3.2-11b", "llama-3.2-90b",
+            "gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3-mini",
+            "claude-3-7-sonnet", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet", "claude-3-5-haiku",
+            "gemini-2.0-flash", "gemini-2.0-flash-lite-preview", "gemini-1.5-pro", "gemini-1.5-flash",
+            "deepseek-v3", "deepseek-r1", "deepseek-chat", "deepseek-reasoner",
+            "llama-3.3-70b-instruct", "llama-3.1-405b", "llama-3.1-70b",
             "mistral-large-latest", "pixtral-large-latest"
           ],
           description: 'Zeabur 提供的 AI 閘道服務 (支援多種先進模型)'
