@@ -67,14 +67,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     admin_email = settings.ADMIN_EMAIL.strip()
     if search_email == "admin":
         search_email = admin_email
-    
-    logger.info(f"Login attempt: user={raw_username}, mapped_email={search_email}")
         
     user = db.query(User).filter(User.email == search_email).first()
     
     # 啟動機制：如果資料庫尚無任何使用者，且使用管理員憑證登入，則自動建立第一個超管
     is_admin_attempt = raw_username in ["admin", admin_email]
-    logger.info(f"Is admin attempt: {is_admin_attempt}, User found: {user is not None}")
     
     # 這裡對密碼進行 72 位截斷以相容 bcrypt 限制
     safe_admin_pwd = settings.ADMIN_PASSWORD.strip()[:72]
