@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from app.core.database import get_db
 from app.models.db_models import User, Project
-from app.core.auth import get_current_admin
+from app.core.auth import get_current_admin, get_password_hash
 
 router = APIRouter()
 
@@ -22,6 +22,7 @@ class UserUpdateRequest(BaseModel):
     credits_delta: Optional[int] = None # 增減點數 (正數增加, 負數減少)
     membership_level: Optional[int] = None  # 1: Basic, 2: Pro, 3: Business
     username: Optional[str] = None
+    new_password: Optional[str] = None  # 管理員重設密碼
 
 
 @router.get("")
@@ -131,6 +132,11 @@ async def update_user(
         if update_data.membership_level not in [1, 2, 3]:
             raise HTTPException(status_code=400, detail="無效的會員等級（1-3）。")
         user.membership_level = update_data.membership_level
+
+    if update_data.new_password:
+        # 重設密碼，同樣限制長度
+        safe_pwd = update_data.new_password.strip()[:72]
+        user.hashed_password = get_password_hash(safe_pwd)
 
     db.commit()
     db.refresh(user)

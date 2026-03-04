@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { adminApi } from '../services/api';
+import { Button, Input, Select } from '../components/ui';
 import './UserManagementPage.css';
 
 interface UserRecord {
@@ -41,7 +42,7 @@ const UserManagementPage: React.FC = () => {
     const [total, setTotal] = useState(0);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
-    const [editForm, setEditForm] = useState({ role: '', credits: 0, membership_level: 1, username: '' });
+    const [editForm, setEditForm] = useState({ role: '', credits: 0, membership_level: 1, username: '', new_password: '' });
     const [creditsDelta, setCreditsDelta] = useState(0);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
@@ -78,7 +79,7 @@ const UserManagementPage: React.FC = () => {
 
     const openEdit = (u: UserRecord) => {
         setEditingUser(u);
-        setEditForm({ role: u.role, credits: u.credits, membership_level: u.membership_level, username: u.username || '' });
+        setEditForm({ role: u.role, credits: u.credits, membership_level: u.membership_level, username: u.username || '', new_password: '' });
         setCreditsDelta(0);
     };
 
@@ -90,6 +91,10 @@ const UserManagementPage: React.FC = () => {
                 membership_level: editForm.membership_level,
                 username: editForm.username,
             };
+
+            if (editForm.new_password) {
+                body.new_password = editForm.new_password;
+            }
 
             if (creditsDelta !== 0) {
                 body.credits_delta = creditsDelta;
@@ -128,7 +133,6 @@ const UserManagementPage: React.FC = () => {
 
     return (
         <div className="um-page">
-            {/* Page Header */}
             <header className="um-page__header">
                 <div>
                     <h1 className="um-page__title">用戶管理中心</h1>
@@ -136,12 +140,10 @@ const UserManagementPage: React.FC = () => {
                 </div>
             </header>
 
-            {/* Message */}
             {message.text && (
                 <div className={`um-alert um-alert--${message.type}`}>{message.text}</div>
             )}
 
-            {/* Stats Cards */}
             {stats && (
                 <div className="um-stats">
                     <div className="um-stat-card">
@@ -163,7 +165,6 @@ const UserManagementPage: React.FC = () => {
                 </div>
             )}
 
-            {/* Filter Bar */}
             <section className="um-filters glass-card">
                 <form onSubmit={handleSearch} className="um-filters__form">
                     <input
@@ -193,7 +194,6 @@ const UserManagementPage: React.FC = () => {
                 <span className="um-filters__count">共 {total} 筆</span>
             </section>
 
-            {/* User Table */}
             <section className="glass-card um-table-wrap">
                 {isLoading ? (
                     <div className="um-loading">載入中…</div>
@@ -248,7 +248,6 @@ const UserManagementPage: React.FC = () => {
                     </table>
                 )}
 
-                {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="um-pagination">
                         <button disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹ 上一頁</button>
@@ -266,51 +265,74 @@ const UserManagementPage: React.FC = () => {
                         <p className="um-modal__subtitle">{editingUser.email}</p>
 
                         <div className="um-modal__form">
+                            <Input
+                                label="顯示名稱"
+                                value={editForm.username}
+                                onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
+                                fullWidth
+                            />
+
+                            <Select
+                                label="角色"
+                                value={editForm.role}
+                                options={[
+                                    { value: 'user', label: 'User（一般用戶）' },
+                                    { value: 'vip', label: 'VIP（付費用戶）' },
+                                    { value: 'super_admin', label: 'Super Admin（超級管理員）' },
+                                ]}
+                                onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
+                                fullWidth
+                            />
+
+                            <Input
+                                label="重設密碼 (留空則不修改)"
+                                type="password"
+                                placeholder="輸入新密碼..."
+                                value={editForm.new_password}
+                                onChange={e => setEditForm(f => ({ ...f, new_password: e.target.value }))}
+                                fullWidth
+                            />
+
+                            <Select
+                                label="會員等級"
+                                value={String(editForm.membership_level)}
+                                options={[
+                                    { value: '1', label: 'Lv.1 Basic' },
+                                    { value: '2', label: 'Lv.2 Pro' },
+                                    { value: '3', label: 'Lv.3 Business' },
+                                ]}
+                                onChange={e => setEditForm(f => ({ ...f, membership_level: Number(e.target.value) }))}
+                                fullWidth
+                            />
+
                             <div className="form-group">
-                                <label>顯示名稱</label>
-                                <input type="text" className="form-input" value={editForm.username}
-                                    onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))} />
-                            </div>
-                            <div className="form-group">
-                                <label>角色</label>
-                                <select className="form-input" value={editForm.role}
-                                    onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
-                                    <option value="user">User（一般用戶）</option>
-                                    <option value="vip">VIP（付費用戶）</option>
-                                    <option value="super_admin">Super Admin（超級管理員）</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label>會員等級</label>
-                                <select className="form-input" value={editForm.membership_level}
-                                    onChange={e => setEditForm(f => ({ ...f, membership_level: Number(e.target.value) }))}>
-                                    <option value={1}>Lv.1 Basic</option>
-                                    <option value={2}>Lv.2 Pro</option>
-                                    <option value={3}>Lv.3 Business</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label>目前點數：{editForm.credits} 點</label>
+                                <label>帳戶點數</label>
                                 <div className="um-credits-row">
-                                    <input type="number" className="form-input" placeholder="直接設定點數"
+                                    <Input
+                                        type="number"
+                                        placeholder="設定點數"
                                         value={editForm.credits}
-                                        onChange={e => { setEditForm(f => ({ ...f, credits: Number(e.target.value) })); setCreditsDelta(0); }} />
+                                        onChange={e => { setEditForm(f => ({ ...f, credits: Number(e.target.value) })); setCreditsDelta(0); }}
+                                    />
                                     <span className="um-credits-or">或增減</span>
-                                    <input type="number" className="form-input" placeholder="±點數（例如 +100）"
+                                    <Input
+                                        type="number"
+                                        placeholder="±點數 (+100)"
                                         value={creditsDelta || ''}
-                                        onChange={e => setCreditsDelta(Number(e.target.value))} />
+                                        onChange={e => setCreditsDelta(Number(e.target.value))}
+                                    />
                                 </div>
                                 {creditsDelta !== 0 && (
                                     <small className="um-credits-preview">
-                                        操作後：{Math.max(0, editForm.credits + creditsDelta)} 點（{creditsDelta > 0 ? '+' : ''}{creditsDelta}）
+                                        預計變更為：{Math.max(0, editForm.credits + creditsDelta)} 點
                                     </small>
                                 )}
                             </div>
                         </div>
 
                         <div className="um-modal__actions">
-                            <button className="btn-primary" onClick={handleSaveEdit}>儲存變更</button>
-                            <button className="btn-secondary" onClick={() => setEditingUser(null)}>取消</button>
+                            <Button variant="cta" onClick={handleSaveEdit}>儲存變更</Button>
+                            <Button variant="secondary" onClick={() => setEditingUser(null)}>取消</Button>
                         </div>
                     </div>
                 </div>
@@ -322,11 +344,11 @@ const UserManagementPage: React.FC = () => {
                     <div className="um-modal um-modal--danger glass-card" onClick={e => e.stopPropagation()}>
                         <h2 className="um-modal__title">⚠️ 確認刪除</h2>
                         <p className="um-modal__subtitle">
-                            此操作無法復原。該用戶的帳號將被永久刪除，但其建立的資料將會保留。
+                            此操作無法復原。該用戶的帳號將被永久刪除。
                         </p>
                         <div className="um-modal__actions">
-                            <button className="btn-danger" onClick={() => handleDelete(deleteConfirm)}>確認刪除</button>
-                            <button className="btn-secondary" onClick={() => setDeleteConfirm(null)}>取消</button>
+                            <Button variant="danger" onClick={() => handleDelete(deleteConfirm)}>確認刪除</Button>
+                            <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>取消</Button>
                         </div>
                     </div>
                 </div>

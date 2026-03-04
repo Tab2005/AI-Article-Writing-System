@@ -132,13 +132,16 @@
 .um-select {
     min-width: 130px;
     cursor: pointer;
-    background-color: #181b2e;
+    background-color: #111422;
+    /* 更深的背景色 */
     color-scheme: dark;
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .um-select option {
-    background-color: #181b2e;
+    background-color: #111422;
     color: var(--color-white);
+    padding: var(--space-2);
 }
 
 /* 搜尋按鈕 - Premium style */
@@ -427,13 +430,78 @@
 .um-modal__form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    margin-bottom: var(--space-6);
+    gap: var(--space-5);
+    margin-bottom: var(--space-8);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.form-group label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--color-gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.form-input {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    color: white;
+    font-size: var(--font-size-sm);
+    transition: all 0.2s;
+}
+
+.form-input:focus {
+    border-color: var(--color-primary);
+    background: rgba(255, 255, 255, 0.07);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 .um-modal__actions {
     display: flex;
-    gap: var(--space-3);
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+}
+
+.um-modal__actions .btn-primary {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #7c3aed 100%);
+    color: white;
+    border: none;
+    padding: var(--space-2) var(--space-6);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    transition: all 0.2s;
+}
+
+.um-modal__actions .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
+.um-modal__actions .btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-gray-300);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: var(--space-2) var(--space-6);
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.um-modal__actions .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
 }
 
 .um-credits-row {
