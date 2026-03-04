@@ -61,21 +61,22 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     raw_password = form_data.password.strip()
     
     search_email = raw_username
+    admin_email = settings.ADMIN_EMAIL.strip()
     if search_email == "admin":
-        search_email = "info@sitetegy.com"
+        search_email = admin_email
         
     user = db.query(User).filter(User.email == search_email).first()
     
     # 啟動機制：如果資料庫尚無任何使用者，且使用管理員憑證登入，則自動建立第一個超管
-    is_admin_attempt = raw_username in ["admin", "info@sitetegy.com"]
+    is_admin_attempt = raw_username in ["admin", admin_email]
     # 這裡對密碼進行 72 位截斷以相容 bcrypt 限制
     safe_admin_pwd = settings.ADMIN_PASSWORD.strip()[:72]
     
     if not user and is_admin_attempt:
         if raw_password == safe_admin_pwd:
             user = User(
-                email="info@sitetegy.com",
-                username="SuperAdmin",
+                email=admin_email,
+                username=settings.ADMIN_USERNAME.strip() or "Admin",
                 hashed_password=get_password_hash(safe_admin_pwd),
                 role="super_admin"
             )

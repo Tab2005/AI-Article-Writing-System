@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
     ADMIN_PASSWORD: str = "admin123"  # 預設密碼，建議從 .env 覆蓋
+    ADMIN_EMAIL: str = "admin@example.com"  # 管理員登入 Email
+    ADMIN_USERNAME: str = "Admin"           # 管理員顯示名稱
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
