@@ -66,6 +66,18 @@
   background: var(--color-bg-secondary);
 }
 
+.btn--danger {
+  background: var(--color-error);
+  color: white;
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #dc2626;
+  /* Darker red */
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
 /* Sizes */
 .btn--sm {
   padding: var(--space-2) var(--space-3);
