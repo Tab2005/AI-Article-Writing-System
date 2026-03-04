@@ -99,10 +99,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS 設定
+# CORS 設定 - 將字串型態的 ALLOWED_ORIGINS 解析為 List
+def _parse_allowed_origins(raw: str) -> list:
+    """支援三種格式：JSON 陣列、逗號分隔、或單一 URL"""
+    import json as _json
+    if not raw or not raw.strip():
+        return ["http://localhost:5173", "http://localhost:3000"]
+    raw = raw.strip()
+    if raw.startswith("["):
+        try:
+            result = _json.loads(raw)
+            if isinstance(result, list):
+                return [str(x) for x in result]
+        except Exception:
+            pass
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=app_settings.ALLOWED_ORIGINS,
+    allow_origins=_parse_allowed_origins(app_settings.ALLOWED_ORIGINS),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

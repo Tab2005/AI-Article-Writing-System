@@ -3,13 +3,9 @@ Seonize Backend - Configuration Settings
 """
 
 from pydantic_settings import BaseSettings
-from typing import List
 import os
-
-
 import json
-from pydantic import field_validator
-from typing import List, Union, Any
+from typing import Any
 
 class Settings(BaseSettings):
     # API Settings
@@ -17,25 +13,9 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Seonize"
     
     # CORS
-    ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-    ]
-
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def assemble_cors_origins(cls, v: Any) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            if isinstance(v, str):
-                try:
-                    return json.loads(v)
-                except json.JSONDecodeError:
-                    return [v]
-            return v
-        return v
+    # 使用 str 型別避免 pydantic-settings v2 對 List 自動做 JSON 解碼而崩潰
+    # 支援格式：逗號分隔、JSON 陣列字串、或單一 URL
+    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
     
     # Database
     # 使用絕對路徑以避免啟動目錄不同造成的資料庫遺失
