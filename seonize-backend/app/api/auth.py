@@ -3,6 +3,7 @@ Seonize Backend - Auth API Router
 登入與註冊接口
 """
 
+import logging
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
@@ -13,6 +14,8 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.db_models import User
 from app.core.auth import create_access_token, get_password_hash, verify_password, get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
