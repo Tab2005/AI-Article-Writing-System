@@ -1,17 +1,24 @@
 """
 Zeabur-compatible startup script.
-Reads PORT (or WEB_PORT) from environment variables so that uvicorn
-gets an integer value rather than the unexpanded shell literal.
+Reads PORT or WEB_PORT from environment variables safely,
+handling cases where Zeabur may pass template strings like '${WEB_PORT}'.
 """
 import os
 import uvicorn
 
+
+def get_port(default: int = 8080) -> int:
+    for var in ("PORT", "WEB_PORT"):
+        val = os.environ.get(var, "")
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            continue
+    return default
+
+
 if __name__ == "__main__":
-    port = int(
-        os.environ.get("PORT")
-        or os.environ.get("WEB_PORT")
-        or 8080
-    )
+    port = get_port(default=8080)
     print(f"Starting Seonize Backend on port {port}")
     uvicorn.run(
         "app.main:app",
