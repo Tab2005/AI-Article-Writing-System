@@ -19,20 +19,6 @@ try:
             logging.StreamHandler(sys.stdout)
         ]
     )
-    
-    # 臨時強效清理：確保資料庫設定與新策略同步
-    try:
-        from app.core.database import SessionLocal
-        from app.models.db_models import Settings
-        db = SessionLocal()
-        current_provider = Settings.get_value(db, "ai_provider")
-        if current_provider != "zeabur":
-            print(f"🧹 DB Cleanup: Resetting provider from {current_provider} to zeabur")
-            Settings.set_value(db, "ai_provider", "zeabur")
-            Settings.set_value(db, "ai_model", "gpt-4o-mini")
-        db.close()
-    except Exception as db_err:
-        print(f"⚠️ Initial DB cleanup skipped: {db_err}")
 
     logger = logging.getLogger(__name__)
 
@@ -74,9 +60,23 @@ async def lifespan(app: FastAPI):
     except ImportError:
         logger.warning("Warning: google-generativeai not installed. Gemini features will be limited.")
     
-    init_db()  # 初始化資料庫
+    init_db()  # 初始化資料庫（包含 Alembic 遷移）
     logger.info(f"Database initialized: {app_settings.DATABASE_URL}")
     CacheManager.get_instance()  # 初始化快取
+    
+    # 確保 AI Provider 設定預設值為 zeabur（遷移後安全執行）
+    try:
+        from app.core.database import SessionLocal
+        from app.models.db_models import Settings as DBSettings
+        db = SessionLocal()
+        current_provider = DBSettings.get_value(db, "ai_provider")
+        if not current_provider:
+            DBSettings.set_value(db, "ai_provider", app_settings.AI_PROVIDER)
+            DBSettings.set_value(db, "ai_model", app_settings.AI_MODEL)
+            logger.info(f"AI provider initialized to: {app_settings.AI_PROVIDER}")
+        db.close()
+    except Exception as db_err:
+        logger.warning(f"AI provider init skipped (non-fatal): {db_err}")
     
     # 啟動 CMS 排程器
     start_scheduler()
@@ -87,6 +87,7 @@ async def lifespan(app: FastAPI):
     
     # 關閉時
     logger.info("Seonize Backend shutting down...")
+
 
 
 app = FastAPI(
