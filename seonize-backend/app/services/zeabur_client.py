@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 # 已知的 Zeabur AI Hub 可用模型 (作為 API 無法取得時的備用列表)
 ZEABUR_FALLBACK_MODELS = [
-    "gpt-4o-mini", "gpt-4o", "o1-preview", "o1-mini", "o3-mini",
-    "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus",
-    "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash",
-    "deepseek-chat", "deepseek-reasoner",
-    "llama-3.1-405b", "llama-3.2-11b", "llama-3.2-90b",
+    "gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3-mini",
+    "claude-3-7-sonnet", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet", "claude-3-5-haiku", 
+    "gemini-2.0-flash", "gemini-2.0-flash-lite-preview", "gemini-1.5-pro", "gemini-1.5-flash",
+    "deepseek-v3", "deepseek-r1", "deepseek-chat", "deepseek-reasoner",
+    "llama-3.3-70b-instruct", "llama-3.1-405b", "llama-3.1-70b",
     "mistral-large-latest", "pixtral-large-latest"
 ]
 
@@ -126,8 +126,14 @@ class ZeaburClient:
                 return content
                 
         except httpx.HTTPStatusError as e:
-            logger.error(f"Zeabur AI Hub HTTP error: {e.response.status_code} - {e.response.text}")
-            raise RuntimeError(f"Zeabur AI Hub API 錯誤: {e.response.status_code}")
+            try:
+                error_data = e.response.json()
+                error_msg = error_data.get("error", {}).get("message", str(e))
+                logger.error(f"Zeabur AI Hub HTTP error: {e.response.status_code} - {error_msg}")
+                raise RuntimeError(f"Zeabur AI Hub API 錯誤 ({e.response.status_code}): {error_msg}")
+            except Exception:
+                logger.error(f"Zeabur AI Hub HTTP error: {e.response.status_code} - {e.response.text}")
+                raise RuntimeError(f"Zeabur AI Hub API 錯誤 ({e.response.status_code})")
         except Exception as e:
             logger.error(f"Zeabur AI Hub error: {e}")
             raise RuntimeError(f"Zeabur AI Hub 呼叫失敗: {str(e)}")

@@ -13,6 +13,9 @@ class AIProvider(str, Enum):
     ZEABUR = "zeabur"
 
 
+from app.services.zeabur_client import ZEABUR_FALLBACK_MODELS
+
+
 class AIConfig(BaseModel):
     provider: AIProvider = AIProvider.ZEABUR
     api_key: str = ""
@@ -71,19 +74,12 @@ class AIService:
     
     @classmethod
     def get_available_providers(cls) -> list[dict]:
-        """取得可用的 AI 提供者 (僅保留 Zeabur AI Hub)"""
+        """取得可用的 AI 提供者 (由 zeabur_client 提供模型列表)"""
         return [
             {
                 "id": AIProvider.ZEABUR,
                 "name": "Zeabur AI Hub",
-                "models": [
-                    "gpt-4o-mini", "gpt-4o", "o1-preview", "o1-mini", "o3-mini",
-                    "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus",
-                    "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash",
-                    "deepseek-chat", "deepseek-reasoner",
-                    "llama-3.1-405b", "llama-3.2-11b", "llama-3.2-90b",
-                    "mistral-large-latest", "pixtral-large-latest"
-                ],
+                "models": ZEABUR_FALLBACK_MODELS,
                 "description": "Zeabur 提供的 AI 閘道服務 (支援多種先進模型)"
             }
         ]
