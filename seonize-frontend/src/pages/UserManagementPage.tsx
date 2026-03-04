@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { adminApi } from '../services/api';
 import './UserManagementPage.css';
 
 interface UserRecord {
@@ -28,12 +29,6 @@ const ROLE_LABELS: Record<string, { label: string; className: string }> = {
 
 const LEVEL_LABELS: Record<number, string> = { 1: 'Basic', 2: 'Pro', 3: 'Business' };
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
-const getHeaders = () => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('seonize_token')}`,
-});
-
 const UserManagementPage: React.FC = () => {
     const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<UserRecord[]>([]);
@@ -57,25 +52,23 @@ const UserManagementPage: React.FC = () => {
 
     const fetchStats = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/users/stats/summary`, { headers: getHeaders() });
-            if (res.ok) setStats(await res.json());
+            const data = await adminApi.getStats();
+            setStats(data);
         } catch (e) { /* ignore */ }
     };
 
     const fetchUsers = useCallback(async () => {
         setIsLoading(true);
         try {
-            const params = new URLSearchParams({ page: String(page), per_page: '15' });
-            if (search) params.set('search', search);
-            if (roleFilter) params.set('role', roleFilter);
-
-            const res = await fetch(`${API_BASE}/api/admin/users?${params}`, { headers: getHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                setUsers(data.users);
-                setTotalPages(data.total_pages);
-                setTotal(data.total);
-            }
+            const data = await adminApi.listUsers({
+                page,
+                per_page: 15,
+                role: roleFilter,
+                search
+            });
+            setUsers(data.users);
+            setTotalPages(data.total_pages);
+            setTotal(data.total);
         } finally {
             setIsLoading(false);
         }
@@ -92,55 +85,38 @@ const UserManagementPage: React.FC = () => {
     const handleSaveEdit = async () => {
         if (!editingUser) return;
         try {
-            const body: Record<string, unknown> = {
+            const body: Record<string, any> = {
                 role: editForm.role,
                 membership_level: editForm.membership_level,
                 username: editForm.username,
             };
-            // 如果有設定增減點數，用 delta；否則直接設定 credits
+
             if (creditsDelta !== 0) {
                 body.credits_delta = creditsDelta;
             } else {
                 body.credits = editForm.credits;
             }
 
-            const res = await fetch(`${API_BASE}/api/admin/users/${editingUser.id}`, {
-                method: 'PATCH',
-                headers: getHeaders(),
-                body: JSON.stringify(body),
-            });
-            const data = await res.json();
-            if (res.ok) {
-                showMessage('success', `已更新 ${editingUser.email} 的資料`);
-                setEditingUser(null);
-                fetchUsers();
-                fetchStats();
-            } else {
-                showMessage('error', data.detail || '更新失敗');
-            }
-        } catch (e) {
-            showMessage('error', '網路錯誤');
+            await adminApi.updateUser(editingUser.id, body);
+            showMessage('success', `已更新 ${editingUser.email} 的資料`);
+            setEditingUser(null);
+            fetchUsers();
+            fetchStats();
+        } catch (e: any) {
+            showMessage('error', e.message || '更新失敗');
         }
     };
 
     const handleDelete = async (userId: string) => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
-                method: 'DELETE',
-                headers: getHeaders(),
-            });
-            const data = await res.json();
-            if (res.ok) {
-                showMessage('success', data.message);
-                setDeleteConfirm(null);
-                fetchUsers();
-                fetchStats();
-            } else {
-                showMessage('error', data.detail || '刪除失敗');
-                setDeleteConfirm(null);
-            }
-        } catch (e) {
-            showMessage('error', '網路錯誤');
+            const data = await adminApi.deleteUser(userId);
+            showMessage('success', data.message);
+            setDeleteConfirm(null);
+            fetchUsers();
+            fetchStats();
+        } catch (e: any) {
+            showMessage('error', e.message || '刪除失敗');
+            setDeleteConfirm(null);
         }
     };
 

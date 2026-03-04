@@ -467,6 +467,33 @@ export const settingsApi = {
     }),
 };
 
+// Admin API
+export const adminApi = {
+  listUsers: (params: { page?: number; per_page?: number; role?: string; search?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set('page', String(params.page));
+    if (params.per_page) searchParams.set('per_page', String(params.per_page));
+    if (params.role) searchParams.set('role', params.role);
+    if (params.search) searchParams.set('search', params.search);
+
+    return request<{
+      users: any[];
+      total: number;
+      page: number;
+      per_page: number;
+      total_pages: number;
+    }>(`/api/admin/users?${searchParams.toString()}`);
+  },
+
+  getStats: () => request<any>('/api/admin/users/stats/summary'),
+
+  updateUser: (userId: string, data: any) =>
+    request<any>(`/api/admin/users/${userId}`, { method: 'PATCH', body: data }),
+
+  deleteUser: (userId: string) =>
+    request<any>(`/api/admin/users/${userId}`, { method: 'DELETE' }),
+};
+
 // CMS API
 export interface CMSConfig {
   id: string;
