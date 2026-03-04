@@ -44,6 +44,7 @@ try:
     from app.core.database import init_db
     from app.core.cache import CacheManager
     from app.services.scheduler_service import start_scheduler
+    from app.core.initial_data import initialize_default_prompts
 
 except Exception as e:
     print(f"❌ CRITICAL ERROR DURING BOOTSTRAP: {e}", file=sys.stderr)
@@ -78,6 +79,15 @@ async def lifespan(app: FastAPI):
         db.close()
     except Exception as db_err:
         logger.warning(f"AI provider init skipped (non-fatal): {db_err}")
+    
+    # 初始化預設指令模板
+    try:
+        from app.core.database import SessionLocal
+        db = SessionLocal()
+        initialize_default_prompts(db)
+        db.close()
+    except Exception as e:
+        logger.error(f"Default prompts initialization failed: {e}")
     
     # 啟動 CMS 排程器
     start_scheduler()
