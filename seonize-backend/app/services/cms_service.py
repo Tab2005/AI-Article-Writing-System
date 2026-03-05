@@ -156,30 +156,43 @@ class CMSManager:
         發布文章的核心進入點 (支援 User 隔離)
         target_type: 'project' 或 'kalpa_node'
         """
-        # 驗證 CMS 設定的所有權
-        config = db.query(CMSConfig).filter(
-            CMSConfig.id == config_id,
-            CMSConfig.user_id == user_id
-        ).first()
+        # 獲取發布者角色 (從 User 表)
+        from app.models.db_models import User
+        user = db.query(User).filter(User.id == user_id).first()
+        is_admin = user and user.role == "super_admin"
+
+        # 驗證 CMS 設定的所有權 (管理員可使用所有設定，或該設定 user_id 為空)
+        config_query = db.query(CMSConfig).filter(CMSConfig.id == config_id)
+        if not is_admin:
+            from sqlalchemy import or_
+            config_query = config_query.filter(or_(CMSConfig.user_id == user_id, CMSConfig.user_id == None))
+        
+        config = config_query.first()
         if not config:
             return {"success": False, "message": "找不到指定的 CMS 設定或權限不足"}
 
         if target_type == "project":
-            # 驗證專案的所有權
-            item = db.query(Project).filter(
-                Project.id == target_id,
-                Project.user_id == user_id
-            ).first()
+            # 驗證專案的所有權 (管理員可操作所有專案，或該專案 user_id 為空)
+            item_query = db.query(Project).filter(Project.id == target_id)
+            if not is_admin:
+                from sqlalchemy import or_
+                item_query = item_query.filter(or_(Project.user_id == user_id, Project.user_id == None))
+            
+            item = item_query.first()
             if not item:
                 return {"success": False, "message": "找不到指定的專案或權限不足"}
             title = item.selected_title or item.primary_keyword
             content = item.full_content
         else:
-            # 驗證 KalpaNode 透過 KalpaMatrix 的所有權
-            item = db.query(KalpaNode).join(KalpaMatrix).filter(
-                KalpaNode.id == target_id,
-                KalpaMatrix.user_id == user_id
-            ).first()
+            # 驗證 KalpaNode 透過 KalpaMatrix 的所有權 (管理員可操作所有文章)
+            from app.models.db_models import KalpaMatrix
+            item_query = db.query(KalpaNode).join(KalpaMatrix).filter(KalpaNode.id == target_id)
+            
+            if not is_admin:
+                from sqlalchemy import or_
+                item_query = item_query.filter(or_(KalpaMatrix.user_id == user_id, KalpaMatrix.user_id == None))
+            
+            item = item_query.first()
             if not item:
                 return {"success": False, "message": "找不到指定的節點或權限不足"}
             title = item.target_title

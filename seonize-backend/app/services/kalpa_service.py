@@ -150,14 +150,15 @@ class KalpaService:
         return matrix
 
     @staticmethod
-    def get_matrix(db: Session, matrix_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    def get_matrix(db: Session, matrix_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
-        取得已儲存的矩陣及其節點 (User 隔離)
+        取得已儲存的矩陣及其節點 (管理員可不傳 user_id 以查看全站)
         """
-        matrix = db.query(KalpaMatrix).filter(
-            KalpaMatrix.id == matrix_id,
-            KalpaMatrix.user_id == user_id
-        ).first()
+        query = db.query(KalpaMatrix).filter(KalpaMatrix.id == matrix_id)
+        if user_id:
+            query = query.filter(KalpaMatrix.user_id == user_id)
+            
+        matrix = query.first()
         if not matrix:
             return None
         
@@ -364,13 +365,16 @@ class KalpaService:
             db.close()
 
     @staticmethod
-    def list_all_articles(db: Session, user_id: str, matrix_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_all_articles(db: Session, user_id: Optional[str] = None, matrix_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        取得所有已編織完成的文章，整合專案名稱 (User 隔離)
+        取得所有已編織完成的文章，整合專案名稱 (管理員可不傳 user_id 以查看全站)
         """
         query = db.query(KalpaNode, KalpaMatrix.project_name)\
                   .join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id)\
-                  .filter(KalpaNode.status == "completed", KalpaMatrix.user_id == user_id)
+                  .filter(KalpaNode.status == "completed")
+        
+        if user_id:
+            query = query.filter(KalpaMatrix.user_id == user_id)
         
         if matrix_id:
             query = query.filter(KalpaNode.matrix_id == matrix_id)

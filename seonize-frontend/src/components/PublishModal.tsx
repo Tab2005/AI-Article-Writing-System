@@ -59,6 +59,7 @@ const PublishModal: React.FC<PublishModalProps> = ({ targetType, targetId, onClo
                 }
             } catch (error) {
                 console.error('Fetch publish data failed', error);
+                uiBus.notify('載入發布資料失敗，請聯繫管理員', 'error');
             }
         };
         fetchData();
@@ -99,12 +100,22 @@ const PublishModal: React.FC<PublishModalProps> = ({ targetType, targetId, onClo
                     <select
                         value={selectedConfigId}
                         onChange={(e) => setSelectedConfigId(e.target.value)}
+                        className={configs.length === 0 ? 'select-empty' : ''}
                     >
-                        <option value="">-- 請選擇站點 --</option>
-                        {configs.map(c => (
-                            <option key={c.id} value={c.id}>{c.name} ({c.platform})</option>
-                        ))}
+                        {configs.length === 0 ? (
+                            <option value="">-- 無可用站點，請先至「CMS 設定」建立 --</option>
+                        ) : (
+                            <>
+                                <option value="">-- 請選擇站點 --</option>
+                                {configs.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name} ({c.platform})</option>
+                                ))}
+                            </>
+                        )}
                     </select>
+                    {configs.length === 0 && (
+                        <p className="form-help error">偵測到尚未建立 CMS 站點，或權限不足。</p>
+                    )}
                 </div>
 
                 <div className="form-group">

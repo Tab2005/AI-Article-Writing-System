@@ -42,11 +42,19 @@ async def delete_kalpa_matrix(
     current_user: Any = Depends(get_current_user)
 ):
     """
-    刪除指定的矩陣及其所有節點 (僅限擁有者)
+    刪除指定的矩陣及其所有節點 (管理員或擁有者)
     """
-    success = kalpa_service.delete_matrix(db, matrix_id, current_user.id)
-    if not success:
+    from app.models.db_models import KalpaMatrix
+    query = db.query(KalpaMatrix).filter(KalpaMatrix.id == matrix_id)
+    if current_user.role != "super_admin":
+        query = query.filter(KalpaMatrix.user_id == current_user.id)
+        
+    matrix = query.first()
+    if not matrix:
         raise HTTPException(status_code=404, detail="找不到該矩陣或權限不足")
+    
+    db.delete(matrix)
+    db.commit()
     return {"success": True, "message": "專案已刪除"}
 
 class KalpaGenerateRequest(BaseModel):
@@ -132,12 +140,15 @@ async def list_kalpa_matrices(
     current_user: Any = Depends(get_current_user)
 ):
     """
-    列出該使用者所有已儲存的矩陣
+    列出已儲存的矩陣 (管理員可看全部)
     """
     from app.models.db_models import KalpaMatrix
-    matrices = db.query(KalpaMatrix).filter(
-        KalpaMatrix.user_id == current_user.id
-    ).order_by(KalpaMatrix.created_at.desc()).all()
+    query = db.query(KalpaMatrix)
+    if current_user.role != "super_admin":
+        from sqlalchemy import or_
+        query = query.filter(or_(KalpaMatrix.user_id == current_user.id, KalpaMatrix.user_id == None))
+        
+    matrices = query.order_by(KalpaMatrix.created_at.desc()).all()
     return [m.to_dict() for m in matrices]
 
 @router.post("/weave/{node_id}")
@@ -180,14 +191,15 @@ async def get_kalpa_node(
     current_user: Any = Depends(get_current_user)
 ):
     """
-    取得單一編織節點詳細資訊 (僅限擁有者)
+    取得單一編織節點詳細資訊 (管理員或擁有者)
     """
     from app.models.db_models import KalpaNode, KalpaMatrix
     # 聯表查詢以驗證所有權
-    node = db.query(KalpaNode).join(KalpaMatrix).filter(
-        KalpaNode.id == node_id,
-        KalpaMatrix.user_id == current_user.id
-    ).first()
+    query = db.query(KalpaNode).join(KalpaMatrix).filter(KalpaNode.id == node_id)
+    if current_user.role != "super_admin":
+        query = query.filter(KalpaMatrix.user_id == current_user.id)
+        
+    node = query.first()
     
     if not node:
         raise HTTPException(status_code=404, detail="節點不存在或存取受限")
@@ -231,10 +243,11 @@ async def list_all_woven_articles(
     current_user: Any = Depends(get_current_user)
 ):
     """
-    列出該使用者所有已編導完成的文章 (支援 專案過濾)
+    列出已編導完成的文章 (管理員可看全部)
     """
     try:
-        articles = kalpa_service.list_all_articles(db, current_user.id, matrix_id)
+        user_id_filter = current_user.id if current_user.role != "super_admin" else None
+        articles = kalpa_service.list_all_articles(db, user_id_filter, matrix_id)
         return articles
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文章查詢失敗: {str(e)}")
@@ -246,12 +259,18 @@ async def get_kalpa_matrix(
     current_user: Any = Depends(get_current_user)
 ):
     """
-    取得指定矩陣的詳細內容與節點 (僅限擁有者)
+    取得指定矩陣的詳細內容與節點 (管理員或擁有者)
     """
-    result = kalpa_service.get_matrix(db, matrix_id, current_user.id)
-    if not result:
+    from app.models.db_models import KalpaMatrix
+    query = db.query(KalpaMatrix).filter(KalpaMatrix.id == matrix_id)
+    if current_user.role != "super_admin":
+        query = query.filter(KalpaMatrix.user_id == current_user.id)
+        
+    matrix = query.first()
+    if not matrix:
         raise HTTPException(status_code=404, detail="找不到該矩陣或存取受限")
-    return result
+        
+    return kalpa_service.get_matrix(db, matrix_id, current_user.id)
 
 KalpaGenerateRequest.model_rebuild()
 KalpaSaveRequest.model_rebuild()

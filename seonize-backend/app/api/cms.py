@@ -45,8 +45,14 @@ async def list_cms_configs(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
-    """取得當前使用者所有 CMS 設定"""
-    configs = db.query(CMSConfig).filter(CMSConfig.user_id == current_user.id).all()
+    """取得當前使用者所有 CMS 設定 (管理員可看全部)"""
+    query = db.query(CMSConfig)
+    if current_user.role != "super_admin":
+        # 一般用戶只能看到自己的或系統共用的 (user_id is None)
+        from sqlalchemy import or_
+        query = query.filter(or_(CMSConfig.user_id == current_user.id, CMSConfig.user_id == None))
+    
+    configs = query.all()
     return [c.to_dict() for c in configs]
 
 @router.post("/configs", response_model=CMSConfigResponse)
@@ -78,11 +84,12 @@ async def delete_cms_config(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
-    """刪除 CMS 設定 (僅限擁有者)"""
-    config = db.query(CMSConfig).filter(
-        CMSConfig.id == config_id,
-        CMSConfig.user_id == current_user.id
-    ).first()
+    """刪除 CMS 設定 (管理員或擁有者)"""
+    query = db.query(CMSConfig).filter(CMSConfig.id == config_id)
+    if current_user.role != "super_admin":
+        query = query.filter(CMSConfig.user_id == current_user.id)
+        
+    config = query.first()
     
     if not config:
         raise HTTPException(status_code=404, detail="找不到設定或權限不足")
@@ -98,11 +105,12 @@ async def update_cms_config(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
-    """更新 CMS 設定 (僅限擁有者)"""
-    config = db.query(CMSConfig).filter(
-        CMSConfig.id == config_id,
-        CMSConfig.user_id == current_user.id
-    ).first()
+    """更新 CMS 設定 (管理員或擁有者)"""
+    query = db.query(CMSConfig).filter(CMSConfig.id == config_id)
+    if current_user.role != "super_admin":
+        query = query.filter(CMSConfig.user_id == current_user.id)
+        
+    config = query.first()
     
     if not config:
         raise HTTPException(status_code=404, detail="找不到設定或權限不足")
@@ -129,11 +137,12 @@ async def test_cms_connection(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
-    """測試 CMS 連線 (僅限擁有者)"""
-    config = db.query(CMSConfig).filter(
-        CMSConfig.id == config_id,
-        CMSConfig.user_id == current_user.id
-    ).first()
+    """測試 CMS 連線 (管理員或擁有者)"""
+    query = db.query(CMSConfig).filter(CMSConfig.id == config_id)
+    if current_user.role != "super_admin":
+        query = query.filter(CMSConfig.user_id == current_user.id)
+        
+    config = query.first()
     
     if not config:
         raise HTTPException(status_code=404, detail="找不到設定或權限不足")

@@ -100,21 +100,27 @@ async def update_user(
     user_id: str,
     update_data: UserUpdateRequest,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_user: User = Depends(get_current_user)  # 改為 get_current_user
 ):
     """
     更新使用者資料（角色、點數、等級）
-    僅限超級管理員
+    超級管理員可更新任何人，一般使用者僅限更新自己
     """
+    if current_user.role != "super_admin" and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="權限不足，僅限更新本人資料或需管理員權限。")
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="使用者不存在。")
 
-    # 防止超管降低自己的權限
-    if user.id == current_admin.id and update_data.role and update_data.role != "super_admin":
-        raise HTTPException(status_code=400, detail="不能降低自己的超管權限。")
+    # 權限敏感欄位檢查 (僅超管可改角色與點數)
+    is_admin = current_user.role == "super_admin"
 
     if update_data.role:
+        if not is_admin:
+            raise HTTPException(status_code=403, detail="僅限超級管理員修改角色。")
+        if user.id == current_user.id and update_data.role != "super_admin":
+            raise HTTPException(status_code=400, detail="不能降低自己的超管權限。")
         if update_data.role not in ["super_admin", "vip", "user"]:
             raise HTTPException(status_code=400, detail="無效的角色值。")
         user.role = update_data.role
@@ -123,12 +129,18 @@ async def update_user(
         user.username = update_data.username.strip()
 
     if update_data.credits is not None:
+        if not is_admin:
+             raise HTTPException(status_code=403, detail="僅限超級管理員修改點數。")
         user.credits = max(0, update_data.credits)
 
     if update_data.credits_delta is not None:
+        if not is_admin:
+             raise HTTPException(status_code=403, detail="僅限超級管理員修改點數。")
         user.credits = max(0, user.credits + update_data.credits_delta)
 
     if update_data.membership_level is not None:
+        if not is_admin:
+             raise HTTPException(status_code=403, detail="僅限超級管理員修改會員等級。")
         if update_data.membership_level not in [1, 2, 3]:
             raise HTTPException(status_code=400, detail="無效的會員等級（1-3）。")
         user.membership_level = update_data.membership_level
