@@ -81,6 +81,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userData);
     };
 
+    useEffect(() => {
+        (window as any).refreshAuthUser = refreshUser;
+        return () => {
+            delete (window as any).refreshAuthUser;
+        };
+    }, [refreshUser]);
+
     return (
         <AuthContext.Provider value={{
             user,

@@ -7,6 +7,7 @@ interface CostConfirmModalProps {
     description?: string;
     cost: number;
     currentCredits?: number;
+    userRole?: string;
     discountInfo?: string;  // 例如「深度會員 8折 優惠」
     onConfirm: () => void;
     onCancel: () => void;
@@ -18,13 +19,15 @@ const CostConfirmModal: React.FC<CostConfirmModalProps> = ({
     description,
     cost,
     currentCredits,
+    userRole,
     discountInfo,
     onConfirm,
     onCancel,
 }) => {
     const [visible, setVisible] = useState(false);
-    const afterBalance = currentCredits !== undefined ? currentCredits - cost : undefined;
-    const isInsufficient = currentCredits !== undefined && currentCredits < cost;
+    const isAdmin = userRole === 'super_admin';
+    const afterBalance = currentCredits !== undefined ? currentCredits - (isAdmin ? 0 : cost) : undefined;
+    const isInsufficient = !isAdmin && currentCredits !== undefined && currentCredits < cost;
 
     useEffect(() => {
         if (isOpen) setVisible(true);
@@ -58,9 +61,13 @@ const CostConfirmModal: React.FC<CostConfirmModalProps> = ({
                 <div className="ccm-modal__cost-card">
                     <div className="ccm-cost-row">
                         <span className="ccm-cost-label">本次消耗</span>
-                        <span className="ccm-cost-value ccm-cost-value--deduct">－ {cost} 點</span>
+                        {isAdmin ? (
+                            <span className="ccm-cost-value" style={{ color: 'var(--color-primary)' }}>管理員免扣點</span>
+                        ) : (
+                            <span className="ccm-cost-value ccm-cost-value--deduct">－ {cost} 點</span>
+                        )}
                     </div>
-                    {discountInfo && (
+                    {discountInfo && !isAdmin && (
                         <div className="ccm-cost-row ccm-cost-row--discount">
                             <span className="ccm-cost-label">✨ {discountInfo}</span>
                         </div>
@@ -75,7 +82,7 @@ const CostConfirmModal: React.FC<CostConfirmModalProps> = ({
                             <div className="ccm-cost-row">
                                 <span className="ccm-cost-label">操作後餘額</span>
                                 <span className={`ccm-cost-value ${isInsufficient ? 'ccm-cost-value--danger' : 'ccm-cost-value--after'}`}>
-                                    {isInsufficient ? '⚠ 點數不足' : `${afterBalance} 點`}
+                                    {isInsufficient ? '⚠ 點數不足' : isAdmin ? `${currentCredits} 點 (不變)` : `${afterBalance} 點`}
                                 </span>
                             </div>
                         </>
@@ -97,7 +104,7 @@ const CostConfirmModal: React.FC<CostConfirmModalProps> = ({
                         onClick={handleConfirm}
                         disabled={isInsufficient}
                     >
-                        確認消耗 {cost} 點
+                        {isAdmin ? '確認執行 (管理員)' : `確認消耗 ${cost} 點`}
                     </button>
                 </div>
             </div>

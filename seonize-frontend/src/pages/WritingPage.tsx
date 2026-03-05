@@ -127,6 +127,9 @@ export const WritingPage: React.FC = () => {
 
       // 重要：生成完畢後立即觸發自動儲存 (非同步不阻塞 UI)
       setTimeout(() => saveToProject(), 500);
+
+      // 重新整理使用者點數
+      if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
     } catch (err) {
       console.error('生成失敗:', err);
       setSections((prev) => {

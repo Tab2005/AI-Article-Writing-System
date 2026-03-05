@@ -397,7 +397,7 @@ export const MainLayout: React.FC = () => {
                   </Link>
                   <div className="sidebar__user-role">
                     <span className={`sidebar__user-credits ${user.credits < 50 ? 'sidebar__user-credits--low' : ''}`}>
-                      💎 {user.credits}
+                      {user.role === 'super_admin' ? '💎 UNLIMITED' : `💎 ${user.credits}`}
                     </span>
                     {user.role === 'super_admin' && <span className="sidebar__role-badge">ADMIN</span>}
                   </div>

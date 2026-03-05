@@ -104,6 +104,12 @@ const UserManagementPage: React.FC = () => {
 
             await adminApi.updateUser(editingUser.id, body);
             showMessage('success', `已更新 ${editingUser.email} 的資料`);
+
+            // 如果更新的是自己，重新整理側邊欄狀態
+            if (editingUser.id === currentUser?.id && (window as any).refreshAuthUser) {
+                (window as any).refreshAuthUser();
+            }
+
             setEditingUser(null);
             fetchUsers();
             fetchStats();

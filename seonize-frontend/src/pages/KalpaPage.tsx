@@ -326,6 +326,8 @@ export const KalpaPage: React.FC = () => {
                     if (res.success) {
                         setResults(prev => prev.map(n => n.id === node.id ? res.node : n));
                         setPreviewNode(res.node);
+                        // 成功後重新整理點數
+                        if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
                     }
                 } catch (error: any) {
                     setResults(prev => prev.map(n => n.id === node.id ? { ...n, status: 'failed' } : n));
@@ -365,6 +367,8 @@ export const KalpaPage: React.FC = () => {
                     alert(res.message || `已啟動 ${ids.length} 個任務...`);
                     setResults(prev => prev.map(nd => ids.includes(nd.id || '') ? { ...nd, status: 'weaving' } : nd));
                     setSelectedNodeIds([]);
+                    // 成功後重新整理點數
+                    if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
                 } catch (error: any) {
                     if (!error?.isCreditsError) alert('批量編織啟動失敗。');
                 }
@@ -511,6 +515,7 @@ export const KalpaPage: React.FC = () => {
                 description={costConfirm.description}
                 cost={costConfirm.cost}
                 currentCredits={user?.credits}
+                userRole={user?.role}
                 discountInfo={costConfirm.discountInfo}
                 onConfirm={() => {
                     setCostConfirm(prev => ({ ...prev, open: false }));
