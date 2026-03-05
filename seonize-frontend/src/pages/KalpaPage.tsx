@@ -6,6 +6,7 @@ import type { KalpaNode, CMSConfig } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import { useAuth } from '../context/AuthContext';
 import CostConfirmModal from '../components/common/CostConfirmModal';
+import PublishModal from '../components/PublishModal';
 import './KalpaPage.css';
 
 interface TagInputProps {
@@ -95,6 +96,7 @@ export const KalpaPage: React.FC = () => {
     const [matrixId, setMatrixId] = useState<string | null>(null);
 
     const [previewNode, setPreviewNode] = useState<KalpaNode | null>(null);
+    const [showPublishModal, setShowPublishModal] = useState(false);
 
     // 批量處理與篩選狀態
     const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
@@ -1019,15 +1021,20 @@ export const KalpaPage: React.FC = () => {
                                 </div>
                                 <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
                                     <Button variant="outline" onClick={() => setPreviewNode(null)}>關閉</Button>
-                                    <Button variant="primary" onClick={() => {
-                                        alert('功能開發中：將內容發佈至專案清單');
-                                    }}>發佈文章</Button>
+                                    <Button variant="primary" onClick={() => setShowPublishModal(true)}>發佈文章</Button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 )
             }
+            {showPublishModal && previewNode && (
+                <PublishModal
+                    targetType="kalpa_node"
+                    targetId={previewNode.id!}
+                    onClose={() => setShowPublishModal(false)}
+                />
+            )}
         </div >
     );
 };
