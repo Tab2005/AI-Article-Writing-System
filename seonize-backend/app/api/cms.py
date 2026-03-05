@@ -68,6 +68,7 @@ async def list_cms_configs(
             "name": f"DEBUG: 總數={total_in_db}, 角色={current_user.role}, UID={current_user.id[:8]}",
             "platform": "system",
             "api_url": "debug",
+            "username": "debug_user",
             "is_active": True,
             "auto_publish_enabled": False,
             "frequency_type": "day",

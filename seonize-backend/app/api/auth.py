@@ -147,6 +147,16 @@ async def validate_token(current_user: User = Depends(get_current_user)):
         "user": current_user.to_dict()
     }
 
+@router.get("/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    """獲取當前用戶簡短資訊用於診斷"""
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "role": current_user.role,
+        "username": current_user.username
+    }
+
 @router.get("/credits/history")
 async def get_credit_history(
     page: int = 1,
