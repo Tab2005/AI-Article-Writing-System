@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from app.core.database import get_db
 from app.models.db_models import User, Project
-from app.core.auth import get_current_admin, get_password_hash
+from app.core.auth import get_current_admin, get_password_hash, get_current_user
 
 router = APIRouter()
 
