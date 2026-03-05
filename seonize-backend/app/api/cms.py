@@ -202,7 +202,6 @@ async def publish_to_cms(
         scheduled_at
     )
     
-    if not result["success"]:
-        raise HTTPException(status_code=500, detail=result.get("message", "發布失敗"))
-    
+    # 不要在這裡拋出 HTTPException(500)，直接回傳 result，由前端處理 success=False
+    # 這能避免全域異常處理器遺漏 CORS 標頭導致的抓不到錯誤訊息問題
     return result

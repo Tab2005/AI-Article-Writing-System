@@ -74,17 +74,23 @@ class GhostService(CMSBase):
             post_data["posts"][0]["published_at"] = scheduled_at.isoformat()
 
         response = await self.client.post(f"{self.api_url}/ghost/api/admin/posts/?source=html", json=post_data, headers=headers)
+        logger.info(f"Ghost Publish Response: {response.status_code} - {response.text[:200]}")
+        
         if response.status_code in [200, 201]:
-            data = response.json()
-            post = data['posts'][0]
-            return {
-                "success": True,
-                "post_id": post['id'],
-                "url": post.get('url', ''),
-                "status": post['status']
-            }
+            try:
+                data = response.json()
+                post = data['posts'][0]
+                return {
+                    "success": True,
+                    "post_id": post['id'],
+                    "url": post.get('url', ''),
+                    "status": post['status']
+                }
+            except (KeyError, IndexError) as e:
+                logger.error(f"Ghost response parsing failed: {e}, data: {data}")
+                return {"success": False, "message": f"Ghost 回傳格式異常: {str(e)}"}
         else:
-            return {"success": False, "message": response.text}
+            return {"success": False, "message": f"Ghost API 錯誤 ({response.status_code}): {response.text}"}
 
 class WordPressService(CMSBase):
     def __init__(self, api_url: str, username: str, app_password: str):
@@ -154,68 +160,77 @@ class CMSManager:
     async def publish_article(db: Session, target_type: str, target_id: str, config_id: str, user_id: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None):
         """
         發布文章的核心進入點 (支援 User 隔離)
-        target_type: 'project' 或 'kalpa_node'
         """
-        # 獲取發布者角色 (從 User 表)
-        from app.models.db_models import User
-        user = db.query(User).filter(User.id == user_id).first()
-        is_admin = user and user.role == "super_admin"
+        try:
+            # 獲取發布者角色 (從 User 表)
+            from app.models.db_models import User
+            user = db.query(User).filter(User.id == user_id).first()
+            is_admin = user and user.role == "super_admin"
 
-        if not is_admin:
-            from sqlalchemy import or_
-            config_query = config_query.filter(or_(CMSConfig.user_id == user_id, CMSConfig.user_id == None))
-        
-        config = config_query.first()
-        if not config:
-            return {"success": False, "message": "找不到指定的 CMS 設定或權限不足"}
-
-        if target_type == "project":
-            # 驗證專案的所有權 (管理員可操作所有專案，或該專案 user_id 為空)
-            item_query = db.query(Project).filter(Project.id == target_id)
+            # 驗證 CMS 設定的所有權
+            config_query = db.query(CMSConfig).filter(CMSConfig.id == config_id)
             if not is_admin:
                 from sqlalchemy import or_
-                item_query = item_query.filter(or_(Project.user_id == user_id, Project.user_id == None))
+                config_query = config_query.filter(or_(CMSConfig.user_id == user_id, CMSConfig.user_id == None))
             
-            item = item_query.first()
-            if not item:
-                return {"success": False, "message": "找不到指定的專案或權限不足"}
-            title = item.selected_title or item.primary_keyword
-            content = item.full_content
-        else:
-            # 驗證 KalpaNode 透過 KalpaMatrix 的所有權 (管理員可操作所有文章)
-            from app.models.db_models import KalpaMatrix
-            item_query = db.query(KalpaNode).join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id).filter(KalpaNode.id == target_id)
-            
-            if not is_admin:
-                from sqlalchemy import or_
-                item_query = item_query.filter(or_(KalpaMatrix.user_id == user_id, KalpaMatrix.user_id == None))
-            
-            item = item_query.first()
-            if not item:
-                return {"success": False, "message": "找不到指定的節點或權限不足"}
-            title = item.target_title
-            content = item.woven_content
+            config = config_query.first()
+            if not config:
+                return {"success": False, "message": "找不到指定的 CMS 設定或權限不足"}
 
-        if not content:
-            return {"success": False, "message": "文章內容為空，無法發布"}
+            if target_type == "project":
+                item_query = db.query(Project).filter(Project.id == target_id)
+                if not is_admin:
+                    from sqlalchemy import or_
+                    item_query = item_query.filter(or_(Project.user_id == user_id, Project.user_id == None))
+                
+                item = item_query.first()
+                if not item:
+                    return {"success": False, "message": "找不到指定的專案或權限不足"}
+                title = item.selected_title or item.primary_keyword
+                content = item.full_content
+            else:
+                from app.models.db_models import KalpaMatrix
+                item_query = db.query(KalpaNode).join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id).filter(KalpaNode.id == target_id)
+                
+                if not is_admin:
+                    from sqlalchemy import or_
+                    item_query = item_query.filter(or_(KalpaMatrix.user_id == user_id, KalpaMatrix.user_id == None))
+                
+                item = item_query.first()
+                if not item:
+                    return {"success": False, "message": "找不到指定的節點或權限不足"}
+                title = item.target_title
+                content = item.woven_content
 
-        client = CMSManager.get_client(config)
-        if not client:
-            return {"success": False, "message": "無效的 CMS 平台"}
+            if not content:
+                return {"success": False, "message": "文章內容為空，無法發布"}
 
-        result = await client.publish(title, content, status, scheduled_at)
-        
-        if result["success"]:
-            item.cms_config_id = config_id
-            item.cms_post_id = result["post_id"]
-            item.cms_publish_url = result["url"]
-            item.publish_status = "published" if status in ["published", "publish"] else "scheduled" if status in ["scheduled", "future"] else "draft"
-            if item.publish_status == "published":
-                item.published_at = datetime.datetime.now(datetime.timezone.utc)
-            elif item.publish_status == "scheduled":
-                item.scheduled_at = scheduled_at
-            db.commit()
+            client = CMSManager.get_client(config)
+            if not client:
+                return {"success": False, "message": "無效的 CMS 平台"}
+
+            logger.info(f"🚀 正在發布文章: {title} 到 {config.name} ({config.platform})")
+            result = await client.publish(title, content, status, scheduled_at)
             
-        return result
+            if result["success"]:
+                item.cms_config_id = config_id
+                item.cms_post_id = result["post_id"]
+                item.cms_publish_url = result["url"]
+                item.publish_status = "published" if status in ["published", "publish"] else "scheduled" if status in ["scheduled", "future"] else "draft"
+                if item.publish_status == "published":
+                    item.published_at = datetime.datetime.now(datetime.timezone.utc)
+                elif item.publish_status == "scheduled":
+                    item.scheduled_at = scheduled_at
+                db.commit()
+                logger.info(f"✅ 發布成功: {item.cms_publish_url}")
+            else:
+                logger.error(f"❌ 發布失敗: {result.get('message')}")
+                
+            return result
+        except Exception as e:
+            import traceback
+            logger.error(f"💥 publish_article 發生崩潰: {str(e)}")
+            logger.error(traceback.format_exc())
+            return {"success": False, "message": f"伺服器內部錯誤: {str(e)}"}
 
 cms_manager = CMSManager()
