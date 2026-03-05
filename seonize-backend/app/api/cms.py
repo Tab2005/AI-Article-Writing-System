@@ -46,6 +46,10 @@ async def list_cms_configs(
     current_user: Any = Depends(get_current_user)
 ):
     """取得當前使用者所有 CMS 設定 (管理員可看全部)"""
+    import logging
+    logger = logging.getLogger("app.api.cms")
+    logger.info(f"🔍 list_cms_configs called by User(id={current_user.id}, role={current_user.role})")
+    
     query = db.query(CMSConfig)
     if current_user.role != "super_admin":
         # 一般用戶只能看到自己的或系統共用的 (user_id is None)
@@ -53,6 +57,7 @@ async def list_cms_configs(
         query = query.filter(or_(CMSConfig.user_id == current_user.id, CMSConfig.user_id == None))
     
     configs = query.all()
+    logger.info(f"✅ Found {len(configs)} CMS configs for user {current_user.id}")
     return [c.to_dict() for c in configs]
 
 @router.post("/configs", response_model=CMSConfigResponse)
