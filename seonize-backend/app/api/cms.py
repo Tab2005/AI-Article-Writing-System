@@ -51,13 +51,30 @@ async def list_cms_configs(
     logger.info(f"🔍 list_cms_configs called by User(id={current_user.id}, role={current_user.role})")
     
     query = db.query(CMSConfig)
+    total_in_db = query.count()
+    
     if current_user.role != "super_admin":
         # 一般用戶只能看到自己的或系統共用的 (user_id is None)
         from sqlalchemy import or_
         query = query.filter(or_(CMSConfig.user_id == current_user.id, CMSConfig.user_id == None))
     
     configs = query.all()
-    logger.info(f"✅ Found {len(configs)} CMS configs for user {current_user.id}")
+    logger.info(f"✅ Found {len(configs)} CMS configs for user {current_user.id} (Total in DB: {total_in_db})")
+    
+    # 診斷用途：如果超管看不到任何東西，回傳一個虛擬提示項，以便前端觀察
+    if not configs and current_user.role == "super_admin":
+        return [{
+            "id": "debug",
+            "name": f"DEBUG: 總數={total_in_db}, 角色={current_user.role}, UID={current_user.id[:8]}",
+            "platform": "system",
+            "api_url": "debug",
+            "is_active": True,
+            "auto_publish_enabled": False,
+            "frequency_type": "day",
+            "frequency_count": 1,
+            "last_auto_published_at": None
+        }]
+        
     return [c.to_dict() for c in configs]
 
 @router.post("/configs", response_model=CMSConfigResponse)
