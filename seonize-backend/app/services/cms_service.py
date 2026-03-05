@@ -161,8 +161,6 @@ class CMSManager:
         user = db.query(User).filter(User.id == user_id).first()
         is_admin = user and user.role == "super_admin"
 
-        # 驗證 CMS 設定的所有權 (管理員可使用所有設定，或該設定 user_id 為空)
-        config_query = db.query(CMSConfig).filter(CMSConfig.id == config_id)
         if not is_admin:
             from sqlalchemy import or_
             config_query = config_query.filter(or_(CMSConfig.user_id == user_id, CMSConfig.user_id == None))
@@ -186,7 +184,7 @@ class CMSManager:
         else:
             # 驗證 KalpaNode 透過 KalpaMatrix 的所有權 (管理員可操作所有文章)
             from app.models.db_models import KalpaMatrix
-            item_query = db.query(KalpaNode).join(KalpaMatrix).filter(KalpaNode.id == target_id)
+            item_query = db.query(KalpaNode).join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id).filter(KalpaNode.id == target_id)
             
             if not is_admin:
                 from sqlalchemy import or_
