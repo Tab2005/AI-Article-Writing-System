@@ -66,6 +66,7 @@ class Project(Base):
     selected_title = Column(Text, nullable=True)
     
     # 關鍵字
+    keywords = Column(JSON, default=dict)  # {secondary: [], lsi: [], density: {}}
     research_data = Column(JSON, nullable=True) # 儲存 PAA, 相關搜尋, AI Overview 等研究數據
     content_gap_report = Column(JSON, nullable=True) # 儲存 AI 產出的內容缺口與 EEAT 建議
     
