@@ -4,7 +4,7 @@ Seonize Backend - AI Service
 """
 
 import os
-from typing import Optional, Generator, AsyncGenerator
+from typing import Optional, Generator, AsyncGenerator, List, Dict, Any
 from enum import Enum
 from pydantic import BaseModel
 
