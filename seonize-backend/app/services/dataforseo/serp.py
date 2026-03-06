@@ -33,6 +33,7 @@ class DataForSEOSerpService(DataForSEOBase):
                 if isinstance(results_data, dict):
                     results_data["created_at"] = cache.created_at.isoformat() if cache.created_at else None
                     results_data["cache_hit"] = True
+                    results_data["content_gap_report"] = cache.content_gap_report
                 return results_data
 
         mode = (serp_mode or "google_organic").lower()

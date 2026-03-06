@@ -67,6 +67,7 @@ export interface ResearchResponse {
     ai_overview?: Record<string, unknown> | null;
     paa: string[];
     related_searches: string[];
+    content_gap_report?: any;
     created_at?: string | null;
     error?: string | null;
 }
@@ -194,6 +195,7 @@ export interface ProjectUpdate {
     optimization_mode?: OptimizationMode;
     candidate_titles?: string[];
     research_data?: Record<string, any>;
+    content_gap_report?: any;
     full_content?: string;
     word_count?: number;
     cms_config_id?: string;

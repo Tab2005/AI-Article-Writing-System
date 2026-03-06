@@ -209,7 +209,15 @@ async def generate_outline(
         if db_project.research_data:
             research_data = db_project.research_data
         
-        # 2. 從指令倉庫載入 Prompt Template（優先取用使用者的，次之取用系統預設）
+        # 2. 優先從專案中讀取內容缺口報告，若無則嘗試從 SERP 快取讀取
+        content_gap_report = db_project.content_gap_report
+        if not content_gap_report:
+            from app.models.db_models import SerpCache
+            cache_record = db.query(SerpCache).filter(SerpCache.keyword == request.keyword).order_by(SerpCache.created_at.desc()).first()
+            if cache_record:
+                content_gap_report = cache_record.content_gap_report
+
+        # 3. 從指令倉庫載入 Prompt Template（優先取用使用者的，次之取用系統預設）
         prompt_template = db.query(PromptTemplate).filter(
             PromptTemplate.category == "outline_generation",
             PromptTemplate.is_active == True,
@@ -218,13 +226,14 @@ async def generate_outline(
         
         prompt_content = prompt_template.content if prompt_template else None
             
-        # 3. 調用 AI 產出大綱
+        # 4. 調用 AI 產出大綱 (帶入內容缺口建議)
         ai_result = await AIService.generate_outline(
             keyword=request.keyword,
             intent=request.intent,
             keywords=request.selected_keywords,
             research_data=research_data,
-            custom_prompt=prompt_content
+            custom_prompt=prompt_content,
+            content_gap_report=content_gap_report
         )
         
         # 4. 處理 AI 回傳結果
@@ -272,10 +281,10 @@ async def get_content_gap(
     from app.models.db_models import Project, KalpaMatrix, SerpCache
     from app.services.ai_service import AIService
     
-    primary_keyword = None
-    serp_results = []
+    force_refresh = request.get("force_refresh", False)
 
-    # 1. 優先處理 Project ID
+    # 1. 優先處理 Project ID 並嘗試讀取已存在的報告
+    db_project = None
     if project_id:
         # 嘗試尋找文章專案 (Project)
         db_project = db.query(Project).filter(Project.id == project_id, Project.user_id == current_user.id).first()
@@ -283,6 +292,10 @@ async def get_content_gap(
         if db_project:
             primary_keyword = db_project.primary_keyword
             serp_results = (db_project.research_data or {}).get("results", [])
+            # 檢查專案是否已有報告
+            if db_project.content_gap_report and not force_refresh:
+                logger.info(f"從 Project {project_id} 讀取已存在的內容缺口報告")
+                return db_project.content_gap_report
         else:
             # 嘗試尋找因果矩陣 (KalpaMatrix)
             matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == project_id, KalpaMatrix.user_id == current_user.id).first()
@@ -298,11 +311,17 @@ async def get_content_gap(
         # 僅提供關鍵字
         primary_keyword = keyword_param
 
-    # 2. 如果目前沒有 serp_results，嘗試從快取中獲取
-    if not serp_results and primary_keyword:
-        cache = db.query(SerpCache).filter(SerpCache.keyword == primary_keyword).order_by(SerpCache.created_at.desc()).first()
-        if cache and not cache.is_expired:
-            serp_results = (cache.results or {}).get("results", [])
+    # 2. 如果目前沒有 serp_results 或報告，嘗試從快取中獲取
+    cache_record = None
+    if primary_keyword:
+        cache_record = db.query(SerpCache).filter(SerpCache.keyword == primary_keyword).order_by(SerpCache.created_at.desc()).first()
+        if cache_record and not cache_record.is_expired:
+            if not serp_results:
+                serp_results = (cache_record.results or {}).get("results", [])
+            # 檢查快取是否有報告
+            if cache_record.content_gap_report and not force_refresh:
+                logger.info(f"從 SerpCache 讀取『{primary_keyword}』的既有報告")
+                return cache_record.content_gap_report
         
     if not serp_results:
         # 如果沒有研究數據，則返回 400 告知需要研究
@@ -326,7 +345,7 @@ async def get_content_gap(
         report = await AIService.generate_content_gap_report(primary_keyword, serp_results)
         
         # 確保回傳結構完整 (備位)
-        if not report:
+        if not report or not isinstance(report, dict):
             report = {
                 "market_standards": [],
                 "content_gaps": ["AI 未能產出報告，請重試"],
@@ -334,6 +353,18 @@ async def get_content_gap(
                 "unique_angle": "暫無建議"
             }
         
+        # 儲存結果以利持久化
+        try:
+            if db_project:
+                db_project.content_gap_report = report
+            elif cache_record:
+                cache_record.content_gap_report = report
+            db.commit()
+            logger.info(f"內容缺口分析結果已儲存至資料庫")
+        except Exception as save_err:
+            logger.warning(f"儲存分析結果失敗: {save_err}")
+            db.rollback()
+
         return report
     except HTTPException:
         # FastAPI 自定義異常不需退款，直接拋出 (點數在成功時才執行 deduct，但目前 deduct 在 try 內)

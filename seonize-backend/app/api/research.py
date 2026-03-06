@@ -48,6 +48,7 @@ class ResearchResponse(BaseModel):
     paa: List[str] = []              # 新增 PAA 清單
     related_searches: List[str] = [] # 新增相關搜尋清單
     serp_features: List[str] = []    # 新增搜尋特徵
+    content_gap_report: Optional[Dict[str, Any]] = None # 新增：內容缺口分析報告
     created_at: Optional[str] = None # 數據時間
     error: Optional[str] = None
 
@@ -112,6 +113,7 @@ async def research_serp(
         paa=paa,
         related_searches=related_searches,
         serp_features=serp_features,
+        content_gap_report=search_data.get("content_gap_report"),
         created_at=created_at,
         error=error,
     )

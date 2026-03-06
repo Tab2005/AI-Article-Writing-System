@@ -66,8 +66,8 @@ class Project(Base):
     selected_title = Column(Text, nullable=True)
     
     # 關鍵字
-    keywords = Column(JSON, default=dict)  # {secondary: [], lsi: [], density: {}}
     research_data = Column(JSON, nullable=True) # 儲存 PAA, 相關搜尋, AI Overview 等研究數據
+    content_gap_report = Column(JSON, nullable=True) # 儲存 AI 產出的內容缺口與 EEAT 建議
     
     # 大綱
     outline = Column(JSON, nullable=True)  # {h1: "", sections: []}
@@ -109,6 +109,7 @@ class Project(Base):
             "selected_title": self.selected_title,
             "keywords": self.keywords or {"secondary": [], "lsi": []},
             "research_data": self.research_data or {"paa": [], "related_searches": [], "ai_overview": None},
+            "content_gap_report": self.content_gap_report,
             "outline": self.outline,
             "full_content": self.full_content or "",
             "meta_title": self.meta_title,
@@ -188,6 +189,7 @@ class SerpCache(Base):
     country = Column(String(10), default="TW")
     language = Column(String(10), default="zh-TW")
     results = Column(JSON, nullable=True)
+    content_gap_report = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
 

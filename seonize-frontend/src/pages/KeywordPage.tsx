@@ -60,6 +60,7 @@ export const KeywordPage: React.FC = () => {
       setRelatedSearches(serpRes.related_searches || []);
       setAiOverview(serpRes.ai_overview);
       setLastCreatedAt(serpRes.created_at || null);
+      setGapReport(serpRes.content_gap_report || null);
       setKeywordIdeas(ideasRes);
 
       // 如果快取中有已生成的 AI 標題，自動填入
@@ -168,6 +169,7 @@ export const KeywordPage: React.FC = () => {
           related_searches: relatedSearches,
           ai_overview: aiOverview,
         },
+        content_gap_report: gapReport,
         optimization_mode: 'geo' as any,
       });
 
