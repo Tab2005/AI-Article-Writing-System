@@ -311,7 +311,17 @@ async def get_content_gap(
             detail=f"『{primary_keyword}』尚無研究數據。請先在『關鍵字研究』執行搜尋，或稍候再試。"
         )
 
+    # 3. 點數扣除邏輯 (前置檢查)
+    from app.services.credit_service import CreditService, CREDIT_COSTS
+    COST = CREDIT_COSTS.get("content_gap_analysis", 3)
+    
+    # 確保點數充足再執行
+    CreditService.check_balance(current_user, COST)
+
     try:
+        # 開始執行分析並扣點
+        CreditService.deduct(db, current_user, COST, f"內容缺口分析: {primary_keyword}")
+        
         logger.info(f"正在為關鍵字『{primary_keyword}』執行內容缺口 AI 分析 (數據量: {len(serp_results)})")
         report = await AIService.generate_content_gap_report(primary_keyword, serp_results)
         
@@ -325,6 +335,12 @@ async def get_content_gap(
             }
         
         return report
+    except HTTPException:
+        # FastAPI 自定義異常不需退款，直接拋出 (點數在成功時才執行 deduct，但目前 deduct 在 try 內)
+        # 為了保險，如果是 402/403 等權限問題，deduct 內部還沒 commit 前會報錯，不影響餘額
+        raise
     except Exception as e:
         logger.error(f"Generate content gap AI report failed: {e}", exc_info=True)
+        # 失敗退款
+        CreditService.refund(db, current_user, COST, f"AI 分析失敗: {str(e)[:50]}")
         raise HTTPException(status_code=500, detail=f"AI 分析執行失敗: {str(e)}")

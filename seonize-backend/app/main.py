@@ -145,6 +145,18 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(kalpa_router, prefix="/api/kalpa", tags=["Kalpa Matrix"])
 app.include_router(cms_router, prefix="/api/cms", tags=["CMS Integration"])
 app.include_router(users_router, prefix="/api/admin/users", tags=["Admin - User Management"])
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """捕捉 HTTPException 並確保帶有 CORS 標頭"""
+    response = JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 
 @app.exception_handler(Exception)

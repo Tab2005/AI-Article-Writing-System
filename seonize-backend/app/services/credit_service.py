@@ -26,6 +26,7 @@ CREDIT_COSTS = {
     # 大綱/分析
     "create_outline":       5,   # 建立 outline 大綱
     "competitor_analysis":  3,   # 競品分析
+    "content_gap_analysis": 3,   # 內容缺口分析 (新增)
     # 文章撰寫
     "writing_section":      5,   # 生成單段落
     "writing_full":         20,  # 生成完整文章
