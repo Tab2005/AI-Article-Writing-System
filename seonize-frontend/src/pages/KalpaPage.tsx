@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard, MermaidRenderer } from '../components/ui';
-import { kalpaApi, cmsApi, projectsApi, analysisApi } from '../services/api';
+import { kalpaApi, cmsApi, analysisApi } from '../services/api';
 import type { KalpaNode, CMSConfig } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import { useAuth } from '../context/AuthContext';
