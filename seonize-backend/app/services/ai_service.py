@@ -311,11 +311,16 @@ SERP 標題：
                 "summary": "",
             }
     @classmethod
-    async def generate_ai_titles(cls, keyword: str, titles: list[str], intent: str = "informational", user_id: str = None) -> list[dict]:
-        """基於 SERP 競品標題與 GEO 策略生成 AI 建議標題"""
-        
+    async def generate_ai_titles(cls, keyword: str, titles: List[str], intent: str = "informational", user_id: Optional[int] = None, custom_prompt: Optional[str] = None) -> List[Dict[str, Any]]:
+        """基於競爭對手生成 AI 建議標題 (GEO 優化模式)"""
+        if not titles:
+            return [
+                {"title": f"什麼是 {keyword}？2026 最完整定義與基礎指南", "strategy": "定義型", "reason": "預設生成"},
+                {"title": f"{keyword}怎麼辦？2026 最新解決教學與修復步驟", "strategy": "教學型", "reason": "預設生成"}
+            ]
+            
         # 1. 優先從新模板系統讀取啟用的模板
-        custom_prompt = None
+        # custom_prompt = None # This line is redundant as custom_prompt is already a parameter or will be set below
         try:
             from app.core.database import SessionLocal
             from app.models.db_models import PromptTemplate
@@ -369,7 +374,7 @@ SERP 標題：
 - 核心關鍵字：{keyword}
 - 預估搜尋意圖：{intent}
 - 競爭對手標題 (SERP Top 10)：
-{chr(10).join(f'- {t}' for t in titles[:10])}
+{chr(10).join(f"- {t}" for t in (titles or [])[:10])}
 
 # 標題優化策略 (基於 GEO 模板)
 請從以下策略中挑選 5 個不同的方向來產出標題：
@@ -456,7 +461,7 @@ SERP 標題：
         prompt = f"""分析核心關鍵字「{keyword}」的搜尋競爭對手內容，找出「內容缺口 (Content Gaps)」。
 
 # 競爭對手數據 (標題與摘要)
-{chr(10).join(f"- {d.get('title')}: {d.get('snippet')}" for d in competitors_data[:5])}
+{chr(10).join(f"- {d.get('title')}: {d.get('snippet')}" for d in (competitors_data or [])[:5])}
 
 # 任務要求
 1. 識別競爭對手普遍提到的觀點。

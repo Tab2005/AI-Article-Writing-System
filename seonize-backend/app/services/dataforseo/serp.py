@@ -93,7 +93,7 @@ class DataForSEOSerpService(DataForSEOBase):
         task_result = tasks[0].get("result", [])
         if not task_result: return {"results": [], "error": "No results found"}
         
-        items = task_result[0].get("items", [])
+        items = task_result[0].get("items") or []
         rank = 1
         for item in items:
             item_type = item.get("type")
@@ -102,15 +102,15 @@ class DataForSEOSerpService(DataForSEOBase):
                 results.append(SERPResult(
                     rank=rank, url=item.get("url", ""), title=item.get("title", ""),
                     snippet=item.get("description", ""), main_domain=item.get("domain"),
-                    sitelinks=[{"title": l.get("title", ""), "url": l.get("url", "")} for l in item.get("links", [])],
-                    faq=[{"question": f.get("question", ""), "answer": f.get("answer", "")} for f in item.get("faq", {}).get("items", [])]
+                    sitelinks=[{"title": l.get("title", ""), "url": l.get("url", "")} for l in (item.get("links") or [])],
+                    faq=[{"question": f.get("question", ""), "answer": f.get("answer", "")} for f in (item.get("faq") or {}).get("items") or []]
                 ).model_dump())
                 rank += 1
             elif item_type == "google_ai_overview": ai_overview = item
             elif item_type == "people_also_ask":
-                paa.extend([p.get("title") for p in item.get("items", []) if p.get("title")])
+                paa.extend([p.get("title") for p in (item.get("items") or []) if p.get("title")])
             elif item_type == "related_searches":
-                related_searches.extend([r if isinstance(r, str) else r.get("title") for r in item.get("items", [])])
+                related_searches.extend([r if isinstance(r, str) else r.get("title") for r in (item.get("items") or [])])
                 
         return {
             "results": results, "ai_overview": ai_overview, "paa": paa,

@@ -87,17 +87,20 @@ async def research_serp(
         force_refresh=request.force_refresh
     )
 
+    if not search_data:
+        search_data = {"results": [], "error": "未能取得搜尋數據，請重試。"}
+
     # 點數處理：僅在非快取命中 (cache_hit=False) 時扣除 2 點
     if not search_data.get("cache_hit"):
         COST = CREDIT_COSTS["serp_query"]
         CreditService.deduct(db, current_user, COST, f"SERP 查詢: {request.keyword}")
     
     
-    results = search_data.get("results", [])
+    results = search_data.get("results", []) or []
     ai_overview = search_data.get("ai_overview")
-    paa = search_data.get("paa", [])
-    related_searches = search_data.get("related_searches", [])
-    serp_features = search_data.get("serp_features", [])
+    paa = search_data.get("paa") or []
+    related_searches = search_data.get("related_searches") or []
+    serp_features = search_data.get("serp_features") or []
     created_at = search_data.get("created_at")
     error = search_data.get("error")
 
