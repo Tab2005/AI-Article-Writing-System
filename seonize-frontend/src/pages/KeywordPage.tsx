@@ -28,6 +28,8 @@ export const KeywordPage: React.FC = () => {
   const [aiSuggestions, setAiSuggestions] = useState<AITitleSuggestion[]>([]);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [gapReport, setGapReport] = useState<any | null>(null);
+  const [isGeneratingGap, setIsGeneratingGap] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   // 自動觸研：如果 URL 有搜尋參數則自動執行 (預設使用快取)
@@ -124,6 +126,21 @@ export const KeywordPage: React.FC = () => {
       alert(errorMessage);
     } finally {
       setIsGeneratingTitles(false);
+    }
+  };
+
+  const handleFetchContentGap = async () => {
+    if (!keyword.trim() || serpResults.length === 0) return;
+
+    setIsGeneratingGap(true);
+    try {
+      const data = await analysisApi.getContentGap(undefined, keyword);
+      setGapReport(data);
+    } catch (error: any) {
+      console.error('Gap analysis failed:', error);
+      alert(error.response?.data?.detail || '內容缺口分析失敗');
+    } finally {
+      setIsGeneratingGap(false);
     }
   };
 
@@ -656,6 +673,53 @@ export const KeywordPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Content Gap Analysis Section */}
+          {serpResults.length > 0 && (
+            <div className="keyword-section gap-analysis-section">
+              <div className="section-header-row">
+                <h3 className="keyword-section__title">內容缺口與 E-E-A-T 策略 (基於競品)</h3>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleFetchContentGap}
+                  loading={isGeneratingGap}
+                  icon={<span>🎯</span>}
+                >
+                  {gapReport ? '重新分析' : '分析內容缺口'}
+                </Button>
+              </div>
+
+              {gapReport ? (
+                <div className="gap-report-card card animate-fade-in">
+                  <div className="gap-grid">
+                    <div className="gap-item content-gaps">
+                      <label>🚩 競爭缺口 (應優先補齊的觀點)</label>
+                      <ul>
+                        {gapReport.content_gaps?.map((s: string, i: number) => <li key={i} className="highlight">{s}</li>)}
+                      </ul>
+                    </div>
+                    <div className="gap-item eeat-strategy">
+                      <label>🛡️ E-E-A-T/核心權威建議</label>
+                      <ul>
+                        {gapReport.eeat_strategies?.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                    <div className="gap-item market-standard">
+                      <label>📊 市場基本水平 (必需包含內容)</label>
+                      <ul>
+                        {gapReport.market_standards?.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="gap-analysis-placeholder">
+                  <p>透過 AI 橫向比對前 10 名標題與內容，挖掘競爭對手未提及的藍海觀點。</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* SERP Results */}
           {serpResults.length > 0 && (

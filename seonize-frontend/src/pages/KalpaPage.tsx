@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard, MermaidRenderer } from '../components/ui';
-import { kalpaApi, cmsApi, analysisApi } from '../services/api';
+import { kalpaApi, cmsApi } from '../services/api';
 import type { KalpaNode, CMSConfig } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import { useAuth } from '../context/AuthContext';
@@ -107,16 +107,7 @@ export const KalpaPage: React.FC = () => {
     // 天道解析狀態
     const [brainstormTopic, setBrainstormTopic] = useState('');
     const [isBrainstorming, setIsBrainstorming] = useState(false);
-    const [tiandaoSuggestions, setTiandaoSuggestions] = useState<{
-        entities: string[];
-        actions: string[];
-        pain_points: string[];
-        suggested_title_template?: string;
-        exclusion_rules?: Record<string, string[]>;
-    } | null>(null);
-
-    const [gapReport, setGapReport] = useState<any>(null);
-    const [isGeneratingGap, setIsGeneratingGap] = useState(false);
+    const [tiandaoSuggestions, setTiandaoSuggestions] = useState<any | null>(null);
 
     useEffect(() => {
         fetchConfigs();
@@ -150,28 +141,6 @@ export const KalpaPage: React.FC = () => {
             console.error('Brainstorm failed:', error);
         } finally {
             setIsBrainstorming(false);
-        }
-    };
-
-    const fetchContentGap = async () => {
-        // 優先使用 matrixId，其次使用當前解析的主題或專案名稱
-        const identifier = matrixId;
-        const fallbackKeyword = brainstormTopic || projectName;
-
-        if (!identifier && !fallbackKeyword) {
-            alert('請先輸入主題進行天道解析');
-            return;
-        }
-
-        setIsGeneratingGap(true);
-        try {
-            const data = await analysisApi.getContentGap(identifier || undefined, fallbackKeyword);
-            setGapReport(data);
-        } catch (error: any) {
-            console.error('Gap analysis failed:', error);
-            // 友好的錯誤提示已經由 API 端的 400 錯提供，這裡只需捕捉
-        } finally {
-            setIsGeneratingGap(false);
         }
     };
 
@@ -257,8 +226,6 @@ export const KalpaPage: React.FC = () => {
     };
 
     const loadMatrix = async (id: string) => {
-        // ... loadMatrix stays the same (I'll skip it in this chunk to keep it smaller if possible, but I'll make sure context matches)
-        // (Self-correction: I should include the context correctly)
         setLoading(true);
         try {
             const matrix = await kalpaApi.get(id);
@@ -586,19 +553,19 @@ export const KalpaPage: React.FC = () => {
                             <div className="suggest-item">
                                 <label>建議實體：</label>
                                 <div className="suggest-tags">
-                                    {tiandaoSuggestions.entities.map(s => <span key={s} className="suggest-tag">{s}</span>)}
+                                    {tiandaoSuggestions.entities.map((s: string) => <span key={s} className="suggest-tag">{s}</span>)}
                                 </div>
                             </div>
                             <div className="suggest-item">
                                 <label>建議動作：</label>
                                 <div className="suggest-tags">
-                                    {tiandaoSuggestions.actions.map(s => <span key={s} className="suggest-tag">{s}</span>)}
+                                    {tiandaoSuggestions.actions.map((s: string) => <span key={s} className="suggest-tag">{s}</span>)}
                                 </div>
                             </div>
                             <div className="suggest-item">
                                 <label>建議痛點：</label>
                                 <div className="suggest-tags">
-                                    {tiandaoSuggestions.pain_points.map(s => <span key={s} className="suggest-tag">{s}</span>)}
+                                    {tiandaoSuggestions.pain_points.map((s: string) => <span key={s} className="suggest-tag">{s}</span>)}
                                 </div>
                             </div>
                         </div>
@@ -617,7 +584,7 @@ export const KalpaPage: React.FC = () => {
                                 <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                                     {Object.entries(tiandaoSuggestions.exclusion_rules).map(([trigger, forbidden], idx) => (
                                         <div key={idx} style={{ marginBottom: '2px' }}>
-                                            • 當實體含「<b>{trigger}</b>」時，排除含：{forbidden.join(', ')}
+                                            • 當實體含「<b>{trigger}</b>」時，排除含：{(forbidden as string[]).join(', ')}
                                         </div>
                                     ))}
                                 </div>
@@ -652,7 +619,7 @@ export const KalpaPage: React.FC = () => {
                                         <span>🔮 標題推演模擬 (範例)</span>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                                        {tiandaoSuggestions.entities.slice(0, 3).map((entity, i) => {
+                                        {tiandaoSuggestions.entities.slice(0, 3).map((entity: string, i: number) => {
                                             const action = tiandaoSuggestions.actions[i] || tiandaoSuggestions.actions[0];
                                             const pain = tiandaoSuggestions.pain_points[i] || tiandaoSuggestions.pain_points[0];
                                             const simulatedTitle = (tiandaoSuggestions.suggested_title_template || '')
@@ -693,55 +660,6 @@ export const KalpaPage: React.FC = () => {
                     </div>
                 )}
             </div>
-
-            {/* 內容缺口分析面板 - 當有解析建議、已有結果或已儲存時顯示 */}
-            {(tiandaoSuggestions || results.length > 0 || matrixId) && (
-                <div className="gap-analysis-panel card animate-slide-down">
-                    <div className="panel-header">
-                        <div className="panel-title">
-                            <span className="icon">🎯</span>
-                            <h3>內容缺口與 E-E-A-T 策略建議</h3>
-                        </div>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={fetchContentGap}
-                            loading={isGeneratingGap}
-                        >
-                            {gapReport ? '🔄 重新分析' : '🔍 執行缺口分析'}
-                        </Button>
-                    </div>
-
-                    {gapReport && (
-                        <div className="gap-report-content animate-slide-down">
-                            <div className="gap-grid">
-                                <div className="gap-item market-standard">
-                                    <label>📊 市場標準內容</label>
-                                    <ul>
-                                        {gapReport.market_standards?.map((s: string, i: number) => <li key={i}>{s}</li>)}
-                                    </ul>
-                                </div>
-                                <div className="gap-item content-gaps">
-                                    <label>🚩 競爭缺口 (未被滿足的需求)</label>
-                                    <ul>
-                                        {gapReport.content_gaps?.map((s: string, i: number) => <li key={i} className="highlight">{s}</li>)}
-                                    </ul>
-                                </div>
-                                <div className="gap-item eeat-strategy">
-                                    <label>🛡️ E-E-A-T 強化建議</label>
-                                    <ul>
-                                        {gapReport.eeat_strategies?.map((s: string, i: number) => <li key={i}>{s}</li>)}
-                                    </ul>
-                                </div>
-                                <div className="gap-item unique-angle">
-                                    <label>💡 獨家切入點建議</label>
-                                    <p>{gapReport.unique_angles}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
 
             <div className="kalpa-config card">
                 <div className="kalpa-instruction">
