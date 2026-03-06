@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard, MermaidRenderer } from '../components/ui';
-import { kalpaApi, cmsApi } from '../services/api';
+import { kalpaApi, cmsApi, projectsApi, analysisApi } from '../services/api';
 import type { KalpaNode, CMSConfig } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import { useAuth } from '../context/AuthContext';
@@ -115,6 +115,9 @@ export const KalpaPage: React.FC = () => {
         exclusion_rules?: Record<string, string[]>;
     } | null>(null);
 
+    const [gapReport, setGapReport] = useState<any>(null);
+    const [isGeneratingGap, setIsGeneratingGap] = useState(false);
+
     useEffect(() => {
         fetchConfigs();
         const id = searchParams.get('id');
@@ -147,6 +150,19 @@ export const KalpaPage: React.FC = () => {
             console.error('Brainstorm failed:', error);
         } finally {
             setIsBrainstorming(false);
+        }
+    };
+
+    const fetchContentGap = async () => {
+        if (!matrixId) return;
+        setIsGeneratingGap(true);
+        try {
+            const data = await analysisApi.getContentGap(matrixId);
+            setGapReport(data);
+        } catch (error) {
+            console.error('Gap analysis failed:', error);
+        } finally {
+            setIsGeneratingGap(false);
         }
     };
 
@@ -668,6 +684,54 @@ export const KalpaPage: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {matrixId && (
+                <div className="gap-analysis-panel card">
+                    <div className="panel-header">
+                        <div className="panel-title">
+                            <span className="icon">🎯</span>
+                            <h3>內容缺口與 E-E-A-T 策略建議</h3>
+                        </div>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={fetchContentGap}
+                            loading={isGeneratingGap}
+                        >
+                            {gapReport ? '🔄 重新分析' : '🔍 執行缺口分析'}
+                        </Button>
+                    </div>
+
+                    {gapReport && (
+                        <div className="gap-report-content animate-slide-down">
+                            <div className="gap-grid">
+                                <div className="gap-item market-standard">
+                                    <label>📊 市場標準內容</label>
+                                    <ul>
+                                        {gapReport.market_standards?.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                                    </ul>
+                                </div>
+                                <div className="gap-item content-gaps">
+                                    <label>🚩 競爭缺口 (未被滿足的需求)</label>
+                                    <ul>
+                                        {gapReport.content_gaps?.map((s: string, i: number) => <li key={i} className="highlight">{s}</li>)}
+                                    </ul>
+                                </div>
+                                <div className="gap-item eeat-strategy">
+                                    <label>🛡️ E-E-A-T 強化建議</label>
+                                    <ul>
+                                        {gapReport.eeat_strategies?.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                                    </ul>
+                                </div>
+                                <div className="gap-item unique-angle">
+                                    <label>💡 獨家切入點建議</label>
+                                    <p>{gapReport.unique_angles}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="kalpa-config card">
                 <div className="kalpa-instruction">

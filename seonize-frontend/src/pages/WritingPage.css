@@ -402,3 +402,105 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Quality Dashboard */
+.quality-dashboard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.1);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.quality-dashboard__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-3);
+}
+
+.quality-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-6);
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.metric-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.metric-bar {
+  height: 8px;
+  background: var(--color-bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.metric-fill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.5s ease-in-out;
+}
+
+.metric-value {
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--color-text);
+  align-self: flex-end;
+}
+
+.quality-issues {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.quality-issue-item {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.quality-issue-item .severity {
+  font-weight: var(--font-bold);
+  min-width: 60px;
+}
+
+.quality-recommendations {
+  background: rgba(37, 99, 235, 0.03);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.quality-recommendations h4 {
+  margin-bottom: var(--space-2);
+  color: var(--color-primary);
+}
+
+.quality-recommendations ul {
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}

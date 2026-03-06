@@ -146,32 +146,31 @@ class AIService:
     
     @classmethod
     async def analyze_search_intent(cls, keyword: str, titles: list[str]) -> dict:
-        """分析搜尋意圖"""
-        prompt = f"""分析以下搜尋關鍵字和 SERP 標題，判斷搜尋意圖。
+        """分析搜尋意圖與初步內容缺口"""
+        prompt = f"""你是一位資深的 SEO 策略分析師。請分析以下搜尋關鍵字和 SERP 標題，判斷搜尋意圖並找出初步的內容缺口。
 
 關鍵字：{keyword}
 
 SERP 標題：
-{chr(10).join(f'- {t}' for t in titles)}
+{chr(10).join(f'- {t}' for t in titles[:10])}
 
 請以 JSON 格式回覆，包含：
 - intent: "informational" | "commercial" | "navigational" | "transactional"
 - confidence: 0-1 的信心度
 - signals: 判斷依據的信號列表
 - suggested_style: 建議的寫作風格
+- quick_content_gaps: [列出 3 個競爭對手標題中未提及但使用者可能感興趣的細分切入點]
 """
         
         try:
             result = await cls.generate_content(prompt)
-            # 嘗試解析 JSON
-            import json
-            import re
+            import json, re
             json_match = re.search(r'\{[\s\S]*\}', result)
             if json_match:
                 return json.loads(json_match.group())
-            return {"intent": "informational", "confidence": 0.5, "signals": [], "suggested_style": "專業教育風"}
+            return {"intent": "informational", "confidence": 0.5, "signals": [], "suggested_style": "專業教育風", "quick_content_gaps": []}
         except Exception as e:
-            return {"intent": "informational", "confidence": 0.5, "signals": [str(e)], "suggested_style": "專業教育風"}
+            return {"intent": "informational", "confidence": 0.5, "signals": [str(e)], "suggested_style": "專業教育風", "quick_content_gaps": []}
     
     @classmethod
     async def generate_outline(cls, keyword: str, intent: str, keywords: list[str], research_data: dict = None, custom_prompt: str = None) -> dict:
@@ -411,3 +410,74 @@ SERP 標題：
             ]
         except Exception as e:
             return [{"title": f"生成失敗: {str(e)}", "strategy": "錯誤", "reason": "系統發生異常"}]
+
+    @classmethod
+    async def analyze_article_quality(cls, content: str) -> dict:
+        """分析文章品質並給予 100 分量化評分 (參考 smart-blog-skills:analyze)"""
+        prompt = f"""請對以下文章進行深度品質審計與 100 分量化評分。
+
+# 審計項目
+1. AI 內容偵測：分析語態、句長爆發性、觸發詞密度。
+2. 結構分析：是否符合 Answer-First 格式，段落邏輯是否清晰。
+3. 數據與權威度：統計數據的引用比例與驗證狀態 (找尋 [V] 標籤)。
+4. SEO 優化：關鍵字融入自然度。
+
+# 待分析文章
+{content[:5000]} # 限制分析長度
+
+# 輸出 JSON 格式要求
+{{
+    "score": 85,
+    "grade": "卓越 | 優良 | 及格 | 待改進 | 重寫",
+    "metrics": {{
+        "ai_detect": 20,
+        "seo_score": 80,
+        "readability": 90
+    }},
+    "issues": [
+        {{"severity": "🔴 致命 | 🟡 高 | 🟠 中", "description": "問題描述"}}
+    ],
+    "recommendations": ["具體建議 1", "具體建議 2", "具體建議 3"]
+}}
+"""
+        try:
+            result = await cls.generate_content(prompt, temperature=0.5)
+            import json, re
+            json_match = re.search(r'\{[\s\S]*\}', result)
+            if json_match:
+                return json.loads(json_match.group())
+            return {"score": 0, "grade": "錯誤", "issues": [{"severity": "🔴 致命", "description": "無法解析 AI 回覆"}]}
+        except Exception as e:
+            return {"score": 0, "grade": "錯誤", "message": str(e)}
+
+    @classmethod
+    async def generate_content_gap_report(cls, keyword: str, competitors_data: list) -> dict:
+        """生成內容缺口分析報告 (參考 smart-blog-skills:outline)"""
+        prompt = f"""分析核心關鍵字「{keyword}」的搜尋競爭對手內容，找出「內容缺口 (Content Gaps)」。
+
+# 競爭對手數據 (標題與摘要)
+{chr(10).join(f"- {d.get('title')}: {d.get('snippet')}" for d in competitors_data[:5])}
+
+# 任務要求
+1. 識別競爭對手普遍提到的觀點。
+2. 挖掘競爭對手「忽略」或「解釋不深」的關鍵痛點。
+3. 提出我們文章應該補強的 E-E-A-T 方向。
+
+# 輸出 JSON 格式要求
+{{
+    "market_standards": ["競品共通點 1", "競品共通點 2"],
+    "content_gaps": ["我們被忽略的重點 1", "深度不足的章節"],
+    "eeat_strategy": "如何展現專業度與權威性的具體做法",
+    "unique_angle": "建議的獨特切入點"
+}}
+"""
+        try:
+            result = await cls.generate_content(prompt, temperature=0.6)
+            import json, re
+            json_match = re.search(r'\{[\s\S]*\}', result)
+            if json_match:
+                return json.loads(json_match.group())
+            return {"market_standards": [], "content_gaps": ["無法分析"]}
+        except Exception as e:
+            return {"market_standards": [], "content_gaps": [str(e)]}
+

@@ -33,6 +33,8 @@ export const WritingPage: React.FC = () => {
   const [optimizationMode, setOptimizationMode] = useState<OptimizationMode>('seo');
   const [previewMode, setPreviewMode] = useState<'render' | 'markdown'>('render');
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [qualityAnalysis, setQualityAnalysis] = useState<any>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   // 載入專案資料
   const loadProject = useCallback(async () => {
@@ -137,6 +139,24 @@ export const WritingPage: React.FC = () => {
         updated[sectionIndex].status = 'error';
         return updated;
       });
+    }
+  };
+
+  const analyzeQuality = async () => {
+    if (sections.length === 0) return;
+    setAnalyzing(true);
+    try {
+      const fullContent = sections
+        .filter((s) => s.content)
+        .map((s) => `${'#'.repeat(s.level)} ${s.heading}\n\n${s.content}`)
+        .join('\n\n');
+
+      const res = await writingApi.analyzeQuality(fullContent);
+      setQualityAnalysis(res);
+    } catch (err) {
+      console.error('分析失敗:', err);
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -287,6 +307,9 @@ export const WritingPage: React.FC = () => {
           <Button variant="secondary" onClick={() => navigate(-1)}>
             返回大綱
           </Button>
+          <Button variant="cta" onClick={() => analyzeQuality()} disabled={analyzing || sections.every(s => !s.content)}>
+            {analyzing ? '⌛ 分析中...' : '🔍 品質健檢'}
+          </Button>
           <Button variant="cta" onClick={() => saveToProject()}>
             💾 儲存全文
           </Button>
@@ -381,11 +404,46 @@ export const WritingPage: React.FC = () => {
         />
         <KPICard
           title="E-E-A-T 分數"
-          value={project?.eeat_score || 85}
+          value={qualityAnalysis?.score || project?.eeat_score || 85}
           suffix="/100"
           icon={<span style={{ fontSize: '20px' }}>✨</span>}
         />
       </div>
+
+      {qualityAnalysis && (
+        <div className="quality-dashboard">
+          <div className="quality-dashboard__header">
+            <h3>🛡️ 文章品質審計報告 ({qualityAnalysis.grade})</h3>
+            <Button size="sm" variant="secondary" onClick={() => setQualityAnalysis(null)}>關閉</Button>
+          </div>
+          <div className="quality-metrics">
+            <div className="metric-item">
+              <span className="metric-label">AI 偵測</span>
+              <div className="metric-bar"><div className="metric-fill" style={{ width: `${qualityAnalysis.metrics?.ai_detect}%`, background: qualityAnalysis.metrics?.ai_detect > 50 ? 'red' : 'green' }}></div></div>
+              <span className="metric-value">{qualityAnalysis.metrics?.ai_detect}%</span>
+            </div>
+            <div className="metric-item">
+              <span className="metric-label">SEO 優化</span>
+              <div className="metric-bar"><div className="metric-fill" style={{ width: `${qualityAnalysis.metrics?.seo_score}%` }}></div></div>
+              <span className="metric-value">{qualityAnalysis.metrics?.seo_score}%</span>
+            </div>
+          </div>
+          <div className="quality-issues">
+            {qualityAnalysis.issues?.map((issue: any, i: number) => (
+              <div key={i} className="quality-issue-item">
+                <span className="severity">{issue.severity}</span>
+                <span className="desc">{issue.description}</span>
+              </div>
+            ))}
+          </div>
+          <div className="quality-recommendations">
+            <h4>💡 改善建議</h4>
+            <ul>
+              {qualityAnalysis.recommendations?.map((rec: string, i: number) => <li key={i}>{rec}</li>)}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Writing Content */}
       <div className="writing-content">

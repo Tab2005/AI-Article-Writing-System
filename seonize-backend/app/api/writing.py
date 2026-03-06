@@ -408,3 +408,20 @@ async def analyze_competition(
         "competitors": competitor_analysis,
         "serp_features": serp_data.get("serp_features", [])
     }
+@router.post("/analyze-quality")
+async def analyze_quality(
+    request: Dict[str, str],
+    current_user: Any = Depends(get_current_user)
+):
+    """
+    對文章進行深度品質審計 (僅限登入使用者)
+    """
+    content = request.get("content")
+    if not content:
+        raise HTTPException(status_code=400, detail="未提供文章內容")
+    
+    try:
+        analysis = await AIService.analyze_article_quality(content)
+        return analysis
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"品質分析失敗: {str(e)}")

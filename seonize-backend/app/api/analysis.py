@@ -254,3 +254,30 @@ async def generate_outline(
             sections=[],
             logic_chain=[f"生成失敗：{str(e)}"]
         )
+@router.post("/content-gap")
+async def get_content_gap(
+    request: Dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """
+    獲取內容缺口報告與 E-E-A-T 建議 (僅限登入使用者)
+    """
+    project_id = request.get("project_id")
+    if not project_id:
+        raise HTTPException(status_code=400, detail="未提供專案 ID")
+    
+    from app.models.db_models import Project
+    db_project = db.query(Project).filter(Project.id == project_id, Project.user_id == current_user.id).first()
+    if not db_project:
+        raise HTTPException(status_code=404, detail="專案不存在")
+        
+    serp_results = (db_project.research_data or {}).get("results", [])
+    if not serp_results:
+        raise HTTPException(status_code=400, detail="請先執行基礎研究")
+
+    try:
+        report = await AIService.generate_content_gap_report(db_project.primary_keyword, serp_results)
+        return report
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"生成報告失敗: {str(e)}")

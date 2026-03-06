@@ -260,6 +260,9 @@ export const analysisApi = {
       }>;
       logic_chain: string[];
     }>('/api/analysis/outline', { method: 'POST', body: data }),
+
+  getContentGap: (projectId: string) =>
+    request<any>('/api/analysis/content-gap', { method: 'POST', body: { project_id: projectId } }),
 };
 
 // Writing API
@@ -308,6 +311,9 @@ export const writingApi = {
     request<CompetitionResponse>(`/api/writing/projects/${projectId}/analyze-competition`, {
       method: 'POST',
     }),
+
+  analyzeQuality: (content: string) =>
+    request<any>('/api/writing/analyze-quality', { method: 'POST', body: { content } }),
 };
 
 // Kalpa API
