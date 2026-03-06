@@ -11,6 +11,7 @@ from app.core.database import get_db
 import logging
 from app.services.credit_service import CreditService, CREDIT_COSTS
 import uuid
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -237,7 +238,6 @@ async def generate_outline(
         )
         
         # 4. 處理 AI 回傳結果
-        from datetime import datetime
         h1 = ai_result.get("h1", f"{datetime.now().year} {request.keyword}完整指南")
         sections = []
         for idx, s in enumerate(ai_result.get("sections", [])):
