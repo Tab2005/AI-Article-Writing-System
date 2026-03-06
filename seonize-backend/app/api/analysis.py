@@ -261,23 +261,59 @@ async def get_content_gap(
     current_user: Any = Depends(get_current_user)
 ):
     """
-    獲取內容缺口報告與 E-E-A-T 建議 (僅限登入使用者)
+    獲取內容缺口報告與 E-E-A-T 建議 (支援 Project ID, Matrix ID 或直接 Keyword)
     """
     project_id = request.get("project_id")
-    if not project_id:
-        raise HTTPException(status_code=400, detail="未提供專案 ID")
+    keyword_param = request.get("keyword")
     
-    from app.models.db_models import Project
-    db_project = db.query(Project).filter(Project.id == project_id, Project.user_id == current_user.id).first()
-    if not db_project:
-        raise HTTPException(status_code=404, detail="專案不存在")
+    if not project_id and not keyword_param:
+        raise HTTPException(status_code=400, detail="未提供專案 ID 或關鍵字")
+    
+    from app.models.db_models import Project, KalpaMatrix, SerpCache
+    from app.services.ai_service import AIService
+    
+    primary_keyword = None
+    serp_results = []
+
+    # 1. 優先處理 Project ID
+    if project_id:
+        # 嘗試尋找文章專案 (Project)
+        db_project = db.query(Project).filter(Project.id == project_id, Project.user_id == current_user.id).first()
         
-    serp_results = (db_project.research_data or {}).get("results", [])
+        if db_project:
+            primary_keyword = db_project.primary_keyword
+            serp_results = (db_project.research_data or {}).get("results", [])
+        else:
+            # 嘗試尋找因果矩陣 (KalpaMatrix)
+            matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == project_id, KalpaMatrix.user_id == current_user.id).first()
+            if matrix:
+                primary_keyword = matrix.project_name
+            else:
+                # 如果有提供 keyword_param，則回退到關鍵字查詢
+                if keyword_param:
+                    primary_keyword = keyword_param
+                else:
+                    raise HTTPException(status_code=404, detail="找不到相關專案或矩陣")
+    else:
+        # 僅提供關鍵字
+        primary_keyword = keyword_param
+
+    # 2. 如果目前沒有 serp_results，嘗試從快取中獲取
+    if not serp_results and primary_keyword:
+        cache = db.query(SerpCache).filter(SerpCache.keyword == primary_keyword).order_by(SerpCache.created_at.desc()).first()
+        if cache and not cache.is_expired:
+            serp_results = (cache.results or {}).get("results", [])
+        
     if not serp_results:
-        raise HTTPException(status_code=400, detail="請先執行基礎研究")
+        # 如果沒有研究數據，則返回 400 告知需要研究
+        raise HTTPException(
+            status_code=400, 
+            detail=f"『{primary_keyword}』尚無研究數據。請先在『關鍵字研究』執行搜尋，或稍候再試。"
+        )
 
     try:
-        report = await AIService.generate_content_gap_report(db_project.primary_keyword, serp_results)
+        report = await AIService.generate_content_gap_report(primary_keyword, serp_results)
         return report
     except Exception as e:
+        logger.error(f"Generate content gap failed: {e}")
         raise HTTPException(status_code=500, detail=f"生成報告失敗: {str(e)}")

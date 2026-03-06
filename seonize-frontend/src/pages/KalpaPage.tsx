@@ -154,13 +154,22 @@ export const KalpaPage: React.FC = () => {
     };
 
     const fetchContentGap = async () => {
-        if (!matrixId) return;
+        // 優先使用 matrixId，其次使用當前解析的主題或專案名稱
+        const identifier = matrixId;
+        const fallbackKeyword = brainstormTopic || projectName;
+
+        if (!identifier && !fallbackKeyword) {
+            alert('請先輸入主題進行天道解析');
+            return;
+        }
+
         setIsGeneratingGap(true);
         try {
-            const data = await analysisApi.getContentGap(matrixId);
+            const data = await analysisApi.getContentGap(identifier || undefined, fallbackKeyword);
             setGapReport(data);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Gap analysis failed:', error);
+            // 友好的錯誤提示已經由 API 端的 400 錯提供，這裡只需捕捉
         } finally {
             setIsGeneratingGap(false);
         }
@@ -685,8 +694,9 @@ export const KalpaPage: React.FC = () => {
                 )}
             </div>
 
-            {matrixId && (
-                <div className="gap-analysis-panel card">
+            {/* 內容缺口分析面板 - 當有解析建議、已有結果或已儲存時顯示 */}
+            {(tiandaoSuggestions || results.length > 0 || matrixId) && (
+                <div className="gap-analysis-panel card animate-slide-down">
                     <div className="panel-header">
                         <div className="panel-title">
                             <span className="icon">🎯</span>

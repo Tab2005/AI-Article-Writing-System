@@ -261,8 +261,8 @@ export const analysisApi = {
       logic_chain: string[];
     }>('/api/analysis/outline', { method: 'POST', body: data }),
 
-  getContentGap: (projectId: string) =>
-    request<any>('/api/analysis/content-gap', { method: 'POST', body: { project_id: projectId } }),
+  getContentGap: (projectId?: string, keyword?: string) =>
+    request<any>('/api/analysis/content-gap', { method: 'POST', body: { project_id: projectId, keyword } }),
 };
 
 // Writing API
