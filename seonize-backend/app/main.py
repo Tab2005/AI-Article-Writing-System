@@ -153,7 +153,9 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"捕捉到全域異常: {exc}")
     logger.error(f"請求路徑: {request.url.path}")
     traceback.print_exc()
-    return JSONResponse(
+    
+    # 手動建立回應
+    response = JSONResponse(
         status_code=500,
         content={
             "success": False,
@@ -161,6 +163,15 @@ async def global_exception_handler(request: Request, exc: Exception):
             "detail": str(exc)
         },
     )
+    
+    # 手動加入 CORS 標頭 (重要：當 FastAPI 報錯時，中介軟體可能不會被調用，導致 CORS 錯誤掩蓋真實錯誤)
+    # 這裡我們允許請求來源 (Origin) 通過
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        
+    return response
 
 @app.get("/")
 async def root():

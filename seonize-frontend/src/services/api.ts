@@ -262,7 +262,11 @@ export const analysisApi = {
     }>('/api/analysis/outline', { method: 'POST', body: data }),
 
   getContentGap: (projectId?: string, keyword?: string) =>
-    request<any>('/api/analysis/content-gap', { method: 'POST', body: { project_id: projectId, keyword } }),
+    request<any>('/api/analysis/content-gap', {
+      method: 'POST',
+      body: { project_id: projectId, keyword },
+      timeout: 60000 // 內容分析點較耗時，延長至 60 秒
+    }),
 };
 
 // Writing API

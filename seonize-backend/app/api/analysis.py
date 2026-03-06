@@ -312,8 +312,19 @@ async def get_content_gap(
         )
 
     try:
+        logger.info(f"正在為關鍵字『{primary_keyword}』執行內容缺口 AI 分析 (數據量: {len(serp_results)})")
         report = await AIService.generate_content_gap_report(primary_keyword, serp_results)
+        
+        # 確保回傳結構完整 (備位)
+        if not report:
+            report = {
+                "market_standards": [],
+                "content_gaps": ["AI 未能產出報告，請重試"],
+                "eeat_strategy": "暫無建議",
+                "unique_angle": "暫無建議"
+            }
+        
         return report
     except Exception as e:
-        logger.error(f"Generate content gap failed: {e}")
-        raise HTTPException(status_code=500, detail=f"生成報告失敗: {str(e)}")
+        logger.error(f"Generate content gap AI report failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"AI 分析執行失敗: {str(e)}")

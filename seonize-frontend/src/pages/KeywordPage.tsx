@@ -138,7 +138,8 @@ export const KeywordPage: React.FC = () => {
       setGapReport(data);
     } catch (error: any) {
       console.error('Gap analysis failed:', error);
-      alert(error.response?.data?.detail || '內容缺口分析失敗');
+      const errorMessage = error.response?.data?.detail || error.message || '內容缺口分析失敗，請檢查網路或稍後再試';
+      alert(errorMessage);
     } finally {
       setIsGeneratingGap(false);
     }
