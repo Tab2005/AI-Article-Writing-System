@@ -378,7 +378,7 @@ async def generate_titles(
         SerpCache.keyword == request.keyword.strip()
     ).order_by(SerpCache.created_at.desc()).first()
     
-    if cache and cache.results:
+    if cache and cache.results and not cache.is_expired:
         res_data = cache.results
         if isinstance(res_data, dict) and "results" in res_data:
             results_list = res_data.get("results", [])
