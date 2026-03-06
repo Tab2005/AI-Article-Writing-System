@@ -195,7 +195,14 @@ class SerpCache(Base):
     def is_expired(self) -> bool:
         if not self.expires_at:
             return True
-        return datetime.now(timezone.utc) > self.expires_at
+        
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        # 如果 self.expires_at 沒有時區資訊 (常見於 SQLite)，則也將 now 轉換為無時區時間作比較
+        if self.expires_at.tzinfo is None:
+            now = now.replace(tzinfo=None)
+            
+        return now > self.expires_at
 
 class KeywordCache(Base):
     """關鍵字快取資料表，儲存 Keyword Ideas 研究結果"""
@@ -218,7 +225,13 @@ class KeywordCache(Base):
     def is_expired(self) -> bool:
         if not self.expires_at:
             return False # 預設不逾期
-        return datetime.now(timezone.utc) > self.expires_at
+            
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        if self.expires_at.tzinfo is None:
+            now = now.replace(tzinfo=None)
+            
+        return now > self.expires_at
 
 class CompetitiveCache(Base):
     """競爭對手網頁內容快取資料表"""
@@ -237,7 +250,13 @@ class CompetitiveCache(Base):
     def is_expired(self) -> bool:
         if not self.expires_at:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+            
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        if self.expires_at.tzinfo is None:
+            now = now.replace(tzinfo=None)
+            
+        return now > self.expires_at
 
 class PromptTemplate(Base):
     """指令模板資料表"""

@@ -28,7 +28,7 @@ class DataForSEOSerpService(DataForSEOBase):
         if db:
             from app.models.db_models import SerpCache
             cache = db.query(SerpCache).filter(SerpCache.keyword == keyword).order_by(SerpCache.created_at.desc()).first()
-            if cache and not force_refresh:
+            if cache and not cache.is_expired and not force_refresh:
                 results_data = cache.results
                 if isinstance(results_data, dict):
                     results_data["created_at"] = cache.created_at.isoformat() if cache.created_at else None
