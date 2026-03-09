@@ -203,16 +203,72 @@ export const OutlinePage: React.FC = () => {
     );
   }
 
+  // 渲染空狀態
+  const renderEmptyState = () => (
+    <div className="outline-empty-state">
+      <div className="empty-state__icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2v8" /><path d="m16 6-4 4-4-4" /><path d="M12 10v12" /><path d="m8 18 4 4 4-4" />
+        </svg>
+      </div>
+      <h2 className="empty-state__title">開始規劃您的 SEO 大綱</h2>
+      <p className="empty-state__text">
+        尚未產生成任何大綱內容。點擊「AI 生成大綱」按鈕，我們將基於關鍵字意圖與競爭對手數據，為您量身打造一組專業的文章架構。
+      </p>
+
+      <div className="empty-state__features">
+        <div className="empty-feature">
+          <span className="empty-feature__icon">🔍</span>
+          <span className="empty-feature__label">語義場景分析</span>
+        </div>
+        <div className="empty-feature">
+          <span className="empty-feature__icon">📈</span>
+          <span className="empty-feature__label">競品缺口織入</span>
+        </div>
+        <div className="empty-feature">
+          <span className="empty-feature__icon">🤖</span>
+          <span className="empty-feature__label">GEO 標塊優化</span>
+        </div>
+      </div>
+
+      <Button variant="cta" size="lg" onClick={generateOutline}>
+        🤖 立即啟動 AI 生成
+      </Button>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="outline-page">
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>AI 正在分析研究數據並生成大綱中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="outline-page">
+        <div className="error-state">
+          <p>{error}</p>
+          <Button onClick={() => navigate('/projects')}>返回專案</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="outline-page">
       <div className="outline-header">
         <div>
-          <h1 className="outline-h1">{h1 || '尚未生成標題'}</h1>
+          <h1 className="outline-h1">{h1 || '尚未生成建議標題'}</h1>
           <h2 className="outline-header__title">互動式大綱編輯器</h2>
           <p className="outline-header__desc">
             {outline.length > 0
-              ? '拖拽排序 H2/H3 結構，編輯標題文字，已為您自動織入 PAA 與相關搜尋'
-              : '點擊「AI 生成大綱」按鈕，讓 AI 根據關鍵字研究數據為您建立專業大綱'}
+              ? '拖拽排序 H2/H3 結構，編輯標題文字，已為您自動織入 PAA 與相關搜尋。'
+              : '我們將根據您的關鍵字研究結果，自動產出具備 SEO 競爭力的大綱結構。'}
           </p>
         </div>
         <div className="outline-header__actions">
@@ -233,9 +289,9 @@ export const OutlinePage: React.FC = () => {
       </div>
 
       {/* Logic Chain */}
-      {logicChain.length > 0 && (
+      {outline.length > 0 && logicChain.length > 0 && (
         <div className="logic-chain">
-          <h3 className="logic-chain__title">GEO 優化邏輯鏈條</h3>
+          <h3 className="logic-chain__title">GEO 優化策略鏈條</h3>
           <div className="logic-chain__flow">
             {logicChain.map((step, idx) => (
               <React.Fragment key={idx}>
@@ -249,108 +305,116 @@ export const OutlinePage: React.FC = () => {
 
       {/* Outline Editor */}
       <div className="outline-editor">
-        <div className="outline-list">
-          {outline.map((item) => (
-            <div
-              key={item.id}
-              className={`outline-item outline-item--h${item.level} ${draggedItem === item.id ? 'outline-item--dragging' : ''}`}
-              draggable
-              onDragStart={() => handleDragStart(item.id)}
-              onDragOver={(e) => handleDragOver(e, item.id)}
-              onDragEnd={handleDragEnd}
-            >
-              <div className="outline-item__drag">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <circle cx="9" cy="6" r="1.5" />
-                  <circle cx="15" cy="6" r="1.5" />
-                  <circle cx="9" cy="12" r="1.5" />
-                  <circle cx="15" cy="12" r="1.5" />
-                  <circle cx="9" cy="18" r="1.5" />
-                  <circle cx="15" cy="18" r="1.5" />
-                </svg>
-              </div>
+        {outline.length === 0 ? (
+          renderEmptyState()
+        ) : (
+          <div className="outline-list">
+            {outline.map((item) => (
+              <div
+                key={item.id}
+                className={`outline-item outline-item--h${item.level} ${draggedItem === item.id ? 'outline-item--dragging' : ''}`}
+                draggable
+                onDragStart={() => handleDragStart(item.id)}
+                onDragOver={(e) => handleDragOver(e, item.id)}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="outline-item__drag">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="9" cy="6" r="1.5" />
+                    <circle cx="15" cy="6" r="1.5" />
+                    <circle cx="9" cy="12" r="1.5" />
+                    <circle cx="15" cy="12" r="1.5" />
+                    <circle cx="9" cy="18" r="1.5" />
+                    <circle cx="15" cy="18" r="1.5" />
+                  </svg>
+                </div>
 
-              <span className="outline-item__level">H{item.level}</span>
+                <span className="outline-item__level">H{item.level}</span>
 
-              <div className="outline-item__controls">
-                <button
-                  className="outline-item__level-btn"
-                  onClick={() => handleLevelChange(item.id, -1)}
-                  disabled={item.level <= 2}
-                >
-                  ←
-                </button>
-                <button
-                  className="outline-item__level-btn"
-                  onClick={() => handleLevelChange(item.id, 1)}
-                  disabled={item.level >= 4}
-                >
-                  →
-                </button>
-              </div>
+                <div className="outline-item__controls">
+                  <button
+                    className="outline-item__level-btn"
+                    onClick={() => handleLevelChange(item.id, -1)}
+                    disabled={item.level <= 2}
+                    title="調升層級"
+                  >
+                    ←
+                  </button>
+                  <button
+                    className="outline-item__level-btn"
+                    onClick={() => handleLevelChange(item.id, 1)}
+                    disabled={item.level >= 4}
+                    title="降低層級"
+                  >
+                    →
+                  </button>
+                </div>
 
-              {editingId === item.id ? (
-                <input
-                  className="outline-item__input"
-                  value={item.heading}
-                  onChange={(e) => handleHeadingChange(item.id, e.target.value)}
-                  onBlur={() => setEditingId(null)}
-                  onKeyDown={(e) => e.key === 'Enter' && setEditingId(null)}
-                  autoFocus
-                />
-              ) : (
-                <span className="outline-item__heading" onClick={() => setEditingId(item.id)}>
-                  {item.heading}
-                </span>
-              )}
-
-              <div className="outline-item__keywords">
-                {item.keywords.map((kw, i) => (
-                  <span key={i} className="outline-item__keyword">
-                    {kw}
+                {editingId === item.id ? (
+                  <input
+                    className="outline-item__input"
+                    value={item.heading}
+                    onChange={(e) => handleHeadingChange(item.id, e.target.value)}
+                    onBlur={() => setEditingId(null)}
+                    onKeyDown={(e) => e.key === 'Enter' && setEditingId(null)}
+                    autoFocus
+                  />
+                ) : (
+                  <span className="outline-item__heading" onClick={() => setEditingId(item.id)}>
+                    {item.heading}
                   </span>
-                ))}
-              </div>
+                )}
 
-              <button className="outline-item__delete" onClick={() => handleDeleteSection(item.id)}>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 6h18" />
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                </svg>
-              </button>
-            </div>
-          ))}
-        </div>
+                <div className="outline-item__keywords">
+                  {item.keywords.map((kw, i) => (
+                    <span key={i} className="outline-item__keyword">
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+
+                <button className="outline-item__delete" onClick={() => handleDeleteSection(item.id)} title="刪除章節">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Preview */}
-      <div className="outline-preview">
-        <h3 className="outline-preview__title">大綱預覽</h3>
-        <div className="outline-preview__content">
-          {outline.map((item) => (
-            <div
-              key={item.id}
-              className="outline-preview__item"
-              style={{ paddingLeft: `${(item.level - 2) * 24}px` }}
-            >
-              <span className="outline-preview__marker">
-                {item.level === 2 ? '■' : item.level === 3 ? '●' : '○'}
-              </span>
-              {item.heading}
-            </div>
-          ))}
+      {outline.length > 0 && (
+        <div className="outline-preview">
+          <h3 className="outline-preview__title">大綱預覽</h3>
+          <div className="outline-preview__content">
+            {outline.map((item) => (
+              <div
+                key={item.id}
+                className="outline-preview__item"
+                style={{ paddingLeft: `${(item.level - 2) * 24}px` }}
+              >
+                <span className="outline-preview__marker">
+                  {item.level === 2 ? '■' : item.level === 3 ? '●' : '○'}
+                </span>
+                {item.heading}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
