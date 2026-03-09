@@ -35,6 +35,9 @@ export const WritingPage: React.FC = () => {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [qualityAnalysis, setQualityAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [auditState, setAuditState] = useState<'idle' | 'analyzing' | 'error' | 'success'>('idle');
+  const [auditStage, setAuditStage] = useState('');
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   // 載入專案資料
   const loadProject = useCallback(async () => {
@@ -149,27 +152,61 @@ export const WritingPage: React.FC = () => {
 
   const analyzeQuality = async () => {
     if (sections.length === 0) return;
+
+    setAuditState('analyzing');
+    setAuditStage('準備分析數據...');
+    setAuditError(null);
     setAnalyzing(true);
+
     try {
       const fullContent = sections
         .filter((s) => s.content)
         .map((s) => `${'#'.repeat(s.level)} ${s.heading}\n\n${s.content}`)
         .join('\n\n');
 
+      // 模擬階段性進度 (提升心理體驗)
+      const stages = [
+        "正在進行內容缺口分析...",
+        "正在進行 E-E-A-T 品質評分...",
+        "正在生成改善建議..."
+      ];
+
+      // 啟動 API 前先跳第一個階段
+      setAuditStage(stages[0]);
+
+      // 定期更新階段文字的計時器
+      let stageIdx = 0;
+      const stageTimer = setInterval(() => {
+        if (stageIdx < stages.length - 1) {
+          stageIdx++;
+          setAuditStage(stages[stageIdx]);
+        }
+      }, 5000);
 
       const res = await writingApi.analyzeQuality({
         project_id: projectId,
         content: fullContent
       });
-      setQualityAnalysis(res);
+
+      clearInterval(stageTimer);
+      setAuditStage('完成審計！');
+      setAuditState('success');
+
+      // 延遲一下讓使用者看到完成狀態再關閉視窗
+      setTimeout(() => {
+        setQualityAnalysis(res);
+        setAuditState('idle');
+      }, 800);
 
       // 更新本地 project 資料
       setProject(prev => prev ? { ...prev, quality_report: res, last_audit_at: new Date().toISOString() } : null);
 
       // 重新整理使用者點數 (因為扣點了)
       if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
-    } catch (err) {
+    } catch (err: any) {
       console.error('分析失敗:', err);
+      setAuditState('error');
+      setAuditError(err.message || '分析過程中發生錯誤，請稍後再試。');
     } finally {
       setAnalyzing(false);
     }
@@ -590,6 +627,53 @@ export const WritingPage: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* 品質健檢進度視窗 */}
+      {auditState !== 'idle' && (
+        <div className="audit-modal-overlay">
+          <div className="audit-modal">
+            <div className="audit-modal__header">
+              <h3>品質審計中</h3>
+              {auditState === 'error' && (
+                <button className="audit-modal__close-top" onClick={() => setAuditState('idle')}>×</button>
+              )}
+            </div>
+
+            <div className="audit-modal__body">
+              {auditState === 'analyzing' && (
+                <div className="audit-progress-view">
+                  <div className="audit-spinner">
+                    <div className="spinner-inner"></div>
+                    <div className="spinner-center">AI</div>
+                  </div>
+                  <p className="audit-stage-text">{auditStage}</p>
+                  <div className="audit-progress-bar">
+                    <div className="audit-progress-fill"></div>
+                  </div>
+                  <p className="audit-hint">這可能需要 20-40 秒，請稍候...</p>
+                </div>
+              )}
+
+              {auditState === 'success' && (
+                <div className="audit-success-view">
+                  <div className="audit-success-icon">✓</div>
+                  <p className="audit-stage-text">分析完成！</p>
+                </div>
+              )}
+
+              {auditState === 'error' && (
+                <div className="audit-error-view">
+                  <div className="audit-error-icon">!</div>
+                  <p className="audit-error-title">審計失敗</p>
+                  <div className="audit-error-details">
+                    {auditError}
+                  </div>
+                  <Button variant="secondary" onClick={() => setAuditState('idle')}>關閉視窗</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
