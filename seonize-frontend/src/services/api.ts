@@ -147,8 +147,8 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
           continue;
         }
 
-        // 最後一次嘗試失敗，顯示錯誤
-        if (!(err instanceof Error) || !err.message || err.message === 'Unauthorized') {
+        // 最後一次嘗試失敗，且不是 Unauthorized 錯誤（401），則顯示連線錯誤
+        if (err.message !== 'Unauthorized' && (isRetriable || !err.message)) {
           const msg = attempt > 0
             ? `無法連接至伺服器（已重試 ${attempt} 次），請檢查網路連線`
             : '無法連接至伺服器，請檢查網路連線';
