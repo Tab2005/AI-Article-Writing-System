@@ -149,7 +149,8 @@ async def generate_section(
             keyword_density=request.keyword_density,
             h1=request.h1,
             custom_prompt=prompt_content,
-            research_context=research_context
+            research_context=research_context,
+            quality_report=db_project.quality_report
         )
 
         # 驗證 AI 回傳內容有效性
@@ -247,7 +248,8 @@ async def generate_full_article(
                 optimization_mode=request.optimization_mode.value,
                 h1=request.h1,
                 custom_prompt=prompt_content,
-                research_context=research_context
+                research_context=research_context,
+                quality_report=db_project.quality_report
             )
             full_content += f"## {result['heading']}\n\n{result['content']}\n\n"
             summaries.append(result["summary"])

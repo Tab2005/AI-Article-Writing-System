@@ -51,6 +51,8 @@ DEFAULT_PROMPT_TEMPLATES = [
         "content": """你是一位資深的 SEO 內容建築師，擅長運用知識圖譜與語義搜尋技術。
 請為核心關鍵字「{keyword}」生成一篇內容深度領先競爭對手、具備極高 GEO (生成式引擎優化) 潛力的文章大綱。
 
+{content_gap}
+
 # 背景資訊
 - 核心關鍵字：{keyword}
 - 搜尋意圖：{intent}
@@ -65,8 +67,9 @@ DEFAULT_PROMPT_TEMPLATES = [
 # 大綱生成規則
 1. **問題驅動**：請優先將上述 PAA 問題轉化為適當的 H2 或 H3 標題，這對於獲得 AI 搜尋引擎的引用至關重要。
 2. **語義覆蓋**：利用相關搜尋詞來細分章節，確保覆蓋該關鍵字的完整知識場景。
-3. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
-4. **輸出格式**：必須輸出純 JSON 物件。
+3. **策略補強**：參考「內容缺口」資訊，針對對手忽略的缺口建立專屬章節或視角。
+4. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
+5. **輸出格式**：必須輸出純 JSON 物件。
 
 # 輸出 JSON 結構
 {
@@ -92,6 +95,9 @@ DEFAULT_PROMPT_TEMPLATES = [
 必須嵌入的關鍵字：{keywords}
 前文摘要：{previous_summary}
 
+# 策略方針
+{eeat_strategy}
+
 相關研究數據與參考資料：
 {research_context}
 
@@ -103,22 +109,17 @@ DEFAULT_PROMPT_TEMPLATES = [
 ]
 
 def initialize_default_prompts(db: Session):
-    """初始化系統預設指令模板"""
+    """初始化系統預設指令模板 (支援更新)"""
     try:
-        # 檢查系統模板是否已存在 (user_id is None)
-        existing_count = db.query(PromptTemplate).filter(PromptTemplate.user_id == None).count()
-        if existing_count >= len(DEFAULT_PROMPT_TEMPLATES):
-            # logger.info("System default prompt templates already exist.")
-            return
-
         for p_data in DEFAULT_PROMPT_TEMPLATES:
-            # 檢查特定類別的系統模板是否存在
-            exists = db.query(PromptTemplate).filter(
+            # 檢查特定的系統模板是否存在 (user_id is None)
+            template = db.query(PromptTemplate).filter(
                 PromptTemplate.category == p_data["category"],
                 PromptTemplate.user_id == None
             ).first()
             
-            if not exists:
+            if not template:
+                # 建立新模板
                 new_template = PromptTemplate(
                     category=p_data["category"],
                     name=p_data["name"],
@@ -128,8 +129,14 @@ def initialize_default_prompts(db: Session):
                 )
                 db.add(new_template)
                 logger.info(f"Initialized system prompt template: {p_data['name']}")
+            else:
+                # 如果內容不同，則更新為最新版本
+                if template.content != p_data["content"]:
+                    template.content = p_data["content"]
+                    template.name = p_data["name"]
+                    logger.info(f"Updated system prompt template: {p_data['name']} to new version")
         
         db.commit()
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to initialize default prompts: {e}")
+        logger.error(f"Failed to initialize/update default prompts: {e}")

@@ -186,10 +186,9 @@ SERP 標題：
         if content_gap_report and isinstance(content_gap_report, dict):
             gap_info = f"""
 # 內容缺口與 E-E-A-T 策略建議 (參考)
-- **競品共通點**：{', '.join(content_gap_report.get('market_standards', [])) or '無'}
 - **對手忽略的缺口**：{', '.join(content_gap_report.get('content_gaps', [])) or '無'}
-- **E-E-A-T 執行策略**：{content_gap_report.get('eeat_strategy', '無')}
 - **獨特切入視角**：{content_gap_report.get('unique_angle', '無')}
+- **E-E-A-T 執行策略**：{content_gap_report.get('eeat_strategy', '無')}
 
 請務必在標題或章節中，針對上述「對手忽略的缺口」進行補強。
 """
@@ -207,7 +206,8 @@ SERP 標題：
             if "{content_gap}" in prompt:
                 prompt = prompt.replace("{content_gap}", gap_info)
             else:
-                prompt += f"\n\n{gap_info}"
+                # 若無標籤則附在背景資訊後，保持向下相容
+                prompt = prompt.replace("# 背景資訊", f"{gap_info}\n# 背景資訊")
         else:
             # 預設提示詞（保持向後兼容）
             prompt = f"""你是一位資深的 SEO 內容建築師，擅長運用知識圖譜與語義搜尋技術。
@@ -271,10 +271,17 @@ SERP 標題：
         keyword_density: float = 2.0,
         h1: str = "",
         custom_prompt: str = None,
-        research_context: str = ""
+        research_context: str = "",
+        quality_report: dict = None
     ) -> dict:
         """生成單一章節內容"""
         
+        # 注入策略建議 (E-E-A-T & Gap Coverage)
+        strategy_info = ""
+        if quality_report and isinstance(quality_report, dict):
+            recs = ' / '.join(quality_report.get('recommendations', [])[:3])
+            strategy_info = f"E-E-A-T 強化建議：{recs}"
+            
         # 如果有提供自訂 Prompt，使用它；否則使用預設
         if custom_prompt:
             prompt = custom_prompt.replace("{keyword}", h1 or heading)\
@@ -285,7 +292,9 @@ SERP 標題：
                                  .replace("{previous_summary}", previous_summary or '這是文章開頭')\
                                  .replace("{target_word_count}", str(target_word_count))\
                                  .replace("{keyword_density}", str(keyword_density))\
-                                 .replace("{research_context}", research_context or '暫無可用研究數據')
+                                 .replace("{research_context}", research_context or '暫無可用研究數據')\
+                                 .replace("{eeat_strategy}", strategy_info)\
+                                 .replace("{content_gap}", strategy_info) # 兼用
         else:
             mode_instructions = {
                 "seo": "注重關鍵字自然嵌入，保持 1.5-2.5% 關鍵字密度",
@@ -302,6 +311,10 @@ SERP 標題：
 章節標題：{heading}
 必須嵌入的關鍵字：{', '.join(keywords)}
 前文摘要：{previous_summary or '這是文章開頭'}
+
+# 策略方針
+{strategy_info}
+
 {research_block}
 優化模式指南：{mode_instructions.get(optimization_mode, mode_instructions['seo'])}
 
