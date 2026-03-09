@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { KPICard, DataTable, Button } from '../components/ui';
 import { projectsApi } from '../services/api';
 import type { ProjectState } from '../types';
-import { SearchIntent, WritingStyle, OptimizationMode } from '../types';
 import './DashboardPage.css';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectState[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadProjects();
@@ -20,45 +20,9 @@ export const DashboardPage: React.FC = () => {
       setLoading(true);
       const data = await projectsApi.list();
       setProjects(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load projects:', error);
-      // Use mock data for demo
-      setProjects([
-        {
-          project_id: '1',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          primary_keyword: 'SEO 優化技巧',
-          country: 'TW',
-          language: 'zh-TW',
-          intent: SearchIntent.INFORMATIONAL,
-          style: WritingStyle.EDUCATIONAL,
-          optimization_mode: OptimizationMode.SEO,
-          serp_results: [],
-          keywords: { secondary: ['關鍵字研究', '內容優化'], lsi: [] },
-          candidate_titles: [],
-          full_content: '',
-          word_count: 2500,
-          keyword_density: { SEO: 2.5 },
-        },
-        {
-          project_id: '2',
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          updated_at: new Date(Date.now() - 86400000).toISOString(),
-          primary_keyword: '數位行銷策略',
-          country: 'TW',
-          language: 'zh-TW',
-          intent: SearchIntent.COMMERCIAL,
-          style: WritingStyle.REVIEW,
-          optimization_mode: OptimizationMode.HYBRID,
-          serp_results: [],
-          keywords: { secondary: ['社群行銷', 'SEO'], lsi: [] },
-          candidate_titles: [],
-          full_content: '',
-          word_count: 1800,
-          keyword_density: { 數位行銷: 1.8 },
-        },
-      ]);
+      setError('加載專案失敗，請確認資料庫已同步。');
     } finally {
       setLoading(false);
     }
@@ -200,6 +164,24 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="dashboard-page">
       <h1 className="page-title">數據儀表板</h1>
+
+      {error && (
+        <div className="dashboard-error-alert" style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid var(--color-error)',
+          color: 'var(--color-error)',
+          padding: '1rem',
+          borderRadius: 'var(--radius-lg)',
+          marginBottom: '2rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="dashboard-kpi-grid">
         <KPICard
