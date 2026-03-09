@@ -44,7 +44,7 @@
 .hero-section {
   max-width: 900px;
   margin: 0 auto;
-  padding: var(--space-16) var(--space-4);
+  padding: var(--space-16) var(--space-4) var(--space-8);
   text-align: center;
 }
 
@@ -191,7 +191,7 @@
 
 /* Features Section */
 .features-section {
-  padding: var(--space-16) var(--space-4);
+  padding: var(--space-8) var(--space-4) var(--space-16);
   max-width: 1200px;
   margin: 0 auto;
 }
