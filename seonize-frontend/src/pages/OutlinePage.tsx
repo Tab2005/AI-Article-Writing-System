@@ -23,6 +23,9 @@ export const OutlinePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [outlineState, setOutlineState] = useState<'idle' | 'analyzing' | 'error' | 'success'>('idle');
+  const [outlineStage, setOutlineStage] = useState('');
+  const [outlineError, setOutlineError] = useState<string | null>(null);
 
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,12 +69,33 @@ export const OutlinePage: React.FC = () => {
       return;
     }
 
+    setOutlineState('analyzing');
+    setOutlineStage('準備研究數據...');
+    setOutlineError(null);
+    setLoading(true);
+
     try {
-      setLoading(true);
       setError(null);
 
       // 1. 先獲取專案資訊 (為了關鍵字)
       const project = await projectsApi.get(projectId);
+
+      // 模擬階段性進度
+      const stages = [
+        "正在分析搜尋意圖與語義場景...",
+        "正在織入 PAA 與相關搜尋詞...",
+        "正在基於內容缺口優化結構...",
+        "正在生成 GEO 標塊架構..."
+      ];
+
+      setOutlineStage(stages[0]);
+      let stageIdx = 0;
+      const stageTimer = setInterval(() => {
+        if (stageIdx < stages.length - 1) {
+          stageIdx++;
+          setOutlineStage(stages[stageIdx]);
+        }
+      }, 4000);
 
       // 2. 調用 AI 生成大綱 (後端會自動讀取 research_data)
       const res = await analysisApi.generateOutline({
@@ -81,12 +105,20 @@ export const OutlinePage: React.FC = () => {
         selected_keywords: project.keywords?.secondary || [],
       });
 
-      setH1(res.h1);
-      setOutline(res.sections);
-      setLogicChain(res.logic_chain);
+      clearInterval(stageTimer);
+      setOutlineStage('大綱生成完成！');
+      setOutlineState('success');
+
+      setTimeout(() => {
+        setH1(res.h1);
+        setOutline(res.sections);
+        setLogicChain(res.logic_chain);
+        setOutlineState('idle');
+      }, 800);
     } catch (err: any) {
       console.error('生成大綱失敗:', err);
-      setError(err.message || '無法生成大綱');
+      setOutlineState('error');
+      setOutlineError(err.message || '大綱生成過程中發生錯誤，請稍後再試。');
     } finally {
       setLoading(false);
     }
@@ -181,28 +213,6 @@ export const OutlinePage: React.FC = () => {
     setOutline(outline.filter((item) => item.id !== id));
   };
 
-  if (loading) {
-    return (
-      <div className="outline-page">
-        <div className="loading-state">
-          <div className="spinner"></div>
-          <p>AI 正在分析研究數據並生成大綱中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="outline-page">
-        <div className="error-state">
-          <p>{error}</p>
-          <Button onClick={() => navigate('/projects')}>返回專案</Button>
-        </div>
-      </div>
-    );
-  }
-
   // 渲染空狀態
   const renderEmptyState = () => (
     <div className="outline-empty-state">
@@ -237,18 +247,7 @@ export const OutlinePage: React.FC = () => {
     </div>
   );
 
-  if (loading) {
-    return (
-      <div className="outline-page">
-        <div className="loading-state">
-          <div className="spinner"></div>
-          <p>AI 正在分析研究數據並生成大綱中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
+  if (error && outlineState === 'idle') {
     return (
       <div className="outline-page">
         <div className="error-state">
@@ -412,6 +411,53 @@ export const OutlinePage: React.FC = () => {
                 {item.heading}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+      {/* 大綱生成進度視窗 */}
+      {outlineState !== 'idle' && (
+        <div className="audit-modal-overlay">
+          <div className="audit-modal">
+            <div className="audit-modal__header">
+              <h3>AI 大綱架構生成中</h3>
+              {outlineState === 'error' && (
+                <button className="audit-modal__close-top" onClick={() => setOutlineState('idle')}>×</button>
+              )}
+            </div>
+
+            <div className="audit-modal__body">
+              {outlineState === 'analyzing' && (
+                <div className="audit-progress-view">
+                  <div className="audit-spinner">
+                    <div className="spinner-inner"></div>
+                    <div className="spinner-center">AI</div>
+                  </div>
+                  <p className="audit-stage-text">{outlineStage}</p>
+                  <div className="audit-progress-bar">
+                    <div className="audit-progress-fill"></div>
+                  </div>
+                  <p className="audit-hint">這可能需要 15-30 秒，請稍候...</p>
+                </div>
+              )}
+
+              {outlineState === 'success' && (
+                <div className="audit-success-view">
+                  <div className="audit-success-icon">✓</div>
+                  <p className="audit-stage-text">大綱架構生成完成！</p>
+                </div>
+              )}
+
+              {outlineState === 'error' && (
+                <div className="audit-error-view">
+                  <div className="audit-error-icon">!</div>
+                  <p className="audit-error-title">生成失敗</p>
+                  <div className="audit-error-details">
+                    {outlineError}
+                  </div>
+                  <Button variant="secondary" onClick={() => setOutlineState('idle')}>關閉視窗</Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
