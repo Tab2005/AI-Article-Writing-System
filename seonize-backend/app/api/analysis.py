@@ -274,6 +274,7 @@ async def get_content_gap(
     """
     project_id = request.get("project_id")
     keyword_param = request.get("keyword")
+    serp_results = []
     
     if not project_id and not keyword_param:
         raise HTTPException(status_code=400, detail="未提供專案 ID 或關鍵字")
