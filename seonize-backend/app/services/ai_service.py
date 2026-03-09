@@ -436,15 +436,25 @@ SERP 標題：
             return [{"title": f"生成失敗: {str(e)}", "strategy": "錯誤", "reason": "系統發生異常"}]
 
     @classmethod
-    async def analyze_article_quality(cls, content: str) -> dict:
+    async def analyze_article_quality(cls, content: str, gap_report: dict = None) -> dict:
         """分析文章品質並給予 100 分量化評分 (參考 smart-blog-skills:analyze)"""
+        
+        gap_context = ""
+        if gap_report:
+            gap_context = f"\n# 內容缺口與 E-E-A-T 策略建議 (參考點)\n"
+            gap_context += f"- 市場標準: {', '.join(gap_report.get('market_standards', []))}\n"
+            gap_context += f"- 對手忽略的缺口: {', '.join(gap_report.get('content_gaps', []))}\n"
+            gap_context += f"- E-E-A-T 強化策略: {gap_report.get('eeat_strategy', '')}\n"
+
         prompt = f"""請對以下文章進行深度品質審計與 100 分量化評分。
+請務必確認文章是否成功「覆蓋」了我們識別出的內容缺口。
 
 # 審計項目
 1. AI 內容偵測：分析語態、句長爆發性、觸發詞密度。
 2. 結構分析：是否符合 Answer-First 格式，段落邏輯是否清晰。
 3. 數據與權威度：統計數據的引用比例與驗證狀態 (找尋 [V] 標籤)。
 4. SEO 優化：關鍵字融入自然度。
+5. 策略覆蓋率：是否補強了競爭對手忽略的缺口。{gap_context}
 
 # 待分析文章
 {content[:5000]} # 限制分析長度
@@ -456,10 +466,11 @@ SERP 標題：
     "metrics": {{
         "ai_detect": 20,
         "seo_score": 80,
-        "readability": 90
+        "readability": 90,
+        "gap_coverage": 70
     }},
     "issues": [
-        {{"severity": "🔴 致命 | 🟡 高 | 🟠 中", "description": "問題描述"}}
+        {{"severity": "🔴 致命 | 🟡 高 | 🟠 中", "description": "問題描述 (若有特定缺口沒補上請明確指出)"}}
     ],
     "recommendations": ["具體建議 1", "具體建議 2", "具體建議 3"]
 }}

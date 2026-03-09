@@ -43,6 +43,8 @@ export interface ProjectState {
     keyword_density: Record<string, number>;
     research_data?: Record<string, any>;
     eeat_score?: number;
+    quality_report?: any;
+    last_audit_at?: string;
     cms_config_id?: string;
     // CMS 發布資訊
     cms_post_id?: string;

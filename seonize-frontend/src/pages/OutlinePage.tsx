@@ -272,11 +272,11 @@ export const OutlinePage: React.FC = () => {
           </p>
         </div>
         <div className="outline-header__actions">
-          <Button variant="secondary" onClick={generateOutline} disabled={loading}>
-            {loading ? '⏳ AI 生成中...' : '🤖 AI 生成大綱'}
-          </Button>
           {outline.length > 0 && (
             <>
+              <Button variant="secondary" onClick={generateOutline} disabled={loading}>
+                {loading ? '⏳ AI 生成中...' : '🤖 重新生成'}
+              </Button>
               <Button variant="secondary" onClick={handleAddSection}>
                 + 新增章節
               </Button>

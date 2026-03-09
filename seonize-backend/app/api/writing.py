@@ -408,20 +408,49 @@ async def analyze_competition(
         "competitors": competitor_analysis,
         "serp_features": serp_data.get("serp_features", [])
     }
+class QualityAnalysisRequest(BaseModel):
+    project_id: str
+    content: str
+
 @router.post("/analyze-quality")
 async def analyze_quality(
-    request: Dict[str, str],
+    request: QualityAnalysisRequest,
+    db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
     """
-    對文章進行深度品質審計 (僅限登入使用者)
+    對文章進行深度品質審計 (消耗 3 點，並持久化至專案)
     """
-    content = request.get("content")
-    if not content:
-        raise HTTPException(status_code=400, detail="未提供文章內容")
+    from app.models.db_models import Project
+    from datetime import datetime
     
+    # 1. 驗證專案
+    db_project = db.query(Project).filter(
+        Project.id == request.project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
+    if not db_project:
+        raise HTTPException(status_code=403, detail="找不到專案或權限不足")
+
+    # 2. 點數扣除
+    COST = CREDIT_COSTS.get("quality_audit", 3)
+    tx = CreditService.deduct(db, current_user, COST, f"品質健檢: {db_project.primary_keyword}")
+
     try:
-        analysis = await AIService.analyze_article_quality(content)
+        # 3. 取得戰略背景 (Content Gap Report)
+        gap_report = db_project.content_gap_report
+        
+        # 4. 執行 AI 分析
+        analysis = await AIService.analyze_article_quality(request.content, gap_report=gap_report)
+        
+        # 5. 持久化至資料庫
+        db_project.quality_report = analysis
+        db_project.last_audit_at = datetime.now()
+        db_project.eeat_score = analysis.get("score", db_project.eeat_score)
+        db.commit()
+        
         return analysis
     except Exception as e:
+        CreditService.refund(db, current_user, COST, f"品質分析失敗: {str(e)[:50]}")
         raise HTTPException(status_code=500, detail=f"品質分析失敗: {str(e)}")

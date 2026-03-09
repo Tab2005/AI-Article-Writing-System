@@ -316,8 +316,8 @@ export const writingApi = {
       method: 'POST',
     }),
 
-  analyzeQuality: (content: string) =>
-    request<any>('/api/writing/analyze-quality', { method: 'POST', body: { content } }),
+  analyzeQuality: (data: { project_id: string; content: string }) =>
+    request<any>('/api/writing/analyze-quality', { method: 'POST', body: data }),
 };
 
 // Kalpa API

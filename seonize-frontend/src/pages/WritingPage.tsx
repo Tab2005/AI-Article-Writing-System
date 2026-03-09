@@ -73,6 +73,11 @@ export const WritingPage: React.FC = () => {
         if (flatSections.length > 0) {
           setActiveSectionId(flatSections[0].id);
         }
+
+        // 載入已有的品質分析報告
+        if (data.quality_report) {
+          setQualityAnalysis(data.quality_report);
+        }
       }
     } catch (err: any) {
       setError(err.message || '載入專案失敗');
@@ -151,8 +156,18 @@ export const WritingPage: React.FC = () => {
         .map((s) => `${'#'.repeat(s.level)} ${s.heading}\n\n${s.content}`)
         .join('\n\n');
 
-      const res = await writingApi.analyzeQuality(fullContent);
+
+      const res = await writingApi.analyzeQuality({
+        project_id: projectId,
+        content: fullContent
+      });
       setQualityAnalysis(res);
+
+      // 更新本地 project 資料
+      setProject(prev => prev ? { ...prev, quality_report: res, last_audit_at: new Date().toISOString() } : null);
+
+      // 重新整理使用者點數 (因為扣點了)
+      if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
     } catch (err) {
       console.error('分析失敗:', err);
     } finally {
@@ -414,7 +429,14 @@ export const WritingPage: React.FC = () => {
         <div className="quality-dashboard">
           <div className="quality-dashboard__header">
             <h3>🛡️ 文章品質審計報告 ({qualityAnalysis.grade})</h3>
-            <Button size="sm" variant="secondary" onClick={() => setQualityAnalysis(null)}>關閉</Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {project?.last_audit_at && (
+                <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                  最後檢查：{new Date(project.last_audit_at).toLocaleString()}
+                </span>
+              )}
+              <Button size="sm" variant="secondary" onClick={() => setQualityAnalysis(null)}>關閉</Button>
+            </div>
           </div>
           <div className="quality-metrics">
             <div className="metric-item">
@@ -427,6 +449,13 @@ export const WritingPage: React.FC = () => {
               <div className="metric-bar"><div className="metric-fill" style={{ width: `${qualityAnalysis.metrics?.seo_score}%` }}></div></div>
               <span className="metric-value">{qualityAnalysis.metrics?.seo_score}%</span>
             </div>
+            {qualityAnalysis.metrics?.gap_coverage !== undefined && (
+              <div className="metric-item">
+                <span className="metric-label">策略缺口覆蓋</span>
+                <div className="metric-bar"><div className="metric-fill" style={{ width: `${qualityAnalysis.metrics?.gap_coverage}%`, background: 'var(--color-cta)' }}></div></div>
+                <span className="metric-value">{qualityAnalysis.metrics?.gap_coverage}%</span>
+              </div>
+            )}
           </div>
           <div className="quality-issues">
             {qualityAnalysis.issues?.map((issue: any, i: number) => (
