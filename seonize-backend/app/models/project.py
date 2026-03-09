@@ -106,6 +106,8 @@ class ProjectState(BaseModel):
     word_count: int = 0
     keyword_density: Dict[str, float] = Field(default_factory=dict)
     eeat_score: Optional[float] = None
+    quality_report: Optional[Dict[str, Any]] = None
+    last_audit_at: Optional[datetime] = None
 
 
 class ProjectCreate(BaseModel):
