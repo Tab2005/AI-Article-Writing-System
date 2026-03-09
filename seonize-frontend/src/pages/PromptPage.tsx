@@ -4,7 +4,15 @@ import { promptsApi, type PromptTemplate } from '../services/api';
 import './PromptPage.css';
 
 // Category 中文標籤 - 按照流程順序排列
-const CATEGORY_ORDER = ['title_generation', 'outline_generation', 'content_writing'];
+const CATEGORY_ORDER = [
+  'title_generation',
+  'outline_generation',
+  'content_writing',
+  'kalpa_brainstorming',
+  'kalpa_anchor_generation',
+  'kalpa_weaving_system',
+  'kalpa_weaving_user'
+];
 
 const CATEGORY_LABELS: Record<string, { title: string; desc: string; icon: string }> = {
   title_generation: {
@@ -19,8 +27,28 @@ const CATEGORY_LABELS: Record<string, { title: string; desc: string; icon: strin
   },
   content_writing: {
     title: 'AI 內容寫作',
-    desc: '分段生成高品質、SEO 優化的文章內容。',
+    desc: '分段生成高品質、SEO 優化的文章內容集。',
     icon: '✍️',
+  },
+  kalpa_brainstorming: {
+    title: '劫之眼：領域建模 (天道解析)',
+    desc: '定義特定產業的實體、動作與痛點矩陣。',
+    icon: '🔮',
+  },
+  kalpa_anchor_generation: {
+    title: '劫之眼：法寶袋生成',
+    desc: '生成與產業高度相關的導引性錨點文字。',
+    icon: '🔗',
+  },
+  kalpa_weaving_system: {
+    title: '劫之眼：神諭編織 (系統指令)',
+    desc: '定義 AI 寫作人格、語氣與內容架構規範。',
+    icon: '🧠',
+  },
+  kalpa_weaving_user: {
+    title: '劫之眼：神諭編織 (用戶指令)',
+    desc: '定義如何將矩陣節點轉化為專業解答內容。',
+    icon: '📝',
   },
 };
 
@@ -296,7 +324,17 @@ export const PromptPage: React.FC = () => {
                   hint={
                     category === 'title_generation'
                       ? '支援 {keyword}, {intent}, {titles} 變數。'
-                      : '支援 {keyword}, {intent}, {keywords}, {paa}, {related_searches}, {ai_overview} 變數。'
+                      : category === 'outline_generation'
+                        ? '支援 {keyword}, {intent}, {keywords}, {paa}, {related_searches}, {ai_overview} 變數。'
+                        : category === 'kalpa_brainstorming'
+                          ? '支援 {topic} 變數。'
+                          : category === 'kalpa_anchor_generation'
+                            ? '支援 {industry}, {money_page_url} 變數。'
+                            : category === 'kalpa_weaving_system'
+                              ? '支援 {persona_role}, {persona_tone}, {title} 變數。'
+                              : category === 'kalpa_weaving_user'
+                                ? '支援 {persona_intro}, {title}, {industry}, {entity}, {action}, {pain_point}, {selected_anchor}, {money_page_url}, {persona_role} 變數。'
+                                : '支援相關專案變數。'
                   }
                 />
 
