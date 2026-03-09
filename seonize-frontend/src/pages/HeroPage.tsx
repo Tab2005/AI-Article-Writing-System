@@ -5,10 +5,10 @@ import { Input, Select } from '../components/ui';
 import './HeroPage.css';
 
 const typewriterTexts = [
-  '讓 AI 幫你撰寫 SEO 優質內容',
-  '數據驅動的智慧寫作系統',
   '反向工程 SERP，贏得搜尋排名',
-  'AEO + GEO 策略，全方位優化',
+  '織入內容缺口與 E-E-A-T 策略',
+  'SEO + AEO + GEO 三位一體優化',
+  '數據驅動的智慧權威內容生成',
 ];
 
 export const HeroPage: React.FC = () => {
@@ -150,20 +150,20 @@ export const HeroPage: React.FC = () => {
         {/* Stats */}
         <div className="hero-stats">
           <div className="hero-stat">
-            <div className="hero-stat__value">10+</div>
-            <div className="hero-stat__label">SERP 競品分析</div>
+            <div className="hero-stat__value">SERP</div>
+            <div className="hero-stat__label">深度競品反向工程</div>
           </div>
           <div className="hero-stat">
-            <div className="hero-stat__value">4</div>
-            <div className="hero-stat__label">意圖類型判定</div>
+            <div className="hero-stat__value">Gap</div>
+            <div className="hero-stat__label">精準內容缺口識別</div>
           </div>
           <div className="hero-stat">
-            <div className="hero-stat__value">AI</div>
-            <div className="hero-stat__label">智慧內容生成</div>
+            <div className="hero-stat__value">EEAT</div>
+            <div className="hero-stat__label">權威性品質審計</div>
           </div>
           <div className="hero-stat">
-            <div className="hero-stat__value">SEO</div>
-            <div className="hero-stat__label">優化策略建議</div>
+            <div className="hero-stat__value">Multi</div>
+            <div className="hero-stat__label">GEO/AEO 多維優化</div>
           </div>
         </div>
       </section>
@@ -174,93 +174,57 @@ export const HeroPage: React.FC = () => {
         <div className="features-grid">
           <div className="feature-card">
             <div className="feature-card__icon">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                <circle cx="12" cy="12" r="4" />
-              </svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><circle cx="12" cy="12" r="4" /></svg>
             </div>
-            <h3 className="feature-card__title">SERP 研究引擎</h3>
+            <h3 className="feature-card__title">內容缺口研究</h3>
             <p className="feature-card__desc">
-              自動獲取 Google Top 10 搜尋結果，異步爬取網頁內容與標題結構。
+              自動分析 Top 10 競品，識別對手忽略的「缺口話題」，確保內容具備獨特性與高度資訊增益。
             </p>
           </div>
 
           <div className="feature-card">
             <div className="feature-card__icon">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-              </svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="m9 12 2 2 4-4" /></svg>
             </div>
-            <h3 className="feature-card__title">意圖分析引擎</h3>
+            <h3 className="feature-card__title">E-E-A-T 審計系統</h3>
             <p className="feature-card__desc">
-              智慧判定四大搜尋意圖（資訊、商業、導航、交易），匹配最佳寫作風格。
+              基於 Google 品質評分指南，深度檢測文章的專業性、權威性與可信度，並提供具體改善建議。
             </p>
           </div>
 
           <div className="feature-card">
             <div className="feature-card__icon">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
-              </svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" /></svg>
             </div>
-            <h3 className="feature-card__title">AI 內容撰寫器</h3>
+            <h3 className="feature-card__title">多維優化模式</h3>
             <p className="feature-card__desc">
-              分段迭代撰寫，強制嵌入關鍵字，支援 Gemini 2.5 Flash 與 GPT-4o。
+              支援 SEO (關鍵字)、AEO (問答格式) 與 GEO (權威引用) 三大優化引擎，適應未來搜尋變革。
             </p>
           </div>
 
           <div className="feature-card">
             <div className="feature-card__icon">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                <path d="m9 12 2 2 4-4" />
-              </svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
             </div>
-            <h3 className="feature-card__title">SEO 體檢優化</h3>
+            <h3 className="feature-card__title">結構化導引生成</h3>
             <p className="feature-card__desc">
-              即時檢測關鍵字密度、E-E-A-T 信號，自動生成 Meta 標籤。
+              將研究報告直接注入 AI 指令，由大綱結構導引全文撰寫，確保每一段落都符合 SEO 戰略目標。
             </p>
           </div>
         </div>
       </section>
+
+      {/* Footer / Login Link */}
+      <footer className="hero-footer">
+        <div className="hero-footer__content">
+          <p>© 2026 Seonize - AI 驅動的數據 SEO 專家</p>
+          <div className="hero-footer__links">
+            <button className="login-link-btn" onClick={() => navigate('/login')}>
+              後台管理登入
+            </button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

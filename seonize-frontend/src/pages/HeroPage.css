@@ -21,12 +21,10 @@
   transform: translateX(-50%);
   width: 800px;
   height: 600px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(37, 99, 235, 0.15) 0%,
-    rgba(59, 130, 246, 0.05) 50%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse at center,
+      rgba(37, 99, 235, 0.15) 0%,
+      rgba(59, 130, 246, 0.05) 50%,
+      transparent 70%);
 }
 
 .hero-page__bg-grid {
@@ -102,6 +100,7 @@
 }
 
 @keyframes blink {
+
   0%,
   50% {
     opacity: 1;
@@ -275,5 +274,50 @@
 
   .hero-stats {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Footer / Login Link */
+.hero-footer {
+  margin-top: calc(var(--space-20) * 1.5);
+  padding: var(--space-12) var(--space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(10px);
+}
+
+.hero-footer__content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.login-link-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-secondary);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.login-link-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.1);
+}
+
+@media (max-width: 768px) {
+  .hero-footer__content {
+    flex-direction: column;
+    gap: var(--space-4);
+    text-align: center;
   }
 }
