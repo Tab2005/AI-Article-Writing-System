@@ -19,6 +19,7 @@ class BatchWeaveRequest(BaseModel):
 @router.post("/brainstorm")
 async def brainstorm_kalpa_elements(
     request: BrainstormRequest,
+    db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
     """
@@ -29,7 +30,7 @@ async def brainstorm_kalpa_elements(
     logger.info(f"User {current_user.email} brainstorm topic: {request.topic}")
     
     try:
-        results = await kalpa_service.brainstorm_elements(request.topic)
+        results = await kalpa_service.brainstorm_elements(db, request.topic, current_user.id)
         return results
     except Exception as e:
         logger.error(f"Brainstorm failed: {str(e)}")

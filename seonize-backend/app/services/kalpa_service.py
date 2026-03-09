@@ -6,12 +6,38 @@ import json
 import re
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from app.models.db_models import KalpaMatrix, KalpaNode
+from app.models.db_models import KalpaMatrix, KalpaNode, PromptTemplate
 from app.services.ai_service import AIService
 
 logger = logging.getLogger(__name__)
 
 class KalpaService:
+    @staticmethod
+    def _get_active_template(db: Session, user_id: Optional[str], category: str, default_content: str) -> str:
+        """
+        取得指定類別的有效指令模板。優先順序：使用者啟用的模板 > 系統預設啟用的模板 > 硬編碼預設。
+        """
+        # 1. 嘗試查找使用者自定義且啟用的模板
+        if user_id:
+            user_template = db.query(PromptTemplate).filter(
+                PromptTemplate.category == category,
+                PromptTemplate.user_id == user_id,
+                PromptTemplate.is_active == True
+            ).first()
+            if user_template:
+                return user_template.content
+        
+        # 2. 嘗試查找系統預設啟用的模板
+        system_template = db.query(PromptTemplate).filter(
+            PromptTemplate.category == category,
+            PromptTemplate.user_id == None,
+            PromptTemplate.is_active == True
+        ).first()
+        if system_template:
+            return system_template.content
+            
+        return default_content
+
     @staticmethod
     def generate_matrix(entities: List[str], actions: List[str], pain_points: List[str], project_name: str = "Default_Project", title_template: Optional[str] = None, exclusion_rules: Optional[Dict[str, List[str]]] = None) -> List[Dict[str, Any]]:
         """
@@ -169,11 +195,11 @@ class KalpaService:
         return result
 
     @staticmethod
-    async def generate_anchor_variants(industry: str, money_page_url: str = "") -> List[str]:
+    async def generate_anchor_variants(db: Session, industry: str, money_page_url: str = "", user_id: Optional[str] = None) -> List[str]:
         """
         使用 AI 動態生成符合產業語境的錨點文字（法寶袋）
         """
-        system_prompt = f"""
+        default_system = f"""
         你是一位專業的 SEO 與內容營銷專家。
         目標：為一個在「{industry}」產業的頁面生成具備高度吸引力與導引性的錨點文字（Anchor Text）。
         
@@ -183,6 +209,9 @@ class KalpaService:
         3. 內容必須與「{industry}」高度相關。
         4. 格式：僅回傳一個 JSON 陣列，例如 ["文字1", "文字2", ...]，不要有任何其他解釋。
         """
+        
+        system_prompt_template = KalpaService._get_active_template(db, user_id, "kalpa_anchor_generation", default_system)
+        system_prompt = system_prompt_template.format(industry=industry, money_page_url=money_page_url)
         
         user_prompt = f"請為產業「{industry}」以及目標網址「{money_page_url}」生成 5 個法寶袋錨點文字。"
         
@@ -230,7 +259,7 @@ class KalpaService:
         anchor_variants = matrix.anchor_variants
         if not anchor_variants:
             logger.info(f"Matrix {matrix.id} has no anchor variants. Generating...")
-            anchor_variants = await KalpaService.generate_anchor_variants(matrix.industry, matrix.money_page_url)
+            anchor_variants = await KalpaService.generate_anchor_variants(db, matrix.industry, matrix.money_page_url, user_id)
             matrix.anchor_variants = anchor_variants
             db.commit()
             
@@ -239,15 +268,15 @@ class KalpaService:
         # 2. 【千人千面】動態人格設定 (Multi-Personality v4 - 產業適配)
         persona = KalpaService._get_weaving_persona(node.pain_point, matrix.industry)
 
-        # 3. 構建 System Prompt (結構化加重術 + GEO/AIO 深度優化)
-        system_prompt = f"""
+        # 3. 構建 System Prompt (配合指令倉庫模板)
+        default_system = f"""
         你現在的身份是：{persona['role']}。
         你的寫作語氣：{persona['tone']}
         
         寫作規範要求 (GEO/AIO 友善架構)：
         1. **核心方案總結**：在文章最開頭，以 100 字內精煉地總結針對『{node.target_title}』的核心方案，不要包含任何「摘要」或「TL;DR」標題。
         2. **🎯 直接答案片段**：在每個 H2/H3 標題下方，緊接一段 50 字內的精煉回答，直接切入重點，避免廢話，以符合 AI Overviews 摘錄邏輯。
-        3. **對照表格**：包含一個精確的 HTML 表格對比『核心問題』與『優化方案』。
+        3. **對照表格**：包含一個精確認的 HTML 表格對比『核心問題』與『優化方案』。
         4. **💡 專家洞察 (Expert Insight)**：在文中插入一個具有深度見解的段落，開頭標註『💡 專家建議：』。
         5. **常見問答 (FAQ)**：在結尾前增加一個『## ❓ 常見問答 (FAQ)』區塊，包含 3 個關鍵問題與回答。
         6. **🏁 完整性協定**：文章必須完整結束，嚴禁在 mid-sentence 或開放標籤處中斷。
@@ -255,9 +284,16 @@ class KalpaService:
         【核心指令：微上下文植入】
         在結論段落，以專業風險管理的角度，自然引導讀者點擊指定的權威頁面。
         """
+        
+        system_template = KalpaService._get_active_template(db, user_id, "kalpa_weaving_system", default_system)
+        system_prompt = system_template.format(
+            persona_role=persona['role'],
+            persona_tone=persona['tone'],
+            title=node.target_title
+        )
 
-        # 4. 構建 User Prompt
-        user_prompt = f"""
+        # 4. 構建 User Prompt (配合指令倉庫模板)
+        default_user = f"""
         {persona['intro']}
         
         請針對標題『{node.target_title}』撰寫專業解決方案指南。
@@ -276,6 +312,19 @@ class KalpaService:
         
         請注意時效性，背景設定為 2026 年最新趨勢與實踐方案。
         """
+        
+        user_template = KalpaService._get_active_template(db, user_id, "kalpa_weaving_user", default_user)
+        user_prompt = user_template.format(
+            persona_intro=persona['intro'],
+            title=node.target_title,
+            industry=matrix.industry,
+            entity=node.entity,
+            action=node.action,
+            pain_point=node.pain_point,
+            selected_anchor=selected_anchor,
+            money_page_url=matrix.money_page_url or "https://example.com",
+            persona_role=persona['role']
+        )
 
         try:
             logger.info(f"Starting weaving for node {node_id} (title: {node.target_title})")
@@ -389,11 +438,11 @@ class KalpaService:
         return articles
 
     @staticmethod
-    async def brainstorm_elements(topic: str) -> Dict[str, List[str]]:
+    async def brainstorm_elements(db: Session, topic: str, user_id: Optional[str] = None) -> Dict[str, List[str]]:
         """
         天道解析：透過 AI 進行領域建模，生成建議的實體、動作與痛點。
         """
-        system_prompt = """
+        default_system = """
         你是一位精通 SEO 內容行銷與產業建模的專家。
         你的任務是針對使用者提供的『主題』，進行因果矩陣建模。
         
@@ -413,6 +462,9 @@ class KalpaService:
         每個欄位前三項請提供約 6-10 個最具代表性的詞彙。
         回傳格式必須為純 JSON，不得包含任何 Markdown 標籤或額外解釋。
         """
+        
+        system_template = KalpaService._get_active_template(db, user_id, "kalpa_brainstorming", default_system)
+        system_prompt = system_template.format(topic=topic)
         
         user_prompt = f"請針對主題『{topic}』進行天道解析建模。"
         
