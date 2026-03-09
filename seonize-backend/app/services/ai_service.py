@@ -7,6 +7,7 @@ import os
 from typing import Optional, Generator, AsyncGenerator, List, Dict, Any
 from enum import Enum
 from pydantic import BaseModel
+from app.core.config import settings
 
 
 class AIProvider(str, Enum):
@@ -195,14 +196,13 @@ SERP 標題：
 
         # 如果有提供自訂 Prompt，使用它；否則使用預設
         if custom_prompt:
-            prompt = custom_prompt.format(
-                keyword=keyword,
-                intent=intent,
-                keywords=', '.join(keywords),
-                paa=chr(10).join(f'  - {p}' for p in paa[:5]) if paa else '無',
-                related_searches=', '.join(related[:8]) if related else '無',
-                ai_overview=ai_overview.get('description') or ai_overview.get('snippet') or '無' if isinstance(ai_overview, dict) else '無'
-            )
+            prompt = custom_prompt.replace("{keyword}", keyword)\
+                                 .replace("{intent}", intent)\
+                                 .replace("{keywords}", ', '.join(keywords))\
+                                 .replace("{paa}", chr(10).join(f'  - {p}' for p in paa[:5]) if paa else '無')\
+                                 .replace("{related_searches}", ', '.join(related[:8]) if related else '無')\
+                                 .replace("{ai_overview}", ai_overview.get('description') or ai_overview.get('snippet') or '無' if isinstance(ai_overview, dict) else '無')
+            
             # 支援手動標籤 {content_gap}
             if "{content_gap}" in prompt:
                 prompt = prompt.replace("{content_gap}", gap_info)
@@ -277,17 +277,15 @@ SERP 標題：
         
         # 如果有提供自訂 Prompt，使用它；否則使用預設
         if custom_prompt:
-            prompt = custom_prompt.format(
-                keyword=h1 or heading, # 備位
-                intent=optimization_mode, # 簡化傳入
-                h1=h1,
-                heading=heading,
-                keywords=', '.join(keywords),
-                previous_summary=previous_summary or '這是文章開頭',
-                target_word_count=target_word_count,
-                keyword_density=keyword_density,
-                research_context=research_context or '暫無可用研究數據'
-            )
+            prompt = custom_prompt.replace("{keyword}", h1 or heading)\
+                                 .replace("{intent}", optimization_mode)\
+                                 .replace("{h1}", h1)\
+                                 .replace("{heading}", heading)\
+                                 .replace("{keywords}", ', '.join(keywords))\
+                                 .replace("{previous_summary}", previous_summary or '這是文章開頭')\
+                                 .replace("{target_word_count}", str(target_word_count))\
+                                 .replace("{keyword_density}", str(keyword_density))\
+                                 .replace("{research_context}", research_context or '暫無可用研究數據')
         else:
             mode_instructions = {
                 "seo": "注重關鍵字自然嵌入，保持 1.5-2.5% 關鍵字密度",
