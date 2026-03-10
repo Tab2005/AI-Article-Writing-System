@@ -10,6 +10,9 @@ sys.stderr.reconfigure(line_buffering=True)
 
 print("🚀 Seonize Backend pre-init starting...")
 
+# 確保基礎目錄存在 (避免 StaticFiles 掛載失敗)
+os.makedirs("uploads", exist_ok=True)
+
 try:
     # 配置基礎日誌 (僅輸出到 stdout/stderr 以符合容器最佳實務)
     logging.basicConfig(
