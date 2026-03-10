@@ -172,6 +172,7 @@ class OutlineSection(BaseModel):
     level: int
     description: str
     keywords: List[str]
+    image_suggestion: Optional[Dict[str, Any]] = None
 
 
 class OutlineResponse(BaseModel):
@@ -246,7 +247,8 @@ async def generate_outline(
                 heading=s.get("heading", f"章節 {idx+1}"),
                 level=s.get("level", 2),
                 description=s.get("description", ""),
-                keywords=s.get("keywords", [])
+                keywords=s.get("keywords", []),
+                image_suggestion=s.get("image_suggestion")
             ))
             
         return OutlineResponse(
