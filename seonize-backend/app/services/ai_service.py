@@ -181,6 +181,8 @@ SERP 標題：
         related = research_data.get("related_searches", []) if research_data else []
         ai_overview = research_data.get("ai_overview", {}) if research_data else []
         
+        gap_info = ""
+        
         if selected_title:
             gap_info += f"\n- **使用者指定標題**：{selected_title}\n"
 

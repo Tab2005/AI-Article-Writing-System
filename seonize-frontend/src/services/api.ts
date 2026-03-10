@@ -258,6 +258,11 @@ export const analysisApi = {
         level: number;
         description: string;
         keywords: string[];
+        image_suggestion?: {
+          topic: string;
+          search_keywords: string;
+          visual_type: string;
+        };
       }>;
       logic_chain: string[];
     }>('/api/analysis/outline', { method: 'POST', body: data }),
