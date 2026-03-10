@@ -123,13 +123,16 @@ def init_db():
             logger.info(f"Running migrations using {ini_path}...")
             alembic_cfg = Config(ini_path)
             alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+            
+            logger.info("Starting Alembic upgrade to 'head'...")
             command.upgrade(alembic_cfg, "head")
-            logger.info("Alembic upgrade completed.")
+            logger.info("Alembic upgrade successfully completed.")
         else:
             logger.warning("alembic.ini not found, skipping auto-migration.")
             
     except Exception as e:
         logger.error(f"Migration error (non-fatal): {e}")
+        logger.error(traceback.format_exc())
         # 不讓遷移錯誤阻斷進程啟動，以便進入 /api/health 診斷
 
     logger.info("Initialization sequence finished.")
