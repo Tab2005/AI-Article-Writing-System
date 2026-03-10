@@ -188,7 +188,7 @@ SERP 標題：
 # 內容缺口與 E-E-A-T 策略建議 (參考)
 - **對手忽略的缺口**：{', '.join(content_gap_report.get('content_gaps', [])) or '無'}
 - **獨特切入視角**：{content_gap_report.get('unique_angle', '無')}
-- **E-E-A-T 執行策略**：{content_gap_report.get('eeat_strategy', '無')}
+- **E-E-A-T 執行策略**：{', '.join(content_gap_report.get('eeat_strategies', [])) or content_gap_report.get('eeat_strategy', '無')}
 
 請務必在標題或章節中，針對上述「對手忽略的缺口」進行補強。
 """
@@ -457,7 +457,7 @@ SERP 標題：
             gap_context = f"\n# 內容缺口與 E-E-A-T 策略建議 (參考點)\n"
             gap_context += f"- 市場標準: {', '.join(gap_report.get('market_standards', []))}\n"
             gap_context += f"- 對手忽略的缺口: {', '.join(gap_report.get('content_gaps', []))}\n"
-            gap_context += f"- E-E-A-T 強化策略: {gap_report.get('eeat_strategy', '')}\n"
+            gap_context += f"- E-E-A-T 強化策略: {', '.join(gap_report.get('eeat_strategies', [])) or gap_report.get('eeat_strategy', '')}\n"
 
         prompt = f"""請對以下文章進行深度品質審計與 100 分量化評分。
 請務必確認文章是否成功「覆蓋」了我們識別出的內容缺口。
@@ -507,15 +507,15 @@ SERP 標題：
 {chr(10).join(f"- {d.get('title')}: {d.get('snippet')}" for d in (competitors_data or [])[:5])}
 
 # 任務要求
-1. 識別競爭對手普遍提到的觀點。
-2. 挖掘競爭對手「忽略」或「解釋不深」的關鍵痛點。
-3. 提出我們文章應該補強的 E-E-A-T 方向。
+1. 識別競爭對手普遍提到的觀點與市場基本水平。
+2. 挖掘競爭對手「忽略」或「解釋不深」的關鍵內容缺口。
+3. 提出具體的 E-E-A-T 強化建議，說明如何展現專業度、經驗感與權威性。
 
 # 輸出 JSON 格式要求
 {{
     "market_standards": ["競品共通點 1", "競品共通點 2"],
-    "content_gaps": ["我們被忽略的重點 1", "深度不足的章節"],
-    "eeat_strategy": "如何展現專業度與權威性的具體做法",
+    "content_gaps": ["被忽略的重點 1", "深度不足的章節"],
+    "eeat_strategies": ["建議策略 1：增加專家訪談或引述", "建議策略 2：提供實測數據與對比圖表"],
     "unique_angle": "建議的獨特切入點"
 }}
 """
@@ -524,8 +524,12 @@ SERP 標題：
             import json, re
             json_match = re.search(r'\{[\s\S]*\}', result)
             if json_match:
-                return json.loads(json_match.group())
-            return {"market_standards": [], "content_gaps": ["無法分析"]}
+                data = json.loads(json_match.group())
+                # 相容性轉換：如果 AI 回傳的是舊的單數欄位或字串，轉換為複數列表
+                if "eeat_strategy" in data and "eeat_strategies" not in data:
+                    strategy = data.get("eeat_strategy")
+                    data["eeat_strategies"] = [strategy] if isinstance(strategy, str) else strategy
+                return data
+            return {"market_standards": [], "content_gaps": ["無法分析"], "eeat_strategies": []}
         except Exception as e:
-            return {"market_standards": [], "content_gaps": [str(e)]}
-
+            return {"market_standards": [], "content_gaps": [str(e)], "eeat_strategies": []}

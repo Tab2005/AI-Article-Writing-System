@@ -545,19 +545,27 @@ export const KeywordPage: React.FC = () => {
             <div className="keyword-section keyword-section--intent">
               <h3 className="keyword-section__title">語義意圖與熱門問題</h3>
               <div className="intent-grid">
-                {paa.length > 0 && (
-                  <div className="intent-group">
-                    <div className="intent-group__header">大家也問了 (People Also Ask)</div>
-                    <div className="paa-list">
-                      {paa.map((q: string, i: number) => (
+                <div className="intent-group">
+                  <div className="intent-group__header">大家也問了 (People Also Ask)</div>
+                  <div className="paa-list">
+                    {paa.length > 0 ? (
+                      paa.map((q: string, i: number) => (
                         <div key={i} className="paa-item">
                           <span className="paa-item__icon">?</span>
                           {q}
                         </div>
-                      ))}
-                    </div>
+                      ))
+                    ) : (
+                      <div className="paa-item" style={{ opacity: 0.7 }}>
+                        <span className="paa-item__icon" style={{ color: 'var(--color-text-secondary)' }}>?</span>
+                        <span style={{ fontStyle: 'italic', color: 'var(--color-text-secondary)' }}>
+                          此關鍵字目前暫無相關資料
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+
                 <div className="intent-group">
                   <div className="intent-group__header">AI 總結 (AI Overview)</div>
                   <div className="paa-list">
@@ -578,21 +586,29 @@ export const KeywordPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                {relatedSearches.length > 0 && (
-                  <div className="intent-group">
-                    <div className="intent-group__header">相關搜尋 (Related Searches)</div>
-                    <div className="paa-list">
-                      {relatedSearches.map((s: string, i: number) => (
+
+                <div className="intent-group">
+                  <div className="intent-group__header">相關搜尋 (Related Searches)</div>
+                  <div className="paa-list">
+                    {relatedSearches.length > 0 ? (
+                      relatedSearches.map((s: string, i: number) => (
                         <div key={i} className="paa-item">
                           <span className="paa-item__icon" style={{ color: '#f59e0b' }}>
                             🔗
                           </span>
                           {s}
                         </div>
-                      ))}
-                    </div>
+                      ))
+                    ) : (
+                      <div className="paa-item" style={{ opacity: 0.7 }}>
+                        <span className="paa-item__icon" style={{ color: 'var(--color-text-secondary)' }}>🔗</span>
+                        <span style={{ fontStyle: 'italic', color: 'var(--color-text-secondary)' }}>
+                          此關鍵字目前暫無相關資料
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}

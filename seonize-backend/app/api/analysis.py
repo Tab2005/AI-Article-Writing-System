@@ -350,7 +350,7 @@ async def get_content_gap(
             report = {
                 "market_standards": [],
                 "content_gaps": ["AI 未能產出報告，請重試"],
-                "eeat_strategy": "暫無建議",
+                "eeat_strategies": [],
                 "unique_angle": "暫無建議"
             }
         
