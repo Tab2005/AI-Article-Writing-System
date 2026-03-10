@@ -145,9 +145,8 @@ async def list_kalpa_matrices(
     """
     from app.models.db_models import KalpaMatrix
     query = db.query(KalpaMatrix)
-    if current_user.role != "super_admin":
-        from sqlalchemy import or_
-        query = query.filter(or_(KalpaMatrix.user_id == current_user.id, KalpaMatrix.user_id == None))
+    if current_user.role not in ["super_admin", "admin"]:
+        query = query.filter(KalpaMatrix.user_id == current_user.id)
         
     matrices = query.order_by(KalpaMatrix.created_at.desc()).all()
     return [m.to_dict() for m in matrices]
@@ -247,7 +246,7 @@ async def list_all_woven_articles(
     列出已編導完成的文章 (管理員可看全部)
     """
     try:
-        user_id_filter = current_user.id if current_user.role != "super_admin" else None
+        user_id_filter = current_user.id if current_user.role not in ["super_admin", "admin"] else None
         articles = kalpa_service.list_all_articles(db, user_id_filter, matrix_id)
         return articles
     except Exception as e:

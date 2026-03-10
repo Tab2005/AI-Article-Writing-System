@@ -200,11 +200,13 @@ async def generate_outline(
 
     research_data = {}
     try:
-        # 1. 驗證並載入專案中的研究數據
-        db_project = db.query(Project).filter(
-            Project.id == request.project_id,
-            Project.user_id == current_user.id
-        ).first()
+        if current_user.role in ["super_admin", "admin"]:
+            db_project = db.query(Project).filter(Project.id == request.project_id).first()
+        else:
+            db_project = db.query(Project).filter(
+                Project.id == request.project_id,
+                Project.user_id == current_user.id
+            ).first()
         
         if not db_project:
             raise HTTPException(status_code=403, detail="找不到專案或權限不足")
@@ -292,7 +294,10 @@ async def get_content_gap(
     db_project = None
     if project_id:
         # 嘗試尋找文章專案 (Project)
-        db_project = db.query(Project).filter(Project.id == project_id, Project.user_id == current_user.id).first()
+        if current_user.role in ["super_admin", "admin"]:
+            db_project = db.query(Project).filter(Project.id == project_id).first()
+        else:
+            db_project = db.query(Project).filter(Project.id == project_id, Project.user_id == current_user.id).first()
         
         if db_project:
             primary_keyword = db_project.primary_keyword
@@ -308,7 +313,10 @@ async def get_content_gap(
                 return report
         else:
             # 嘗試尋找因果矩陣 (KalpaMatrix)
-            matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == project_id, KalpaMatrix.user_id == current_user.id).first()
+            if current_user.role in ["super_admin", "admin"]:
+                matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == project_id).first()
+            else:
+                matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == project_id, KalpaMatrix.user_id == current_user.id).first()
             if matrix:
                 primary_keyword = matrix.project_name
             else:

@@ -75,9 +75,8 @@ async def list_projects(
 ):
     """列出專案清單 (管理員可看全部)"""
     query = db.query(Project)
-    if current_user.role != "super_admin":
-        from sqlalchemy import or_
-        query = query.filter(or_(Project.user_id == current_user.id, Project.user_id == None))
+    if current_user.role not in ["super_admin", "admin"]:
+        query = query.filter(Project.user_id == current_user.id)
     
     db_projects = query.order_by(Project.created_at.desc()).all()
     return [db_to_project_state(db_project) for db_project in db_projects]
