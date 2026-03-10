@@ -261,10 +261,10 @@ export const analysisApi = {
       logic_chain: string[];
     }>('/api/analysis/outline', { method: 'POST', body: data }),
 
-  getContentGap: (projectId?: string, keyword?: string) =>
+  getContentGap: (projectId?: string, keyword?: string, forceRefresh?: boolean) =>
     request<any>('/api/analysis/content-gap', {
       method: 'POST',
-      body: { project_id: projectId, keyword },
+      body: { project_id: projectId, keyword, force_refresh: forceRefresh },
       timeout: 60000 // 內容分析點較耗時，延長至 60 秒
     }),
 };

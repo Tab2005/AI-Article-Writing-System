@@ -296,7 +296,12 @@ async def get_content_gap(
             # 檢查專案是否已有報告
             if db_project.content_gap_report and not force_refresh:
                 logger.info(f"從 Project {project_id} 讀取已存在的內容缺口報告")
-                return db_project.content_gap_report
+                report = db_project.content_gap_report
+                # 相容性轉換
+                if "eeat_strategy" in report and "eeat_strategies" not in report:
+                    strategy = report.get("eeat_strategy")
+                    report["eeat_strategies"] = [strategy] if isinstance(strategy, str) else (strategy or [])
+                return report
         else:
             # 嘗試尋找因果矩陣 (KalpaMatrix)
             matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == project_id, KalpaMatrix.user_id == current_user.id).first()
@@ -322,7 +327,12 @@ async def get_content_gap(
             # 檢查快取是否有報告
             if cache_record.content_gap_report and not force_refresh:
                 logger.info(f"從 SerpCache 讀取『{primary_keyword}』的既有報告")
-                return cache_record.content_gap_report
+                report = cache_record.content_gap_report
+                # 相容性轉換
+                if "eeat_strategy" in report and "eeat_strategies" not in report:
+                    strategy = report.get("eeat_strategy")
+                    report["eeat_strategies"] = [strategy] if isinstance(strategy, str) else (strategy or [])
+                return report
         
     if not serp_results:
         # 如果沒有研究數據，則返回 400 告知需要研究

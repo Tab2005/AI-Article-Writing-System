@@ -135,7 +135,8 @@ export const KeywordPage: React.FC = () => {
 
     setIsGeneratingGap(true);
     try {
-      const data = await analysisApi.getContentGap(undefined, keyword);
+      // 如果已經有報告，則是「重新分析」，傳送 force_refresh: true
+      const data = await analysisApi.getContentGap(undefined, keyword, !!gapReport);
       setGapReport(data);
     } catch (error: any) {
       console.error('Gap analysis failed:', error);
