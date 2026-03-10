@@ -263,11 +263,13 @@ async def generate_outline(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Outline generation failed: {e}")
+        import traceback
+        error_detail = traceback.format_exc()
+        logger.error(f"Outline generation failed: {error_detail}")
         return OutlineResponse(
             h1=f"{datetime.now().year} {request.keyword}完整指南",
             sections=[],
-            logic_chain=[f"生成失敗：{str(e)}"]
+            logic_chain=["❌ 系統例外中止", f"原因: {str(e)[:40]}"]
         )
 @router.post("/content-gap")
 async def get_content_gap(
