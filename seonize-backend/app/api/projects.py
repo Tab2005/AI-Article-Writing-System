@@ -90,7 +90,7 @@ async def get_project(
 ):
     """取得專案詳情 (管理員或擁有者)"""
     query = db.query(Project).filter(Project.id == project_id)
-    if current_user.role != "super_admin":
+    if current_user.role not in ["super_admin", "admin"]:
         query = query.filter(Project.user_id == current_user.id)
         
     db_project = query.first()
@@ -112,7 +112,7 @@ async def update_project(
 ):
     """更新專案 (管理員或擁有者)"""
     query = db.query(Project).filter(Project.id == project_id)
-    if current_user.role != "super_admin":
+    if current_user.role not in ["super_admin", "admin"]:
         query = query.filter(Project.user_id == current_user.id)
         
     db_project = query.first()
