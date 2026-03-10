@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class CMSBase(ABC):
     @abstractmethod
-    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None) -> Dict[str, Any]:
+    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None) -> Dict[str, Any]:
         pass
 
     @abstractmethod
@@ -52,7 +52,7 @@ class GhostService(CMSBase):
         except Exception:
             return False
 
-    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None) -> Dict[str, Any]:
+    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None) -> Dict[str, Any]:
         token = self._get_token()
         headers = {'Authorization': f'Ghost {token}'}
         
@@ -113,21 +113,57 @@ class WordPressService(CMSBase):
         except Exception:
             return False
 
-    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None) -> Dict[str, Any]:
+    async def get_categories(self) -> List[Dict[str, Any]]:
+        """取得 WordPress 所有分類"""
+        auth = self._get_auth()
+        headers = {'Authorization': f'Basic {auth}'}
+        try:
+            response = await self.client.get(f"{self.api_url}/wp-json/wp/v2/categories?per_page=100", headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            return []
+        except Exception as e:
+            logger.error(f"WP List Categories failed: {e}")
+            return []
+
+    async def create_category(self, name: str) -> Optional[int]:
+        """建立 WordPress 新分類並回傳 ID"""
+        auth = self._get_auth()
+        headers = {'Authorization': f'Basic {auth}'}
+        try:
+            response = await self.client.post(f"{self.api_url}/wp-json/wp/v2/categories", json={"name": name}, headers=headers)
+            if response.status_code in [200, 201]:
+                data = response.json()
+                return data.get('id')
+            return None
+        except Exception as e:
+            logger.error(f"WP Create Category failed: {e}")
+            return None
+
+    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None) -> Dict[str, Any]:
         auth = self._get_auth()
         headers = {'Authorization': f'Basic {auth}'}
         
         import markdown2
         html_content = markdown2.markdown(content)
 
+        # 狀態映射修正：WordPress 使用 publish, Ghost 使用 published
+        wp_status = "draft"
+        if status in ["publish", "published"]:
+            wp_status = "publish"
+        elif status in ["future", "scheduled"]:
+            wp_status = "future"
+
         post_data = {
             "title": title,
             "content": html_content,
-            "status": status if status in ["draft", "publish", "future"] else "draft"
+            "status": wp_status
         }
+
+        if categories:
+            post_data["categories"] = categories
         
-        if status == "scheduled":
-            post_data["status"] = "future"
+        if wp_status == "future":
             if scheduled_at:
                 post_data["date"] = scheduled_at.isoformat()
 
@@ -210,7 +246,30 @@ class CMSManager:
                 return {"success": False, "message": "無效的 CMS 平台"}
 
             logger.info(f"🚀 正在發布文章: {title} 到 {config.name} ({config.platform})")
-            result = await client.publish(title, content, status, scheduled_at)
+            
+            # --- 方案 B: 自動分類邏輯 (僅限 WordPress) ---
+            categories = None
+            if config.platform == "wordpress":
+                try:
+                    from app.services.ai_service import AIService
+                    wp_client = client # It's already the WordPressService instance
+                    existing_cats = await wp_client.get_categories()
+                    
+                    # 只有在有內容時才進行 AI 建議
+                    if content and len(content) > 50:
+                        suggestion = await AIService.suggest_category(title, content, existing_cats)
+                        if suggestion.get("match_id"):
+                            categories = [suggestion["match_id"]]
+                            logger.info(f"🏷️ AI 匹配現有分類: {suggestion.get('reason')}")
+                        elif suggestion.get("suggest_name"):
+                            new_cat_id = await wp_client.create_category(suggestion["suggest_name"])
+                            if new_cat_id:
+                                categories = [new_cat_id]
+                                logger.info(f"🆕 AI 建立並套用新分類: {suggestion['suggest_name']}")
+                except Exception as e:
+                    logger.error(f"⚠️ 自動分類失敗: {e}")
+
+            result = await client.publish(title, content, status, scheduled_at, categories)
             
             if result["success"]:
                 item.cms_config_id = config_id

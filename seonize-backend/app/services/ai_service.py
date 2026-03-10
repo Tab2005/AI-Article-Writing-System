@@ -533,3 +533,36 @@ SERP 標題：
             return {"market_standards": [], "content_gaps": ["無法分析"], "eeat_strategies": []}
         except Exception as e:
             return {"market_standards": [], "content_gaps": [str(e)], "eeat_strategies": []}
+    @classmethod
+    async def suggest_category(cls, title: str, content: str, existing_categories: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """基於文章標題與內容，從現有分類清單中挑選最合適的一個，或建議建立新分類"""
+        cat_list = chr(10).join(f"- {c['name']} (ID: {c['id']})" for c in existing_categories)
+        prompt = f"""請為以下文章建議最合適的分類。
+1. 從「現有分類清單」中挑選一個最匹配的。
+2. 如果清單中沒有任何合適的分類，請建議一個「全新」的分類名稱。
+
+# 文章標題
+{title}
+
+# 文章內容 (節錄)
+{content[:1000]}
+
+# 現有分類清單
+{cat_list or "無"}
+
+# 輸出 JSON 格式要求
+{{
+    "match_id": 123,     // 若匹配到現有分類，填入其 ID；否則填 null
+    "suggest_name": "分類名稱",  // 如果 match_id 為 null，此處填入建議的新分類名稱
+    "reason": "挑選理由"
+}}
+"""
+        try:
+            result = await cls.generate_content(prompt, temperature=0.3)
+            import json, re
+            json_match = re.search(r'\{[\s\S]*\}', result)
+            if json_match:
+                return json.loads(json_match.group())
+            return {"match_id": None, "suggest_name": "未分類", "reason": "解析失敗"}
+        except Exception:
+            return {"match_id": None, "suggest_name": "未分類", "reason": "系統異常"}
