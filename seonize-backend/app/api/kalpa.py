@@ -262,7 +262,7 @@ async def get_kalpa_matrix(
     """
     from app.models.db_models import KalpaMatrix
     query = db.query(KalpaMatrix).filter(KalpaMatrix.id == matrix_id)
-    if current_user.role != "super_admin":
+    if current_user.role not in ["super_admin", "admin"]:
         query = query.filter(KalpaMatrix.user_id == current_user.id)
         
     matrix = query.first()
