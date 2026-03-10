@@ -164,6 +164,7 @@ class OutlineRequest(BaseModel):
     keyword: str
     intent: SearchIntent
     selected_keywords: List[str]
+    selected_title: Optional[str] = None
 
 
 class OutlineSection(BaseModel):
@@ -235,7 +236,8 @@ async def generate_outline(
             keywords=request.selected_keywords,
             research_data=research_data,
             custom_prompt=prompt_content,
-            content_gap_report=content_gap_report
+            content_gap_report=content_gap_report,
+            selected_title=request.selected_title
         )
         
         # 4. 處理 AI 回傳結果

@@ -174,17 +174,19 @@ SERP 標題：
             return {"intent": "informational", "confidence": 0.5, "signals": [str(e)], "suggested_style": "專業教育風", "quick_content_gaps": []}
     
     @classmethod
-    async def generate_outline(cls, keyword: str, intent: str, keywords: list[str], research_data: dict = None, custom_prompt: str = None, content_gap_report: dict = None) -> dict:
+    async def generate_outline(cls, keyword: str, intent: str, keywords: list[str], research_data: dict = None, custom_prompt: str = None, content_gap_report: dict = None, selected_title: str = None) -> dict:
         """基於語義數據生成 AI 驅動的文章大綱（支援自訂 Prompt 與內容缺口建議）"""
         
         paa = research_data.get("paa", []) if research_data else []
         related = research_data.get("related_searches", []) if research_data else []
         ai_overview = research_data.get("ai_overview", {}) if research_data else []
         
+        if selected_title:
+            gap_info += f"\n- **使用者指定標題**：{selected_title}\n"
+
         # 內容缺口資訊注入
-        gap_info = ""
         if content_gap_report and isinstance(content_gap_report, dict):
-            gap_info = f"""
+            gap_info += f"""
 # 內容缺口與 E-E-A-T 策略建議 (參考)
 - **對手忽略的缺口**：{', '.join(content_gap_report.get('content_gaps', [])) or '無'}
 - **獨特切入視角**：{content_gap_report.get('unique_angle', '無')}
@@ -230,8 +232,9 @@ SERP 標題：
 1. **問題驅動**：請優先將上述 PAA 問題轉化為適當的 H2 或 H3 標題，這對於獲得 AI 搜尋引擎的引用至關重要。
 2. **語義覆蓋**：利用相關搜尋詞來細分章節，確保覆蓋該關鍵字的完整知識場景。
 3. **優勢補強**：參考上述「內容缺口」，在章節中加入對手未提及的獨特視角。
-4. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
-5. **輸出格式**：必須輸出純 JSON 物件。
+4. **標題選定**：若是背景資訊中提供有「使用者指定標題」，請優先使用該標題作為回傳 JSON 中的 h1 欄位。
+5. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
+6. **輸出格式**：必須輸出純 JSON 物件。
 
 # 輸出 JSON 結構
 {{

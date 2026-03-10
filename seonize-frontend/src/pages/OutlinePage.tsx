@@ -108,6 +108,7 @@ export const OutlinePage: React.FC = () => {
         keyword: project.primary_keyword,
         intent: (project.intent as any) || 'informational',
         selected_keywords: project.keywords?.secondary || [],
+        selected_title: project.selected_title,
       });
 
       clearInterval(stageTimer);

@@ -248,6 +248,7 @@ export const analysisApi = {
     keyword: string;
     intent: string;
     selected_keywords: string[];
+    selected_title?: string;
   }) =>
     request<{
       h1: string;
