@@ -10,6 +10,10 @@
 1.  **圖庫 API 檢索 (Primary: Low Cost)**：
     - **整合對象**：Unsplash, Pexels, Pixabay。
     - **邏輯**：AI 根據文章內容生成「英文關鍵字」，自動拉取 3-5 張符合主題的 CC0 免費圖。
+
+> [!NOTE]
+> **環境變數設置**：
+> 本功能需要設置 `PEXELS_API_KEY` 環境變數。
 2.  **用戶手動上傳 (User Controlled: No Cost)**：
     - 提供文件上傳與 URL 貼上功能，並具備簡單的裁切與壓縮工具。
 3.  **CMS 自動同步 (Phase 3: CMS Sync & Optimization)**：
