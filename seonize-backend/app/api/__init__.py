@@ -9,6 +9,7 @@ from .auth import router as auth_router
 from .kalpa import router as kalpa_router
 from .cms import router as cms_router
 from .users import router as users_router
+from .images import router as images_router
 
 
 __all__ = [

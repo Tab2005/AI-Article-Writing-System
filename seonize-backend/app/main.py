@@ -25,6 +25,7 @@ try:
     from fastapi import FastAPI, Request, HTTPException
     from fastapi.responses import JSONResponse
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.staticfiles import StaticFiles
     from contextlib import asynccontextmanager
     
     # 延遲導入 app 組件以捕獲導入錯誤
@@ -39,6 +40,7 @@ try:
         kalpa_router,
         cms_router,
         users_router,
+        images_router,
     )
     from app.core.config import settings as app_settings
     from app.core.database import init_db
@@ -89,6 +91,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Default prompts initialization failed: {e}")
     
+    # 確保圖片上傳目錄存在
+    try:
+        from app.services.image_service import ImageService
+        ImageService.ensure_upload_dir()
+    except Exception as e:
+        logger.error(f"Failed to ensure upload directory: {e}")
+    
     # 啟動 CMS 排程器
     start_scheduler()
     
@@ -134,6 +143,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 掛載靜態檔案 (用於存取上傳圖片)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # 註冊路由
 app.include_router(projects_router, prefix="/api/projects", tags=["Projects"])
 app.include_router(research_router, prefix="/api/research", tags=["Research"])
@@ -145,6 +157,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(kalpa_router, prefix="/api/kalpa", tags=["Kalpa Matrix"])
 app.include_router(cms_router, prefix="/api/cms", tags=["CMS Integration"])
 app.include_router(users_router, prefix="/api/admin/users", tags=["Admin - User Management"])
+app.include_router(images_router, prefix="/api/images", tags=["Images"])
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """捕捉 HTTPException 並確保帶有 CORS 標頭"""

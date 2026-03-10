@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, KPICard, MermaidRenderer } from '../components/ui';
 import PublishModal from '../components/PublishModal';
+import ImagePicker from '../components/common/ImagePicker';
 import { projectsApi, writingApi } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import type { ProjectState, OutlineSection, OptimizationMode } from '../types';
@@ -38,6 +39,7 @@ export const WritingPage: React.FC = () => {
   const [auditState, setAuditState] = useState<'idle' | 'analyzing' | 'error' | 'success'>('idle');
   const [auditStage, setAuditStage] = useState('');
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [showImagePicker, setShowImagePicker] = useState(false);
 
   // 載入專案資料
   const loadProject = useCallback(async () => {
@@ -256,6 +258,24 @@ export const WritingPage: React.FC = () => {
     } catch (err) {
       console.error('儲存失敗:', err);
     }
+  };
+
+  const handleImageSelect = (image: { url: string; alt: string; source: string }) => {
+    if (!activeSectionId) return;
+
+    setSections(prev => {
+      return prev.map(s => {
+        if (s.id === activeSectionId) {
+          const imageMarkdown = `\n![${image.alt}](${image.url})\n`;
+          return { ...s, content: s.content + imageMarkdown };
+        }
+        return s;
+      });
+    });
+
+    setShowImagePicker(false);
+    // 觸發儲存
+    setTimeout(() => saveToProject(), 500);
   };
 
   const activeSection = useMemo(
@@ -555,6 +575,15 @@ export const WritingPage: React.FC = () => {
                   {activeSection.content ? '🔄 重新撰寫' : '🤖 開始撰寫'}
                 </Button>
               )}
+              {activeSection && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowImagePicker(true)}
+                >
+                  🖼️ 插入圖片
+                </Button>
+              )}
               <div className="writing-preview__mode">
                 <button
                   className={`preview-mode-btn ${previewMode === 'render' ? 'preview-mode-btn--active' : ''}`}
@@ -673,6 +702,13 @@ export const WritingPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showImagePicker && (
+        <ImagePicker
+          onSelect={handleImageSelect}
+          onClose={() => setShowImagePicker(false)}
+        />
       )}
     </div>
   );

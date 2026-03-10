@@ -2,60 +2,46 @@
 
 目前系統已具備強大的文字生成與策略織入能力。為了進一步提升文章的吸引力並符合搜尋引擎對豐富媒體內容 (Rich Media) 的偏好，以下是將系統升級為「圖文並茂」架構的實作計劃。
 
-## 1. 核心架構升級 (Backend Architecture)
+## 1. 核心架構：低成本優先策略 (Cost-Efficient Sourcing)
+
+為了降低營運成本並維持高品質視覺，系統將採取「圖庫優先、AI 補充」的策略：
 
 ### 📸 圖片獲取途徑 (Tiered Sourcing)
-升級後的系統應支援三種獲取圖片的方式：
-1.  **AI 圖片生成 (AI Generation)**：整合 DALL-E 3 或 Flux API，根據章節內容自動生成專屬示意圖（適用於抽象概念、趨勢圖等）。
-2.  **圖庫 API 檢索 (Stock Photos)**：整合 Unsplash、Pexels 或 Pixabay API，根據關鍵字檢索高品質的 CC0 免費圖庫（適用於具象產品、風景、人物等）。
-3.  **用戶手動上傳 (User Upload)**：提供介面讓使用者上傳本地圖片或輸入圖片 URL。
+1.  **圖庫 API 檢索 (Primary: Low Cost)**：
+    - **整合對象**：Unsplash, Pexels, Pixabay。
+    - **邏輯**：AI 根據文章內容生成「英文關鍵字」，自動拉取 3-5 張符合主題的 CC0 免費圖。
+2.  **用戶手動上傳 (User Controlled: No Cost)**：
+    - 提供文件上傳與 URL 貼上功能，並具備簡單的裁切與壓縮工具。
+3.  **AI 圖片生成 (Fallback: High Cost)**：
+    - **整合對象**：DALL-E 3 或 Flux (可在「劫之眼」進階模式中手動觸發)。
+    - **邏輯**：僅當圖庫找不到合適圖片，或需要精確表達抽象「心靈地圖」或「因果矩陣」時使用。
 
-### 🌩️ 儲存與處理 (Storage & Management)
-*   **雲端存儲 (Object Storage)**：整合 AWS S3、Cloudinary 或 GCP Storage。圖片上傳或生成後儲存於雲端，並在資料庫中保留 URL。
-*   **即時處理**：透過 Cloudinary 或後端 Sharp 模組，自動進行 WebP 格式轉換、縮圖處理 (Lazy Load) 與 CDN 分發。
+### 🌩️ 儲存與處理 (Storage Management)
+*   **本地/雲端混合存儲**：圖片統一上傳至本地 `/uploads` 或 S3，並自動轉為 **WebP** 格式以節省空間並加速載入。
+*   **自動 ALT 標籤**：系統將自動根據 AI 生成的 Alt Text 寫入 HTML，這對 Google 圖片 SEO 至關重要。
 
-## 2. 功能流整合 (Workflow Integration)
+## 2. 數據驅動與流程整合 (Contextual Integration)
 
-### 階段一：大綱規劃與佔位 (Outline Stage)
-*   **AI 圖片位置推薦**：AI 在產生成大綱時，會自動在適當位置加入 `[圖片預留點]`，並標註「建議圖片主題 (Topic)」與「SEO Alt Text 建議」。
-*   **樣式與比例規劃**：預設文章中需要的圖片比例（如 16:9 景觀圖或 1:1 特色圖）。
+### 階段一：AI 視覺化建議 (Outline Stage)
+AI 在生成大綱或因果節點時，會根據資料內容自動標註：
+*   **視覺類型建議**：判斷該段落適合「具象圖 (Stock)」還是「抽象概念圖 (AI)」。
+*   **多語言關鍵字**：自動生成適合圖庫 API 檢索的英文關鍵字 (例如：*cryptocurrency protection, cybersecurity expert*)。
 
-### 階段二：內容撰寫與視覺化 (Writing Stage)
-*   **一鍵圖文生成**：在撰寫章節時，使用者可以點擊「AI 選圖」或「AI 繪圖」。
-*   **圖說 (Caption) 自動生成**：AI 會根據段落上下文，為圖片生成引人入勝的圖說。
-*   **預覽模式**：`WritingPage` 加入真正的圖片呈現，並支援簡單的圖片拖拽對齊（左縮排、置中、右縮排）。
+### 階段二：撰寫與嵌入 (Writing Stage)
+*   **內容對齊**：在 `WritingPage` 支援將選定的圖片一鍵插入到指定的 `[圖片預留點]`。
+*   **自動圖說 (Caption)**：AI 從內容中擷取最精華的一句話作為圖片說明，引導讀者視線。
 
-## 3. 資料結構異動 (Schema Changes)
+## 3. 成本管理與點數消耗 (Credit Management)
+| 途徑 | 資源成本 | 點數消耗 |
+| :--- | :--- | :--- |
+| 手動上傳 | 最低 (僅空間) | 0 點 / 張 |
+| 圖庫 API | 低 (API 限制) | 1-2 點 / 張 (檢索費) |
+| AI 生成 | 高 (GPU 成本) | 20+ 點 / 張 |
 
-### 📄 資料庫模型 (DB Models)
-*   `OutlineSection`：新增 `images` 陣列欄位。
-    ```json
-    {
-      "id": "sec-123",
-      "heading": "...",
-      "content": "...",
-      "images": [
-        {
-          "url": "https://...",
-          "alt": "SEO 關鍵字描述",
-          "caption": "圖片說明文字",
-          "position": "top",
-          "source": "ai_generated"
-        }
-      ]
-    }
-    ```
-
-## 4. 外部發布整合 (CMS & Export)
-
-*   **WordPress 深度整合**：在發布至 CMS 時，將圖片檔案透過 API 上傳至 WordPress 媒體庫，確保圖片不會因為外部連結失效而遺失。
-*   **Markdown 增強**：匯出時支援標準 `![Alt](Url)` 格式，並附加 `figcaption` HTML 標籤。
-
-## 5. UI/UX 介面優化
-
-*   **圖片庫組件 (Image Gallery)**：類似 WordPress 的媒體選取器，讓使用者管理目前專案已選用的圖片。
-*   **拖拽佈局**：在撰寫視窗中，讓使用者能直覺地將圖片插入到段落之間。
-*   **提示視窗 (Progress Modal)**：因為 AI 繪圖可能需要 15-20 秒，需沿用目前的進度視窗邏輯，顯示「正在為您構思視覺化內容...」。
+---
+> [!TIP]
+> **搜尋引擎偏好 (SEO Impact)**：
+> 系統整合「自動 ALT」與「懶載入 (Lazy Load)」機制，能讓文章在 Google 圖片搜尋中獲得額外曝光，同時不影響頁面載入速度。
 
 ---
 > [!IMPORTANT]

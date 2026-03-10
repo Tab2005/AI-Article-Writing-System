@@ -82,6 +82,7 @@ class Project(Base):
     word_count = Column(Integer, default=0)
     keyword_density = Column(JSON, default=dict)
     eeat_score = Column(Float, nullable=True)
+    images = Column(JSON, default=list) # [{url, alt, caption, source}]
     
     # 品質審計
     quality_report = Column(JSON, nullable=True)
@@ -122,6 +123,7 @@ class Project(Base):
             "word_count": self.word_count or 0,
             "keyword_density": self.keyword_density or {},
             "eeat_score": self.eeat_score,
+            "images": self.images or [],
             "quality_report": self.quality_report,
             "last_audit_at": self.last_audit_at.replace(tzinfo=timezone.utc).isoformat() if self.last_audit_at else None,
             "cms_config_id": self.cms_config_id,
@@ -393,6 +395,7 @@ class KalpaNode(Base):
     woven_content = Column(Text, nullable=True)
     anchor_used = Column(String(255), nullable=True)
     woven_at = Column(DateTime, nullable=True)
+    images = Column(JSON, default=list) # [{url, alt, caption, source}]
     
     # CMS 發布資訊
     cms_config_id = Column(String(36), nullable=True)
@@ -417,6 +420,7 @@ class KalpaNode(Base):
             "status": self.status,
             "woven_content": self.woven_content,
             "anchor_used": self.anchor_used,
+            "images": self.images or [],
             "woven_at": self.woven_at.replace(tzinfo=timezone.utc).isoformat() if self.woven_at else None,
             "cms_config_id": self.cms_config_id,
             "cms_post_id": self.cms_post_id,
