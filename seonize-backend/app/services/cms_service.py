@@ -4,6 +4,7 @@ from app.models.db_models import CMSConfig, Project, KalpaNode
 import httpx
 import logging
 import datetime
+import os
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ class GhostService(CMSBase):
         except Exception:
             return False
 
-    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None) -> Dict[str, Any]:
+    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None, featured_media: Optional[int] = None) -> Dict[str, Any]:
         token = self._get_token()
         headers = {'Authorization': f'Ghost {token}'}
         
@@ -126,6 +127,52 @@ class WordPressService(CMSBase):
             logger.error(f"WP List Categories failed: {e}")
             return []
 
+    async def upload_media(self, file_path: str, alt_text: str = "", caption: str = "") -> Optional[int]:
+        """上傳媒體到 WordPress 並回傳媒體 ID"""
+        auth = self._get_auth()
+        file_name = os.path.basename(file_path)
+        
+        # 判斷 MIME Type
+        content_type = "image/webp" if file_name.endswith(".webp") else "image/jpeg"
+        
+        headers = {
+            'Authorization': f'Basic {auth}',
+            'Content-Disposition': f'attachment; filename={file_name}',
+            'Content-Type': content_type
+        }
+        
+        try:
+            with open(file_path, "rb") as f:
+                media_content = f.read()
+                
+            response = await self.client.post(
+                f"{self.api_url}/wp-json/wp/v2/media",
+                content=media_content,
+                headers=headers
+            )
+            
+            if response.status_code in [200, 201]:
+                data = response.json()
+                media_id = data.get('id')
+                
+                # 更新 Alt Text 與 Caption
+                if alt_text or caption:
+                    await self.client.post(
+                        f"{self.api_url}/wp-json/wp/v2/media/{media_id}",
+                        json={
+                            "alt_text": alt_text,
+                            "caption": caption
+                        },
+                        headers={'Authorization': f'Basic {auth}'}
+                    )
+                return media_id
+            else:
+                logger.error(f"WP Upload Media failed ({response.status_code}): {response.text}")
+                return None
+        except Exception as e:
+            logger.error(f"WP Upload Media exception: {e}")
+            return None
+
     async def create_category(self, name: str) -> Optional[int]:
         """建立 WordPress 新分類並回傳 ID"""
         auth = self._get_auth()
@@ -140,7 +187,7 @@ class WordPressService(CMSBase):
             logger.error(f"WP Create Category failed: {e}")
             return None
 
-    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None) -> Dict[str, Any]:
+    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None, featured_media: Optional[int] = None) -> Dict[str, Any]:
         auth = self._get_auth()
         headers = {'Authorization': f'Basic {auth}'}
         
@@ -162,6 +209,9 @@ class WordPressService(CMSBase):
 
         if categories:
             post_data["categories"] = categories
+        
+        if featured_media:
+            post_data["featured_media"] = featured_media
         
         if wp_status == "future":
             if scheduled_at:
@@ -247,15 +297,45 @@ class CMSManager:
 
             logger.info(f"🚀 正在發布文章: {title} 到 {config.name} ({config.platform})")
             
-            # --- 方案 B: 自動分類邏輯 (僅限 WordPress) ---
+            # --- 方案 B: 自動分類與媒體同步邏輯 (僅限 WordPress) ---
             categories = None
+            featured_media = None
             if config.platform == "wordpress":
                 try:
                     from app.services.ai_service import AIService
+                    import re
                     wp_client = client # It's already the WordPressService instance
-                    existing_cats = await wp_client.get_categories()
                     
-                    # 只有在有內容時才進行 AI 建議
+                    # A. 自動媒體同步 (Media Sync)
+                    # 尋找內容中的本地圖片 URL: /uploads/xxx.webp
+                    img_pattern = r'!\[(.*?)\]\((/uploads/.*?)\)'
+                    matches = re.findall(img_pattern, content)
+                    
+                    if matches:
+                        logger.info(f"📸 偵測到 {len(matches)} 張本地圖片，啟動 CMS 同步...")
+                        for i, (alt, local_url) in enumerate(matches):
+                            # 取得實體路徑
+                            local_path = local_url.lstrip('/') # 去除開頭的 /
+                            if os.path.exists(local_path):
+                                remote_media_id = await wp_client.upload_media(local_path, alt_text=alt)
+                                if remote_media_id:
+                                    # 取得媒體資訊以更換 URL
+                                    auth = wp_client._get_auth()
+                                    media_res = await wp_client.client.get(
+                                        f"{wp_client.api_url}/wp-json/wp/v2/media/{remote_media_id}",
+                                        headers={'Authorization': f'Basic {auth}'}
+                                    )
+                                    if media_res.status_code == 200:
+                                        remote_url = media_res.json().get('source_url')
+                                        # 替換內容中的 URL
+                                        content = content.replace(local_url, remote_url)
+                                        # 第一張圖設為特色圖片
+                                        if i == 0:
+                                            featured_media = remote_media_id
+                                            logger.info(f"🌟 已設定特色圖片: ID {remote_media_id}")
+                    
+                    # B. 自動分類 (既存邏輯)
+                    existing_cats = await wp_client.get_categories()
                     if content and len(content) > 50:
                         suggestion = await AIService.suggest_category(title, content, existing_cats)
                         if suggestion.get("match_id"):
@@ -267,9 +347,9 @@ class CMSManager:
                                 categories = [new_cat_id]
                                 logger.info(f"🆕 AI 建立並套用新分類: {suggestion['suggest_name']}")
                 except Exception as e:
-                    logger.error(f"⚠️ 自動分類失敗: {e}")
+                    logger.error(f"⚠️ 媒體同步或自動分類失敗: {e}")
 
-            result = await client.publish(title, content, status, scheduled_at, categories)
+            result = await client.publish(title, content, status, scheduled_at, categories, featured_media)
             
             if result["success"]:
                 item.cms_config_id = config_id

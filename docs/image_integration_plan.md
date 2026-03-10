@@ -12,31 +12,18 @@
     - **邏輯**：AI 根據文章內容生成「英文關鍵字」，自動拉取 3-5 張符合主題的 CC0 免費圖。
 2.  **用戶手動上傳 (User Controlled: No Cost)**：
     - 提供文件上傳與 URL 貼上功能，並具備簡單的裁切與壓縮工具。
-3.  **AI 圖片生成 (Fallback: High Cost)**：
-    - **整合對象**：DALL-E 3 或 Flux (可在「劫之眼」進階模式中手動觸發)。
-    - **邏輯**：僅當圖庫找不到合適圖片，或需要精確表達抽象「心靈地圖」或「因果矩陣」時使用。
+3.  **CMS 自動同步 (Phase 3: CMS Sync & Optimization)**：
+    - **邏輯**：當文章發布至 Wordpress 時，系統自動偵測本地圖片並上傳至 WP 媒體庫，替換為遠端 URL。
+    - **特色**：自動將第一張圖設為「特色圖片 (Featured Image)」。
 
 ### 🌩️ 儲存與處理 (Storage Management)
-*   **本地/雲端混合存儲**：圖片統一上傳至本地 `/uploads` 或 S3，並自動轉為 **WebP** 格式以節省空間並加速載入。
-*   **自動 ALT 標籤**：系統將自動根據 AI 生成的 Alt Text 寫入 HTML，這對 Google 圖片 SEO 至關重要。
+*   **自動轉 WebP**：上傳時自動利用 Pillow 進行 WebP 轉換與壓縮，符合 Google Core Web Vitals 要求。
+*   **自動 ALT 標籤**：已實作。
 
-## 2. 數據驅動與流程整合 (Contextual Integration)
-
-### 階段一：AI 視覺化建議 (Outline Stage)
-AI 在生成大綱或因果節點時，會根據資料內容自動標註：
-*   **視覺類型建議**：判斷該段落適合「具象圖 (Stock)」還是「抽象概念圖 (AI)」。
-*   **多語言關鍵字**：自動生成適合圖庫 API 檢索的英文關鍵字 (例如：*cryptocurrency protection, cybersecurity expert*)。
-
-### 階段二：撰寫與嵌入 (Writing Stage)
-*   **內容對齊**：在 `WritingPage` 支援將選定的圖片一鍵插入到指定的 `[圖片預留點]`。
-*   **自動圖說 (Caption)**：AI 從內容中擷取最精華的一句話作為圖片說明，引導讀者視線。
-
-## 3. 成本管理與點數消耗 (Credit Management)
-| 途徑 | 資源成本 | 點數消耗 |
-| :--- | :--- | :--- |
-| 手動上傳 | 最低 (僅空間) | 0 點 / 張 |
-| 圖庫 API | 低 (API 限制) | 1-2 點 / 張 (檢索費) |
-| AI 生成 | 高 (GPU 成本) | 20+ 點 / 張 |
+## 2. 實作進度
+- [x] 階段一：基礎設施與靜態存取 (Done)
+- [x] 階段二：AI 建議與自動標籤 (Done)
+- [/] 階段三：CMS 媒體同步與 WebP 優化 (Next)
 
 ---
 > [!TIP]

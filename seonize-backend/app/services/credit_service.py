@@ -38,6 +38,7 @@ CREDIT_COSTS = {
     # CMS
     "cms_ai_schedule":      2,   # AI 輔助排程優化
     "quality_audit":        3,   # 全文品質審計 (新增)
+    "image_stock_search":   1,   # 圖庫 API 檢索 (新增)
 }
 
 # ── 會員等級識別 ──────────────────────────────────────────────

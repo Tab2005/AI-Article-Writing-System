@@ -19,27 +19,35 @@ class ImageService:
 
     @classmethod
     async def handle_upload(cls, file: UploadFile) -> dict:
-        """處理本機圖片上傳"""
+        """處理本機圖片上傳並轉換為 WebP"""
         cls.ensure_upload_dir()
         
-        file_ext = os.path.splitext(file.filename)[1]
-        file_name = f"{uuid.uuid4()}{file_ext}"
+        from PIL import Image
+        import io
+        
+        # 產出新的檔名 (統一使用 .webp)
+        file_name = f"{uuid.uuid4()}.webp"
         file_path = os.path.join(cls.UPLOAD_DIR, file_name)
         
         try:
-            with open(file_path, "wb") as buffer:
-                content = await file.read()
-                buffer.write(content)
+            content = await file.read()
+            image = Image.open(io.BytesIO(content))
             
-            # 這裡之後可以加入 WebP 轉換邏輯
+            # 轉換為 RGB (處理 RGBA -> WebP 可能的透明度問題)
+            if image.mode in ("RGBA", "P"):
+                image = image.convert("RGB")
+            
+            # 儲存為 WebP 並進行壓縮 (quality=80)
+            image.save(file_path, "WEBP", quality=80, optimize=True)
+            
             url = f"/{cls.UPLOAD_DIR}/{file_name}"
             return {
                 "url": url,
-                "filename": file.filename,
+                "filename": f"{os.path.splitext(file.filename)[0]}.webp",
                 "source": "manual_upload"
             }
         except Exception as e:
-            logger.error(f"Failed to upload image: {e}")
+            logger.error(f"Failed to upload and convert image: {e}")
             raise e
 
     @classmethod
