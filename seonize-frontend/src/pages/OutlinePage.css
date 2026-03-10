@@ -417,6 +417,25 @@
   }
 }
 
+
+.outline-item__image-hint {
+  margin-left: auto;
+  margin-right: var(--space-4);
+  font-size: 1.2rem;
+  cursor: help;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  padding: 2px 6px;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+.outline-item__image-hint:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
+}
+
 /* Responsive */
 @media (max-width: 992px) {
   .outline-item__keywords {

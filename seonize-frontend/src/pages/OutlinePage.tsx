@@ -10,6 +10,11 @@ interface OutlineItem {
   level: number;
   keywords: string[];
   description?: string;
+  image_suggestion?: {
+    topic: string;
+    search_keywords: string;
+    visual_type: string;
+  };
 }
 
 export const OutlinePage: React.FC = () => {
@@ -371,6 +376,12 @@ export const OutlinePage: React.FC = () => {
                     </span>
                   ))}
                 </div>
+
+                {item.image_suggestion && (
+                  <div className="outline-item__image-hint" title={`建議圖片：${item.image_suggestion.topic}`}>
+                    🖼️
+                  </div>
+                )}
 
                 <button className="outline-item__delete" onClick={() => handleDeleteSection(item.id)} title="刪除章節">
                   <svg

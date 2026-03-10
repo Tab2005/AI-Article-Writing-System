@@ -15,6 +15,7 @@ interface WritingSectionState {
   content: string;
   status: 'pending' | 'generating' | 'done' | 'error';
   keywords: string[];
+  image_suggestion?: any;
 }
 
 export const WritingPage: React.FC = () => {
@@ -67,6 +68,7 @@ export const WritingPage: React.FC = () => {
               content: item.content || '',
               status: item.content ? 'done' : 'pending',
               keywords: item.keywords || [],
+              image_suggestion: item.image_suggestion,
             });
             if (item.children && item.children.length > 0) {
               flatten(item.children);
@@ -260,13 +262,13 @@ export const WritingPage: React.FC = () => {
     }
   };
 
-  const handleImageSelect = (image: { url: string; alt: string; source: string }) => {
+  const handleImageSelect = (image: { url: string; alt: string; caption: string; source: string }) => {
     if (!activeSectionId) return;
 
     setSections(prev => {
       return prev.map(s => {
         if (s.id === activeSectionId) {
-          const imageMarkdown = `\n![${image.alt}](${image.url})\n`;
+          const imageMarkdown = `\n![${image.alt}](${image.url})\n*${image.caption}*\n`;
           return { ...s, content: s.content + imageMarkdown };
         }
         return s;
@@ -708,6 +710,9 @@ export const WritingPage: React.FC = () => {
         <ImagePicker
           onSelect={handleImageSelect}
           onClose={() => setShowImagePicker(false)}
+          suggestedKeywords={activeSection?.image_suggestion?.search_keywords}
+          suggestedTopic={activeSection?.image_suggestion?.topic}
+          sectionContent={activeSection?.content}
         />
       )}
     </div>

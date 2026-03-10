@@ -241,7 +241,12 @@ SERP 標題：
             "heading": "章節標題文字",
             "level": 2,
             "description": "該章節的撰寫重點 (30 字內)",
-            "keywords": ["推薦關鍵字1", "推薦關鍵字2"]
+            "keywords": ["推薦關鍵字1", "推薦關鍵字2"],
+            "image_suggestion": {{
+                "topic": "建議圖片主題 (如：專業團隊討論)",
+                "search_keywords": "適合圖庫 API 的英文關鍵字 (如：professional team discussion)",
+                "visual_type": "photo | illustration | diagram"
+            }}
         }}
     ]
 }}

@@ -4,15 +4,52 @@ import { Button, Input } from '../ui';
 import axios from 'axios';
 
 interface ImagePickerProps {
-    onSelect: (image: { url: string; alt: string; source: string }) => void;
+    onSelect: (image: { url: string; alt: string; caption: string; source: string }) => void;
     onClose: () => void;
+    suggestedKeywords?: string;
+    suggestedTopic?: string;
+    sectionContent?: string;
 }
 
-const ImagePicker: React.FC<ImagePickerProps> = ({ onSelect, onClose }) => {
-    const [tab, setTab] = useState<'upload' | 'search'>('upload');
-    const [searchQuery, setSearchQuery] = useState('');
+const ImagePicker: React.FC<ImagePickerProps> = ({
+    onSelect,
+    onClose,
+    suggestedKeywords = '',
+    suggestedTopic = '',
+    sectionContent = ''
+}) => {
+    const [tab, setTab] = useState<'upload' | 'search'>(suggestedKeywords ? 'search' : 'upload');
+    const [searchQuery, setSearchQuery] = useState(suggestedKeywords);
     const [results, setResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // 當有選中圖片時，嘗試取得 AI 建議的 Metadata
+    const selectWithMetadata = async (img: any) => {
+        try {
+            setLoading(true);
+            const res = await axios.get(`/api/images/metadata-suggestion`, {
+                params: {
+                    content: sectionContent,
+                    topic: suggestedTopic || searchQuery
+                }
+            });
+
+            if (res.data.success) {
+                onSelect({
+                    ...img,
+                    alt: res.data.data.alt,
+                    caption: res.data.data.caption
+                });
+            } else {
+                onSelect(img);
+            }
+        } catch (error) {
+            console.error('Failed to get metadata suggestion:', error);
+            onSelect(img);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -27,9 +64,10 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onSelect, onClose }) => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             if (response.data.success) {
-                onSelect({
+                selectWithMetadata({
                     url: response.data.data.url,
                     alt: file.name,
+                    caption: '',
                     source: 'manual_upload'
                 });
             }
@@ -98,7 +136,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onSelect, onClose }) => {
                             </div>
                             <div className="search-results">
                                 {results.map((img, idx) => (
-                                    <div key={idx} className="result-item" onClick={() => onSelect(img)}>
+                                    <div key={idx} className="result-item" onClick={() => selectWithMetadata(img)}>
                                         <img src={img.url} alt={img.alt} />
                                     </div>
                                 ))}

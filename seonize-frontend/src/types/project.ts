@@ -7,6 +7,12 @@ export interface KeywordData {
     density?: Record<string, number>;
 }
 
+export interface ImageSuggestion {
+    topic: string;
+    search_keywords: string;
+    visual_type: string;
+}
+
 export interface OutlineSection {
     id: string;
     heading: string;
@@ -14,6 +20,7 @@ export interface OutlineSection {
     content?: string;
     keywords: string[];
     children: OutlineSection[];
+    image_suggestion?: ImageSuggestion;
 }
 
 export interface OutlineData {

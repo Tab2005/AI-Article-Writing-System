@@ -73,7 +73,41 @@ class ImageService:
         return []
 
     @classmethod
-    def generate_alt_text(cls, content: str, keyword: str) -> str:
-        """根據內容產出 SEO 友善的 Alt Text (簡化版)"""
-        # 之後可以整合 LLM 做更精確的視覺描述
-        return f"{keyword} 實戰指南：關鍵流程與解決方案"
+    async def suggest_metadata(cls, content: str, topic: str = "") -> dict:
+        """根據文章內容，利用 AI 產出 SEO 友好的 Alt Text 與 Caption"""
+        from app.services.ai_service import AIService
+        
+        prompt = f"""請針對以下文章段落以及圖片主題，產出一個 SEO 友善的圖片 Alt Text (視覺描述) 與 Caption (圖說)。
+        
+        # 文章段落：
+        {content[:1000]}
+        
+        # 建議圖片主題：
+        {topic}
+        
+        # 輸出格式 (JSON)：
+        {{
+            "alt": "視覺化描述，包含關鍵字",
+            "caption": "吸引人的圖說文字"
+        }}
+        """
+        
+        try:
+            result = await AIService.generate_content(prompt, temperature=0.6)
+            import json, re
+            json_match = re.search(r'\{[\s\S]*\}', result)
+            if json_match:
+                return json.loads(json_match.group())
+        except Exception as e:
+            logger.error(f"Failed to suggest metadata: {e}")
+            
+        return {
+            "alt": f"{topic or '文章配件'} 實戰圖解",
+            "caption": f"深入解析 {topic or '本章節'} 的關鍵要點"
+        }
+
+    @classmethod
+    async def generate_alt_text(cls, content: str, keyword: str) -> str:
+        """根據內容產出 SEO 友善的 Alt Text (升級版)"""
+        metadata = await cls.suggest_metadata(content, topic=keyword)
+        return metadata.get("alt", f"{keyword} 實戰指南")
