@@ -211,7 +211,7 @@ class KalpaService:
         """
         
         system_prompt_template = KalpaService._get_active_template(db, user_id, "kalpa_anchor_generation", default_system)
-        system_prompt = system_prompt_template.format(industry=industry, money_page_url=money_page_url)
+        system_prompt = system_prompt_template.replace("{industry}", industry).replace("{money_page_url}", money_page_url)
         
         user_prompt = f"請為產業「{industry}」以及目標網址「{money_page_url}」生成 5 個法寶袋錨點文字。"
         
@@ -286,45 +286,41 @@ class KalpaService:
         """
         
         system_template = KalpaService._get_active_template(db, user_id, "kalpa_weaving_system", default_system)
-        system_prompt = system_template.format(
-            persona_role=persona['role'],
-            persona_tone=persona['tone'],
-            title=node.target_title
-        )
+        system_prompt = system_template.replace("{persona_role}", persona['role'])\
+                                       .replace("{persona_tone}", persona['tone'])\
+                                       .replace("{title}", node.target_title)
 
         # 4. 構建 User Prompt (配合指令倉庫模板)
         default_user = f"""
-        {persona['intro']}
+        {{persona_intro}}
         
-        請針對標題『{node.target_title}』撰寫專業解決方案指南。
+        請針對標題『{{title}}』撰寫專業解決方案指南。
         
         核心要素：
-        - 產業背景：{matrix.industry}
-        - 實體：{node.entity}
-        - 動作：{node.action}
-        - 痛點：{node.pain_point}
+        - 產業背景：{{industry}}
+        - 實體：{{entity}}
+        - 動作：{{action}}
+        - 痛點：{{pain_point}}
         
         文章必須包含：
-        1. 針對 {node.pain_point} 的深度解析與同理。
-        2. 完全符合 {persona['role']} 背景的專業建議，嚴禁使用無關產業的術語（除非是類比）。
+        1. 針對 {{pain_point}} 的深度解析與同理。
+        2. 完全符合 {{persona_role}} 背景的專業建議，嚴禁使用無關產業的術語（除非是類比）。
         3. HTML 對照表格。
-        4. 結尾自然植入連結：[{selected_anchor}]({matrix.money_page_url or "https://example.com"})
+        4. 結尾自然植入連結：[{{selected_anchor}}]({{money_page_url}})
         
         請注意時效性，背景設定為 2026 年最新趨勢與實踐方案。
         """
         
         user_template = KalpaService._get_active_template(db, user_id, "kalpa_weaving_user", default_user)
-        user_prompt = user_template.format(
-            persona_intro=persona['intro'],
-            title=node.target_title,
-            industry=matrix.industry,
-            entity=node.entity,
-            action=node.action,
-            pain_point=node.pain_point,
-            selected_anchor=selected_anchor,
-            money_page_url=matrix.money_page_url or "https://example.com",
-            persona_role=persona['role']
-        )
+        user_prompt = user_template.replace("{persona_intro}", persona['intro'])\
+                                   .replace("{title}", node.target_title)\
+                                   .replace("{industry}", matrix.industry)\
+                                   .replace("{entity}", node.entity)\
+                                   .replace("{action}", node.action)\
+                                   .replace("{pain_point}", node.pain_point)\
+                                   .replace("{selected_anchor}", selected_anchor)\
+                                   .replace("{money_page_url}", matrix.money_page_url or "https://example.com")\
+                                   .replace("{persona_role}", persona['role'])
 
         try:
             logger.info(f"Starting weaving for node {node_id} (title: {node.target_title})")
@@ -457,14 +453,14 @@ class KalpaService:
         5. exclusion_rules (排除規則)：這是一個 JSON 物件，定義該產業中不合理的組合。
            格式為 { "實體關鍵字": ["禁止出現的動作或痛點詞彙"] }。
            例如針對『加密貨幣錢包』，規則可能是：{"MetaMask": ["KYC認證", "提現"], "冷錢包": ["入金"]}。
-           請根據您對主題『主題』的專業理解，列出 3-5 條最關鍵的邏輯排除規則，避免產生低品質組合。
+           請根據您對主題『{topic}』的專業理解，列出 3-5 條最關鍵的邏輯排除規則，避免產生低品質組合。
 
         每個欄位前三項請提供約 6-10 個最具代表性的詞彙。
         回傳格式必須為純 JSON，不得包含任何 Markdown 標籤或額外解釋。
         """
         
         system_template = KalpaService._get_active_template(db, user_id, "kalpa_brainstorming", default_system)
-        system_prompt = system_template.format(topic=topic)
+        system_prompt = system_template.replace("{topic}", topic)
         
         user_prompt = f"請針對主題『{topic}』進行天道解析建模。"
         
