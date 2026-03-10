@@ -195,8 +195,7 @@ async def get_kalpa_node(
     """
     from app.models.db_models import KalpaNode, KalpaMatrix
     # 聯表查詢以驗證所有權 (必須提供明確 Join 條件，因 Model 未定義 ForeignKey 關係)
-    query = db.query(KalpaNode).join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id).filter(KalpaNode.id == node_id)
-    if current_user.role != "super_admin":
+    if current_user.role not in ["super_admin", "admin"]:
         query = query.filter(KalpaMatrix.user_id == current_user.id)
         
     node = query.first()
