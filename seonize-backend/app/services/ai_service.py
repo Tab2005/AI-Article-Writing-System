@@ -177,9 +177,11 @@ SERP 標題：
     async def generate_outline(cls, keyword: str, intent: str, keywords: list[str], research_data: dict = None, custom_prompt: str = None, content_gap_report: dict = None, selected_title: str = None) -> dict:
         """基於語義數據生成 AI 驅動的文章大綱（支援自訂 Prompt 與內容缺口建議）"""
         
-        paa = research_data.get("paa", []) if research_data else []
-        related = research_data.get("related_searches", []) if research_data else []
-        ai_overview = research_data.get("ai_overview", {}) if research_data else []
+        gap_info = ""
+        is_dict = isinstance(research_data, dict)
+        paa = research_data.get("paa", []) if is_dict else []
+        related = research_data.get("related_searches", []) if is_dict else []
+        ai_overview = research_data.get("ai_overview", {}) if is_dict else {}
         
         gap_info = ""
         
