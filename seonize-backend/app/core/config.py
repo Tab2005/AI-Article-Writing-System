@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     ZEABUR_AI_API_KEY: str = ""    # Zeabur AI Hub API Key
     AI_MODEL: str = "gpt-4o-mini"  # 預設模型
 
+    # Stock Photo APIs
+    PEXELS_API_KEY: str = ""
+    PIXABAY_API_KEY: str = ""
+
     # DataForSEO (雲端部署時可透過環境變數設定預設值；後台設定優先)
     DATAFORSEO_LOGIN: str = ""
     DATAFORSEO_PASSWORD: str = ""

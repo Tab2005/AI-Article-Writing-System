@@ -33,6 +33,8 @@ class SettingsResponse(BaseModel):
     dataforseo_login: Optional[str] = None
     dataforseo_password: Optional[str] = None
     dataforseo_serp_mode: Optional[str] = None
+    pixabay_api_key: Optional[str] = None
+    pexels_api_key: Optional[str] = None
     # 紀錄哪些設定是由環境變數提供的（唯讀）
     system_provided: List[str] = []
 
@@ -89,7 +91,8 @@ async def get_settings(db: Session = Depends(get_db)):
     # 從資料庫讀取設定（這已經包含了優先從環境變數讀取的邏輯）
     keys = [
         "ai_provider", "ai_api_key", "ai_model", "ai_title_prompt",
-        "dataforseo_login", "dataforseo_password", "dataforseo_serp_mode"
+        "dataforseo_login", "dataforseo_password", "dataforseo_serp_mode",
+        "pixabay_api_key", "pexels_api_key"
     ]
     
     for key in keys:
@@ -110,6 +113,8 @@ async def get_settings(db: Session = Depends(get_db)):
         dataforseo_login=settings.get("dataforseo_login"),
         dataforseo_password=settings.get("dataforseo_password"),
         dataforseo_serp_mode=settings.get("dataforseo_serp_mode"),
+        pixabay_api_key=settings.get("pixabay_api_key"),
+        pexels_api_key=settings.get("pexels_api_key"),
         system_provided=system_provided
     )
 
