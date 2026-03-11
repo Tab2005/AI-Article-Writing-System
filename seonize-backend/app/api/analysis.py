@@ -266,10 +266,9 @@ async def generate_outline(
         import traceback
         error_detail = traceback.format_exc()
         logger.error(f"Outline generation failed: {error_detail}")
-        return OutlineResponse(
-            h1=f"{datetime.now().year} {request.keyword}完整指南",
-            sections=[],
-            logic_chain=["❌ 系統例外中止", f"原因: {str(e)[:40]}"]
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI 大綱生成失敗: {str(e)}"
         )
 @router.post("/content-gap")
 async def get_content_gap(

@@ -265,7 +265,12 @@ export const analysisApi = {
         };
       }>;
       logic_chain: string[];
-    }>('/api/analysis/outline', { method: 'POST', body: data }),
+    }>('/api/analysis/outline', { 
+      method: 'POST', 
+      body: data,
+      timeout: 120000, // 增加到 120 秒，與後端 AI 超時同步
+      retries: 0      // 關閉自動重試，避免發出多次 AI 請求
+    }),
 
   getContentGap: (projectId?: string, keyword?: string, forceRefresh?: boolean) =>
     request<any>('/api/analysis/content-gap', {

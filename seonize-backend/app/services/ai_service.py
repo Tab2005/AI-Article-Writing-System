@@ -266,11 +266,11 @@ SERP 標題：
             json_match = re.search(r'\{[\s\S]*\}', result)
             if json_match:
                 return json.loads(json_match.group())
-            return {"h1": f"2026 {keyword}完整指南", "sections": []}
+            raise ValueError("AI 回覆中找不到有效的 JSON 結構")
         except Exception as e:
             import logging
             logging.error(f"Failed to generate AI outline: {e}")
-            return {"h1": f"2026 {keyword}完整指南", "sections": []}
+            raise e
     
     @classmethod
     async def generate_section_content(
