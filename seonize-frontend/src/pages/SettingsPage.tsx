@@ -8,6 +8,7 @@ export const SettingsPage: React.FC = () => {
     ai_provider: 'zeabur',
     ai_api_key: '',
     ai_model: 'gpt-4o-mini',
+    dataforseo_login: '',
     dataforseo_password: '',
     dataforseo_serp_mode: 'google_organic',
     pixabay_api_key: '',
