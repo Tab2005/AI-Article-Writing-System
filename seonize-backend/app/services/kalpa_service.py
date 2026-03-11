@@ -273,7 +273,7 @@ class KalpaService:
         persona = KalpaService._get_weaving_persona(node.pain_point, matrix.industry)
 
         # 3. 構建 System Prompt (配合指令倉庫模板)
-        default_system = f"""
+        default_system = """
         你現在的身份是：{persona['role']}。
         你的寫作語氣：{persona['tone']}
         
@@ -302,7 +302,7 @@ class KalpaService:
                                        .replace("{current_year}", str(datetime.now().year))
 
         # 4. 構建 User Prompt (配合指令倉庫模板)
-        default_user = f"""
+        default_user = """
         {{persona_intro}}
         
         請撰寫專業解決方案指南。
@@ -563,15 +563,15 @@ class KalpaService:
         if matched:
             return {
                 "role": f"資深 {ind} {matched['role_suffix']}",
-                "tone": matched["tone"],
-                "intro": matched["intro_template"].format(ind=ind, pp=pain_point)
-            }
-
-        # 預設：資深領域策略官
-        return {
-            "role": f"資深 {ind} 策略諮詢顧問",
-            "tone": "全面、平衡、深入淺出，提供 {current_year} 年最新趨勢剖析與多元化優化視野。",
-            "intro": f"針對 {ind} 領域中的『{{pain_point}}』現狀，我們綜合了 {datetime.now().year} 年最新的數據指標，旨在為您提供一個具備未來前瞻性的解決框架。"
+            "tone": matched["tone"],
+            "intro": matched["intro_template"].format(ind=ind, pp=pain_point, current_year=datetime.now().year)
         }
+
+    # 預設：資深領域策略官
+    return {
+        "role": f"資深 {ind} 策略諮詢顧問",
+        "tone": f"全面、平衡、深入淺出，提供 {datetime.now().year} 年最新趨勢剖析與多元化優化視野。",
+        "intro": f"針對 {ind} 領域中的『{pain_point}』現狀，我們綜合了 {datetime.now().year} 年最新的數據指標，旨在為您提供一個具備未來前瞻性的解決框架。"
+    }
 
 kalpa_service = KalpaService()
