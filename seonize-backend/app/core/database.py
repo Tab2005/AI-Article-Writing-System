@@ -51,7 +51,11 @@ else:
         pool_pre_ping=True,
         pool_size=5,
         max_overflow=10,
-        pool_timeout=5, # 增加逾時防止啟動掛死
+        pool_timeout=5,
+        connect_args={
+            "connect_timeout": 10,  # 增加連線逾時設定
+            "application_name": "seonize_backend_startup"
+        },
         echo=False,
     )
 
@@ -128,7 +132,7 @@ def init_db():
             command.upgrade(alembic_cfg, "head")
             logger.info("Alembic upgrade successfully completed.")
         else:
-            logger.warning("alembic.ini not found, skipping auto-migration.")
+            logger.warning(f"alembic.ini not found at {ini_path}, skipping auto-migration.")
             
     except Exception as e:
         logger.error(f"Migration error (non-fatal): {e}")

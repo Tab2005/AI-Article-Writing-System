@@ -73,6 +73,10 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # 設定 PostgreSQL 鎖定逾時，避免啟動時掛死於遷移
+        if DATABASE_URL.startswith("postgresql"):
+            connection.execute(context.execute("SET lock_timeout = '5s'"))
+            
         context.configure(
             connection=connection, target_metadata=target_metadata
         )
