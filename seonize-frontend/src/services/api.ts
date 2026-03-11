@@ -117,7 +117,16 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
           }
 
           const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-          const errorMsg = error.detail || `HTTP 錯誤！狀態碼: ${response.status}`;
+          let errorMsg = '發生錯誤';
+          
+          if (typeof error.detail === 'string') {
+            errorMsg = error.detail;
+          } else if (error.detail && typeof error.detail === 'object') {
+            // FastAPI 422 錯誤通常是個 list
+            errorMsg = JSON.stringify(error.detail);
+          } else {
+            errorMsg = `HTTP 錯誤！狀態碼: ${response.status}`;
+          }
 
           // 5xx 錯誤可以重試，4xx 錯誤（除了 401）不重試
           if (response.status >= 500 && attempt < retries) {
@@ -530,48 +539,6 @@ export interface CMSConfig {
 }
 
 export const cmsApi = {
-  listConfigs: () => request<CMSConfig[]>('/api/cms/configs'),
-
-  createConfig: (data: any) =>
-    request<CMSConfig>('/api/cms/configs', { method: 'POST', body: data }),
-
-  updateConfig: (id: string, data: any) =>
-    request<CMSConfig>(`/api/cms/configs/${id}`, { method: 'PUT', body: data }),
-
-  deleteConfig: (id: string) =>
-    request<void>(`/api/cms/configs/${id}`, { method: 'DELETE' }),
-
-  testConnection: (id: string) =>
-    request<{ success: boolean; message?: string }>(`/api/cms/test-connection/${id}`, { method: 'POST' }),
-
-  publish: (data: {
-    target_type: string;
-    target_id: string;
-    config_id: string;
-    status: string;
-    scheduled_at?: string | null;
-  }) => request<any>('/api/cms/publish', { method: 'POST', body: data }),
-};
-
-// Images API
-export const imagesApi = {
-  upload: (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return request<{ success: boolean; data: { url: string; filename: string; source: string } }>('/api/images/upload', {
-      method: 'POST',
-      headers: {}, // fetch will handle boundary if we don't set Content-Type
-      body: null, // request() helper uses JSON.stringify if body is present
-    }).then(() => {
-       // Special case: FormData needs manual fetch because request() helper assumes JSON
-       const token = localStorage.getItem('seonize_token');
-       return fetch(`${API_BASE_URL}/api/images/upload`, {
-         method: 'POST',
-         headers: {
-           ...(token ? { Authorization: `Bearer ${token}` } : {}),
-         },
-         body: formData,
-       }).then(res => res.json());
     });
   },
 
