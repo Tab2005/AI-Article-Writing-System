@@ -23,5 +23,5 @@ __all__ = [
     "kalpa_router",
     "cms_router",
     "users_router",
+    "images_router",
 ]
-

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Query, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from app.api.auth import get_current_user
+from app.core.auth import get_current_user
 from app.services.image_service import ImageService
 from app.models.db_models import User
 from app.core.database import get_db
