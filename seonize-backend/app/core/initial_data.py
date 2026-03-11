@@ -69,26 +69,27 @@ DEFAULT_PROMPT_TEMPLATES = [
 2. **語義覆蓋**：利用相關搜尋詞來細分章節，確保覆蓋該關鍵字的完整知識場景。
 3. **策略補強**：參考「內容缺口」資訊，針對對手忽略的缺口建立專屬章節或視角。
 4. **標題選定**：若是背景資訊中提供有「使用者指定標題」，請優先使用該標題作為回傳 JSON 中的 h1 欄位。
-5. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
-6. **輸出格式**：必須輸出純 JSON 物件。
+5. **嚴格 JSON 格式**：請確保輸出的 JSON 結構完整且正確，所有的字串必須使用雙引號，且內部的引號與換行必須正確轉義。嚴禁在輸出中包含任何前言、後記或 Markdown 格式以外的文字。
+6. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
+7. **輸出格式**：必須輸出純 JSON 物件。
 
-# 輸出 JSON 結構
-{
+# 輸出 JSON 結構 (嚴格遵守)
+{{
     "h1": "吸引人的 GEO 優化標題",
     "sections": [
-        {
+        {{
             "heading": "章節標題文字",
             "level": 2,
             "description": "該章節的撰寫重點 (30 字內)",
             "keywords": ["推薦關鍵字1", "推薦關鍵字2"],
-            "image_suggestion": {
+            "image_suggestion": {{
                 "topic": "建議圖片主題 (如：專業團隊討論)",
                 "search_keywords": "適合圖庫 API 的英文關鍵字 (如：professional team discussion)",
                 "visual_type": "photo | illustration | diagram"
-            }
-        }
+            }}
+        }}
     ]
-}"""
+}}"""
     },
     {
         "category": "content_writing",

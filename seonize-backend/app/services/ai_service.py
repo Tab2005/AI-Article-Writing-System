@@ -55,6 +55,11 @@ class AIService:
         # 4. 常見修復：移除物件或陣列末尾多餘的逗號 (Trailing Commas)
         s = re.sub(r',\s*([\]}])', r'\1', s)
         
+        # 5. 處理可能存在的 JSON 中未轉義的引號 (非常常見的 AI 錯誤)
+        # 這裡採取一個簡單的啟發式方法：如果一個雙引號前後都不是 JSON 的語法結構，則進行轉義
+        # 為了安全，這裡只處理基本的對話引號情境
+        # s = re.sub(r'(?<![:\[,])\s*"\s*(?![:,\]])', '\\"', s)
+        
         return s
 
     @classmethod
@@ -284,8 +289,7 @@ SERP 標題：
             }}
         }}
     ]
-}}
-"""
+}}"""
         
         try:
             result = await cls.generate_content(prompt, temperature=0.7)
@@ -294,17 +298,30 @@ SERP 標題：
             try:
                 return json.loads(cleaned_result)
             except json.JSONDecodeError as je:
-                # 如果還是失敗，嘗試更激進的清理 (移除字串內未轉義的換行)
+                # 如果還是失敗，嘗試更激進的清理 (處理字串內未轉義的換行)
                 import re
-                # 尋找 JSON 中的字串內容並將換行轉為 \n
-                # 這是一個簡單的啟發式方法
-                radical_clean = re.sub(r'(?<=: ")(.*?)(?="[,}])', 
-                                     lambda m: m.group(1).replace('\n', '\\n').replace('\r', ''), 
-                                     cleaned_result, flags=re.DOTALL)
+                
+                # 尋找所有在引號內的內容 (不含已轉義的引號)，並將內部的換行替換掉
+                # 使用能辨識已轉義引號的 Regex 
+                def fix_newlines(match):
+                    content = match.group(1)
+                    if '\n' in content:
+                        # 處理換行，將其轉為轉義字元 \n
+                        return f'"{content.replace("\n", "\\n").replace("\r", "")}"'
+                    return f'"{content}"'
+                
+                # Regex: 匹配雙引號括起來的內容，支援內部的 \" 轉義
+                radical_clean = re.sub(r'"((?:[^"\\]|\\.)*)"', fix_newlines, cleaned_result)
+                
                 try:
                     return json.loads(radical_clean)
-                except:
-                    # 如果仍然失敗，丟出原始錯誤
+                except Exception as e2:
+                    # 如果仍然失敗，記錄原始回覆以便除錯 (如果有權限寫入的話)
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"JSON Parse still failed after radical clean. Error: {e2}")
+                    logger.error(f"Original Result: {result[:500]}...") # 只錄一小段
+                    # 丟出原始錯誤，讓上層捕捉
                     raise je
         except Exception as e:
             import logging
