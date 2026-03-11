@@ -533,12 +533,251 @@ export interface CMSConfig {
   username?: string;
   is_active: boolean;
   auto_publish_enabled: boolean;
+};
+
+// Kalpa API
+export interface KalpaNode {
+  id?: string;
+  matrix_id?: string;
+  entity: string;
+  action: string;
+  pain_point: string;
+  target_title: string;
+  status: 'pending' | 'weaving' | 'completed' | 'failed';
+  woven_content?: string;
+  anchor_used?: string;
+  woven_at?: string;
+  // CMS 發布資訊
+  cms_config_id?: string;
+  cms_post_id?: string;
+  publish_status?: 'draft' | 'scheduled' | 'published' | 'failed';
+  cms_publish_url?: string;
+  scheduled_at?: string;
+  published_at?: string;
+}
+
+export interface KalpaMatrix {
+  id: string;
+  project_name: string;
+  industry: string;
+  money_page_url: string;
+  entities: string[];
+  actions: string[];
+  pain_points: string[];
+  created_at: string;
+  cms_config_id?: string;
+  nodes?: KalpaNode[];
+}
+
+export const kalpaApi = {
+  generate: (data: {
+    project_name?: string;
+    entities: string[];
+    actions: string[];
+    pain_points: string[];
+    title_template?: string;
+    exclusion_rules?: Record<string, string[]>;
+  }) => request<KalpaNode[]>('/api/kalpa/generate', { method: 'POST', body: data }),
+
+  save: (data: {
+    id?: string;
+    project_name: string;
+    industry: string;
+    money_page_url: string;
+    entities: string[];
+    actions: string[];
+    pain_points: string[];
+    nodes: any[];
+    cms_config_id?: string;
+  }) => request<{ success: boolean; matrix_id: string }>('/api/kalpa/save', { method: 'POST', body: data }),
+
+  list: () => request<KalpaMatrix[]>('/api/kalpa/list'),
+
+  get: (id: string) => request<KalpaMatrix & { nodes: KalpaNode[] }>(`/api/kalpa/${id}`),
+
+  weave: (nodeId: string) => request<{ success: boolean; node: KalpaNode }>(`/api/kalpa/weave/${nodeId}`, {
+    method: 'POST',
+    timeout: 120000,
+    retries: 0,
+    showLoading: false
+  }),
+
+  listArticles: (matrixId?: string) =>
+    request<(KalpaNode & { project_name: string })[]>(`/api/kalpa/articles/all${matrixId ? `?matrix_id=${matrixId}` : ''}`),
+
+  delete: (id: string) => request<void>(`/api/kalpa/delete/${id}`, { method: 'DELETE' }),
+
+  brainstorm: (topic: string) =>
+    request<{
+      entities: string[];
+      actions: string[];
+      pain_points: string[];
+      suggested_title_template?: string;
+      exclusion_rules?: Record<string, string[]>;
+    }>('/api/kalpa/brainstorm', { method: 'POST', body: { topic } }),
+
+  batchWeave: (nodeIds: string[]) =>
+    request<{ success: boolean; message: string }>('/api/kalpa/batch-weave', {
+      method: 'POST',
+      body: { node_ids: nodeIds },
+      showLoading: false,
+    }),
+
+  getNode: (id: string) => request<KalpaNode>(`/api/kalpa/node/${id}`),
+};
+
+// Health check
+export const healthCheck = () => request<{ status: string }>('/api/health');
+
+// Prompts API
+export interface PromptTemplate {
+  id: number;
+  category: string;
+  name: string;
+  content: string;
+  user_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const promptsApi = {
+  list: (category?: string) =>
+    request<PromptTemplate[]>(`/api/prompts/templates${category ? `?category=${category}` : ''}`),
+
+  create: (data: { category: string; name: string; content: string }) =>
+    request<PromptTemplate>('/api/prompts/templates', { method: 'POST', body: data }),
+
+  update: (id: number, data: { name?: string; content?: string; is_active?: boolean }) =>
+    request<PromptTemplate>(`/api/prompts/templates/${id}`, { method: 'PATCH', body: data }),
+
+  delete: (id: number) =>
+    request<{ message: string }>(`/api/prompts/templates/${id}`, { method: 'DELETE' }),
+};
+
+// Settings API
+export interface AIProvider {
+  id: string;
+  name: string;
+  models: string[];
+  description: string;
+}
+
+export interface SettingsData {
+  ai_provider: string;
+  ai_api_key: string;
+  ai_model: string;
+  dataforseo_login: string;
+  dataforseo_password: string;
+  dataforseo_serp_mode: string;
+  system_provided?: string[];
+}
+
+export const settingsApi = {
+  get: () => request<SettingsData>('/api/settings/'),
+  save: (data: Partial<SettingsData>) =>
+    request<SettingsData>('/api/settings/', { method: 'POST', body: data }),
+  getProviders: () => request<AIProvider[]>('/api/settings/providers'),
+  getDbInfo: () => request<{ type: string; is_local: boolean }>('/api/settings/database-info'),
+  getCacheInfo: () => request<{ type: string; size?: number }>('/api/settings/cache-info'),
+  testAI: (data: { provider: string; api_key: string; model: string }) =>
+    request<{ success: boolean; message: string }>('/api/settings/test-ai', {
+      method: 'POST',
+      body: data,
+    }),
+  testDataForSEO: (data: { login: string; password: string }) =>
+    request<{ success: boolean; message: string }>('/api/settings/test-dataforseo', {
+      method: 'POST',
+      body: data,
+    }),
+};
+
+// Admin API
+export const adminApi = {
+  listUsers: (params: { page?: number; per_page?: number; role?: string; search?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set('page', String(params.page));
+    if (params.per_page) searchParams.set('per_page', String(params.per_page));
+    if (params.role) searchParams.set('role', params.role);
+    if (params.search) searchParams.set('search', params.search);
+
+    return request<{
+      users: any[];
+      total: number;
+      page: number;
+      per_page: number;
+      total_pages: number;
+    }>(`/api/admin/users?${searchParams.toString()}`);
+  },
+
+  getStats: () => request<any>('/api/admin/users/stats/summary'),
+
+  updateUser: (userId: string, data: any) =>
+    request<any>(`/api/admin/users/${userId}`, { method: 'PATCH', body: data }),
+
+  deleteUser: (userId: string) =>
+    request<any>(`/api/admin/users/${userId}`, { method: 'DELETE' }),
+};
+
+// CMS API
+export interface CMSConfig {
+  id: string;
+  name: string;
+  platform: string;
+  api_url: string;
+  username?: string;
+  is_active: boolean;
+  auto_publish_enabled: boolean;
   frequency_type: 'hour' | 'day' | 'week';
   frequency_count: number;
   last_auto_published_at?: string;
 }
 
 export const cmsApi = {
+  listConfigs: () => request<CMSConfig[]>('/api/cms/configs'),
+
+  createConfig: (data: any) =>
+    request<CMSConfig>('/api/cms/configs', { method: 'POST', body: data }),
+
+  updateConfig: (id: string, data: any) =>
+    request<CMSConfig>(`/api/cms/configs/${id}`, { method: 'PUT', body: data }),
+
+  deleteConfig: (id: string) =>
+    request<void>(`/api/cms/configs/${id}`, { method: 'DELETE' }),
+
+  testConnection: (id: string) =>
+    request<{ success: boolean; message?: string }>(`/api/cms/test-connection/${id}`, { method: 'POST' }),
+
+  publish: (data: {
+    target_type: string;
+    target_id: string;
+    config_id: string;
+    status: string;
+    scheduled_at?: string | null;
+  }) => request<any>('/api/cms/publish', { method: 'POST', body: data }),
+};
+
+// Images API
+export const imagesApi = {
+  upload: (file: File) => {
+    const token = localStorage.getItem('seonize_token');
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return fetch(`${API_BASE_URL}/api/images/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ detail: 'Upload failed' }));
+        const msg = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail);
+        uiBus.notify(msg, 'error');
+        throw new Error(msg);
+      }
+      return res.json();
     });
   },
 
