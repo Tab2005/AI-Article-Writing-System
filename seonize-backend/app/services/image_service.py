@@ -2,9 +2,12 @@ import os
 import uuid
 import httpx
 import logging
+import asyncio
 from typing import List, Optional
 from fastapi import UploadFile
 from app.core.config import settings
+from app.models.db_models import Settings
+from app.core.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -51,18 +54,44 @@ class ImageService:
             raise e
 
     @classmethod
-    async def search_stock_photos(cls, query: str, limit: int = 5) -> List[dict]:
-        """從 Pexels/Unsplash 搜尋圖片 (範例實作)"""
-        # 暫時使用 Pexels 作為範例，若無 API Key 則回傳空清單
-        api_key = os.getenv("PEXELS_API_KEY", "")
-        if not api_key:
-            logger.warning("PEXELS_API_KEY not found, returning empty results.")
+    async def search_stock_photos(cls, query: str, limit: int = 10) -> List[dict]:
+        """同時從 Pexels 與 Pixabay 搜尋圖片"""
+        db = SessionLocal()
+        try:
+            # 優先次序：環境變數 > 資料庫
+            pexels_key = settings.PEXELS_API_KEY or Settings.get_value(db, "pexels_api_key", "")
+            pixabay_key = settings.PIXABAY_API_KEY or Settings.get_value(db, "pixabay_api_key", "")
+        finally:
+            db.close()
+
+        tasks = []
+        if pexels_key:
+            tasks.append(cls._search_pexels(query, pexels_key, limit))
+        if pixabay_key:
+            tasks.append(cls._search_pixabay(query, pixabay_key, limit))
+        
+        if not tasks:
+            logger.warning("No stock photo API keys found.")
             return []
-            
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        combined_results = []
+        for res in results:
+            if isinstance(res, list):
+                combined_results.extend(res)
+            elif isinstance(res, Exception):
+                logger.error(f"Stock photo search task failed: {res}")
+
+        # 簡單平衡一下結果 (依來源交錯顯示)
+        return combined_results
+
+    @classmethod
+    async def _search_pexels(cls, query: str, api_key: str, limit: int) -> List[dict]:
         url = f"https://api.pexels.com/v1/search?query={query}&per_page={limit}"
         headers = {"Authorization": api_key}
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             try:
                 response = await client.get(url, headers=headers)
                 if response.status_code == 200:
@@ -72,12 +101,43 @@ class ImageService:
                             "url": img["src"]["large"],
                             "alt": img.get("alt", query),
                             "source": "pexels",
-                            "creator": img.get("photographer", "Unknown")
+                            "creator": img.get("photographer", "Unknown"),
+                            "link": img.get("url", "")
                         }
                         for img in data.get("photos", [])
                     ]
             except Exception as e:
-                logger.error(f"Failed to search stock photos: {e}")
+                logger.error(f"Pexels search failed: {e}")
+        return []
+
+    @classmethod
+    async def _search_pixabay(cls, query: str, api_key: str, limit: int) -> List[dict]:
+        url = "https://pixabay.com/api/"
+        params = {
+            "key": api_key,
+            "q": query,
+            "per_page": limit,
+            "image_type": "photo",
+            "safesearch": "true"
+        }
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                response = await client.get(url, params=params)
+                if response.status_code == 200:
+                    data = response.json()
+                    return [
+                        {
+                            "url": img["largeImageURL"],
+                            "alt": img.get("tags", query),
+                            "source": "pixabay",
+                            "creator": img.get("user", "Unknown"),
+                            "link": img.get("pageURL", "")
+                        }
+                        for img in data.get("hits", [])
+                    ]
+            except Exception as e:
+                logger.error(f"Pixabay search failed: {e}")
         return []
 
     @classmethod

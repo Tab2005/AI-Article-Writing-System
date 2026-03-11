@@ -47,6 +47,8 @@ class UpdateSettingsRequest(BaseModel):
     dataforseo_login: Optional[str] = None
     dataforseo_password: Optional[str] = None
     dataforseo_serp_mode: Optional[str] = None
+    pixabay_api_key: Optional[str] = None
+    pexels_api_key: Optional[str] = None
 
 
 class TestConnectionRequest(BaseModel):
