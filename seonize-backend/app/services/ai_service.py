@@ -390,6 +390,7 @@ SERP 標題：
 優化模式指南：{mode_instructions.get(optimization_mode, mode_instructions['seo'])}
 
 請以 Markdown 格式撰寫約 {target_word_count} 字的章節內容，並確保關鍵字密度約 {keyword_density}%。
+**【嚴格限制】：直接從正文開始，嚴禁輸出任何標題；嚴禁輸出字數統計相關文字 (如「(xxx字)」)。**
 若有研究數據提供，請在文中以自然的方式進行「引述」或「參考」，以增加內容的權威度。
 """
         
