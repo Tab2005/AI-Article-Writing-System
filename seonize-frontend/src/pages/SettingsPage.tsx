@@ -8,15 +8,17 @@ export const SettingsPage: React.FC = () => {
     ai_provider: 'zeabur',
     ai_api_key: '',
     ai_model: 'gpt-4o-mini',
-    dataforseo_login: '',
     dataforseo_password: '',
     dataforseo_serp_mode: 'google_organic',
+    pixabay_api_key: '',
+    pexels_api_key: '',
   });
 
   const [providers, setProviders] = useState<AIProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingAI, setSavingAI] = useState(false);
   const [savingDataForSEO, setSavingDataForSEO] = useState(false);
+  const [savingImages, setSavingImages] = useState(false);
   const [testingAI, setTestingAI] = useState(false);
   const [testingDataForSEO, setTestingDataForSEO] = useState(false);
   const [message, setMessage] = useState<{
@@ -131,6 +133,25 @@ export const SettingsPage: React.FC = () => {
       // 全域已顯示錯誤
     } finally {
       setSavingDataForSEO(false);
+    }
+  };
+
+  const handleSaveImages = async () => {
+    setSavingImages(true);
+    setMessage(null);
+
+    try {
+      await settingsApi.save({
+        pixabay_api_key: settings.pixabay_api_key,
+        pexels_api_key: settings.pexels_api_key,
+      });
+
+      setMessage({ type: 'success', text: '圖庫服務設定已儲存！', section: 'images' });
+      loadSettings();
+    } catch {
+      // 全域已顯示錯誤
+    } finally {
+      setSavingImages(false);
     }
   };
 
@@ -471,6 +492,85 @@ export const SettingsPage: React.FC = () => {
               </Button>
               <Button variant="cta" onClick={handleSaveDataForSEO} loading={savingDataForSEO}>
                 儲存 DataForSEO 設定
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stock Photo Services */}
+        <div className="settings-section">
+          <h3 className="settings-section__title">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+              <circle cx="9" cy="9" r="2" />
+              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+            </svg>
+            圖庫服務設定
+          </h3>
+          <p className="settings-section__desc">
+            配置 Pexels 與 Pixabay API，為您的文章自動搜尋高品質配圖
+          </p>
+
+          {/* Section-specific message */}
+          {message?.section === 'images' && (
+            <div className={`settings-message settings-message--${message.type}`}>
+              {message.text}
+            </div>
+          )}
+
+          <div className="settings-form">
+            <Input
+              label={
+                <div className="field-label-wrapper">
+                  Pexels API Key
+                  {settings.system_provided?.includes('pexels_api_key') && (
+                    <span className="system-badge">環境變數鎖定</span>
+                  )}
+                </div>
+              }
+              type="password"
+              placeholder={
+                settings.system_provided?.includes('pexels_api_key')
+                  ? '已透過環境變數配置'
+                  : '輸入 Pexels API Key...'
+              }
+              value={settings.pexels_api_key}
+              disabled={settings.system_provided?.includes('pexels_api_key')}
+              onChange={(e) => setSettings({ ...settings, pexels_api_key: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label={
+                <div className="field-label-wrapper">
+                  Pixabay API Key
+                  {settings.system_provided?.includes('pixabay_api_key') && (
+                    <span className="system-badge">環境變數鎖定</span>
+                  )}
+                </div>
+              }
+              type="password"
+              placeholder={
+                settings.system_provided?.includes('pixabay_api_key')
+                  ? '已透過環境變數配置'
+                  : '輸入 Pixabay API Key...'
+              }
+              value={settings.pixabay_api_key}
+              disabled={settings.system_provided?.includes('pixabay_api_key')}
+              onChange={(e) => setSettings({ ...settings, pixabay_api_key: e.target.value })}
+              fullWidth
+            />
+            <div className="settings-form__actions">
+              <Button variant="cta" onClick={handleSaveImages} loading={savingImages}>
+                儲存圖庫設定
               </Button>
             </div>
           </div>
