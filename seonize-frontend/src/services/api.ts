@@ -552,3 +552,32 @@ export const cmsApi = {
     scheduled_at?: string | null;
   }) => request<any>('/api/cms/publish', { method: 'POST', body: data }),
 };
+
+// Images API
+export const imagesApi = {
+  upload: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<{ success: boolean; data: { url: string; filename: string; source: string } }>('/api/images/upload', {
+      method: 'POST',
+      headers: {}, // fetch will handle boundary if we don't set Content-Type
+      body: null, // request() helper uses JSON.stringify if body is present
+    }).then(() => {
+       // Special case: FormData needs manual fetch because request() helper assumes JSON
+       const token = localStorage.getItem('seonize_token');
+       return fetch(`${API_BASE_URL}/api/images/upload`, {
+         method: 'POST',
+         headers: {
+           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+         },
+         body: formData,
+       }).then(res => res.json());
+    });
+  },
+
+  search: (q: string, limit: number = 10) =>
+    request<{ success: boolean; data: any[] }>(`/api/images/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+
+  metadataSuggestion: (content: string, topic: string) =>
+    request<{ success: boolean; data: { alt: string; caption: string } }>(`/api/images/metadata-suggestion?content=${encodeURIComponent(content)}&topic=${encodeURIComponent(topic)}`),
+};

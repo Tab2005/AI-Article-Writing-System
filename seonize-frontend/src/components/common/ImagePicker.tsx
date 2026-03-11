@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './ImagePicker.css';
 import { Button, Input } from '../ui';
-import axios from 'axios';
+import { imagesApi } from '../../services/api';
 
 interface ImagePickerProps {
     onSelect: (image: { url: string; alt: string; caption: string; source: string }) => void;
@@ -27,18 +27,16 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
     const selectWithMetadata = async (img: any) => {
         try {
             setLoading(true);
-            const res = await axios.get(`/api/images/metadata-suggestion`, {
-                params: {
-                    content: sectionContent,
-                    topic: suggestedTopic || searchQuery
-                }
-            });
+            const res = await imagesApi.metadataSuggestion(
+                sectionContent,
+                suggestedTopic || searchQuery || img.alt || ''
+            );
 
-            if (res.data.success) {
+            if (res.success) {
                 onSelect({
                     ...img,
-                    alt: res.data.data.alt,
-                    caption: res.data.data.caption
+                    alt: res.data.alt,
+                    caption: res.data.caption
                 });
             } else {
                 onSelect(img);
@@ -55,17 +53,13 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const formData = new FormData();
-        formData.append('file', file);
-
         try {
             setLoading(true);
-            const response = await axios.post('/api/images/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            if (response.data.success) {
+            const response = await imagesApi.upload(file);
+            
+            if (response.success) {
                 selectWithMetadata({
-                    url: response.data.data.url,
+                    url: response.data.url,
                     alt: file.name,
                     caption: '',
                     source: 'manual_upload'
@@ -82,9 +76,9 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
         if (!searchQuery) return;
         try {
             setLoading(true);
-            const response = await axios.get(`/api/images/search?q=${encodeURIComponent(searchQuery)}`);
-            if (response.data.success) {
-                setResults(response.data.data);
+            const response = await imagesApi.search(searchQuery);
+            if (response.success) {
+                setResults(response.data);
             }
         } catch (error) {
             console.error('Search failed:', error);
@@ -94,7 +88,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
     };
 
     return (
-        <div className="image-picker-overlay">
+        <div className="image-picker-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
             <div className="image-picker-container glass-morphism">
                 <div className="image-picker-header">
                     <h3>選擇圖片</h3>
@@ -116,9 +110,10 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
                     {tab === 'upload' && (
                         <div className="upload-section">
                             <label className="upload-dropzone">
-                                <input type="file" onChange={handleFileUpload} hidden />
+                                <input type="file" onChange={handleFileUpload} accept="image/*" hidden />
                                 <div className="upload-icon">📁</div>
-                                <p>{loading ? '正在上傳...' : '點擊或拖拽圖片至此上傳'}</p>
+                                <p className="upload-text">{loading ? '正在處理並上傳...' : '點擊或拖拽圖片至此上傳'}</p>
+                                <p className="upload-hint">支援 JPG, PNG, WebP 格式</p>
                             </label>
                         </div>
                     )}
@@ -132,12 +127,15 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
                                     onChange={(e: any) => setSearchQuery(e.target.value)}
                                     onKeyPress={(e: any) => e.key === 'Enter' && handleSearch()}
                                 />
-                                <Button onClick={handleSearch} disabled={loading}>搜尋</Button>
+                                <Button onClick={handleSearch} disabled={loading}>
+                                    {loading ? '搜尋中...' : '搜尋'}
+                                </Button>
                             </div>
                             <div className="search-results">
                                 {results.map((img, idx) => (
                                     <div key={idx} className="result-item" onClick={() => selectWithMetadata(img)}>
-                                        <img src={img.url} alt={img.alt} />
+                                        <img src={img.url} alt={img.alt} loading="lazy" />
+                                        <div className="result-overlay">選取圖片</div>
                                     </div>
                                 ))}
                                 {results.length === 0 && !loading && <p className="no-results">無搜尋結果</p>}
