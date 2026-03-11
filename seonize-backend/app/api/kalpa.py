@@ -194,7 +194,9 @@ async def get_kalpa_node(
     取得單一編織節點詳細資訊 (管理員或擁有者)
     """
     from app.models.db_models import KalpaNode, KalpaMatrix
-    # 聯表查詢以驗證所有權 (必須提供明確 Join 條件，因 Model 未定義 ForeignKey 關係)
+    # 聯表查詢以驗證所有權
+    query = db.query(KalpaNode).join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id).filter(KalpaNode.id == node_id)
+    
     if current_user.role not in ["super_admin", "admin"]:
         query = query.filter(KalpaMatrix.user_id == current_user.id)
         
@@ -254,14 +256,22 @@ async def list_all_woven_articles(
 @router.get("/{matrix_id}")
 async def get_kalpa_matrix(
     matrix_id: str,
+    id: Optional[str] = None, # 增加對 query param 'id' 的支援 (相容前端某些呼叫方式)
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
     """
     取得指定矩陣的詳細內容與節點 (管理員或擁有者)
     """
+    # 優先使用 query param 的 id (若 matrix_id 是 "matrix")
+    target_id = id if matrix_id == "matrix" and id else matrix_id
+    
+    # 簡單驗證 UUID 格式，防止 PostgreSQL 報錯
+    if len(target_id) < 32:
+        raise HTTPException(status_code=400, detail="無效的專案 ID 格式")
+
     from app.models.db_models import KalpaMatrix
-    query = db.query(KalpaMatrix).filter(KalpaMatrix.id == matrix_id)
+    query = db.query(KalpaMatrix).filter(KalpaMatrix.id == target_id)
     if current_user.role not in ["super_admin", "admin"]:
         query = query.filter(KalpaMatrix.user_id == current_user.id)
         
@@ -269,7 +279,7 @@ async def get_kalpa_matrix(
     if not matrix:
         raise HTTPException(status_code=404, detail="找不到該矩陣或存取受限")
         
-    return kalpa_service.get_matrix(db, matrix_id, current_user.id)
+    return kalpa_service.get_matrix(db, target_id, current_user.id)
 
 KalpaGenerateRequest.model_rebuild()
 KalpaSaveRequest.model_rebuild()

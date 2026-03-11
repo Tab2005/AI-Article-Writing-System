@@ -200,7 +200,7 @@ class KalpaService:
         """
         使用 AI 動態生成符合產業語境的錨點文字（法寶袋）
         """
-        default_system = f"""
+        default_system = """
         你是一位專業的 SEO 與內容營銷專家。
         目標：為一個在「{industry}」產業的頁面生成具備高度吸引力與導引性的錨點文字（Anchor Text）。
         
