@@ -54,6 +54,7 @@ DEFAULT_PROMPT_TEMPLATES = [
 {content_gap}
 
 # 背景資訊
+- 目前年份：{current_year} 年
 - 核心關鍵字：{keyword}
 - 搜尋意圖：{intent}
 - 推薦延伸詞：{keywords}
@@ -72,6 +73,7 @@ DEFAULT_PROMPT_TEMPLATES = [
 5. **嚴格 JSON 格式**：請確保輸出的 JSON 結構完整且正確，所有的字串必須使用雙引號，且內部的引號與換行必須正確轉義。嚴禁在輸出中包含任何前言、後記或 Markdown 格式以外的文字。
 6. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
 7. **輸出格式**：必須輸出純 JSON 物件。
+8. **時效性限制**：若 H1 (標題) 或章節標題提及年份，必須使用 {current_year} 年。
 
 # 輸出 JSON 結構 (嚴格遵守)
 {{
