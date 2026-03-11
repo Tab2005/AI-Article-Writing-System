@@ -498,41 +498,41 @@ export const settingsApi = {
 };
 
 // Admin API
-export const adminApi = {
-  listUsers: (params: { page?: number; per_page?: number; role?: string; search?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params.page) searchParams.set('page', String(params.page));
-    if (params.per_page) searchParams.set('per_page', String(params.per_page));
-    if (params.role) searchParams.set('role', params.role);
-    if (params.search) searchParams.set('search', params.search);
+    retries: 0,
+    showLoading: false
+  }),
 
-    return request<{
-      users: any[];
-      total: number;
-      page: number;
-      per_page: number;
-      total_pages: number;
-    }>(`/api/admin/users?${searchParams.toString()}`);
-  },
+  generateFull: (data: {
+    project_id: string;
+    h1: string;
+    sections: WritingSection[];
+    optimization_mode?: string;
+  }) =>
+    request<{
+      title: string;
+      content: string;
+      word_count: number;
+      keyword_density: Record<string, number>;
+      meta_title: string;
+      meta_description: string;
+    }>('/api/writing/generate-full', {
+      method: 'POST',
+      body: data,
+      timeout: 120000,
+      retries: 0,
+      showLoading: false
+    }),
 
-  getStats: () => request<any>('/api/admin/users/stats/summary'),
+  seoCheck: (data: { content: string; primary_keyword: string; secondary_keywords?: string[] }) =>
+    request<SEOCheckResponse>('/api/writing/seo-check', { method: 'POST', body: data }),
 
-  updateUser: (userId: string, data: any) =>
-    request<any>(`/api/admin/users/${userId}`, { method: 'PATCH', body: data }),
+  analyzeCompetition: (projectId: string) =>
+    request<CompetitionResponse>(`/api/writing/projects/${projectId}/analyze-competition`, {
+      method: 'POST',
+    }),
 
-  deleteUser: (userId: string) =>
-    request<any>(`/api/admin/users/${userId}`, { method: 'DELETE' }),
-};
-
-// CMS API
-export interface CMSConfig {
-  id: string;
-  name: string;
-  platform: string;
-  api_url: string;
-  username?: string;
-  is_active: boolean;
-  auto_publish_enabled: boolean;
+  analyzeQuality: (data: { project_id: string; content: string }) =>
+    request<any>('/api/writing/analyze-quality', { method: 'POST', body: data }),
 };
 
 // Kalpa API
