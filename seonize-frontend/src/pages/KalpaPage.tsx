@@ -7,6 +7,7 @@ import { parseMarkdown } from '../utils/markdown';
 import { useAuth } from '../context/AuthContext';
 import CostConfirmModal from '../components/common/CostConfirmModal';
 import PublishModal from '../components/PublishModal';
+import ImagePicker from '../components/common/ImagePicker';
 import './KalpaPage.css';
 
 interface TagInputProps {
@@ -97,6 +98,7 @@ export const KalpaPage: React.FC = () => {
 
     const [previewNode, setPreviewNode] = useState<KalpaNode | null>(null);
     const [showPublishModal, setShowPublishModal] = useState(false);
+    const [showImagePicker, setShowImagePicker] = useState(false);
 
     // 批量處理與篩選狀態
     const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
@@ -331,6 +333,15 @@ export const KalpaPage: React.FC = () => {
                 }
             },
         });
+    };
+
+    const handleImageSelect = (image: { url: string; alt: string; caption: string; source: string }) => {
+        if (!previewNode) return;
+        const updatedNode = { ...previewNode, images: [image] };
+        setPreviewNode(updatedNode);
+        // 同步更新列表中的資料，確保後續「儲存專案」能把圖片存入資料庫
+        setResults(prev => prev.map(n => (n.id === updatedNode.id || (n.entity === updatedNode.entity && n.action === updatedNode.action && n.pain_point === updatedNode.pain_point)) ? updatedNode : n));
+        setShowImagePicker(false);
     };
 
     const handleBatchWeave = () => {
@@ -988,6 +999,28 @@ export const KalpaPage: React.FC = () => {
                                 <div className="markdown-body">
                                     {previewNode.woven_content ? (
                                         <>
+                                            {/* Kalpa 圖片展示 */}
+                                            {previewNode.images && previewNode.images.length > 0 && (
+                                                <div className="preview-image-container" style={{ marginBottom: 'var(--space-6)', position: 'relative' }}>
+                                                    <img 
+                                                        src={previewNode.images[0].url} 
+                                                        alt={previewNode.images[0].alt} 
+                                                        style={{ width: '100%', borderRadius: 'var(--radius-lg)', maxHeight: '400px', objectFit: 'cover' }}
+                                                    />
+                                                    <div className="image-source-tag" style={{
+                                                        position: 'absolute',
+                                                        bottom: '10px',
+                                                        right: '10px',
+                                                        backgroundColor: 'rgba(0,0,0,0.6)',
+                                                        color: 'white',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '4px',
+                                                        fontSize: '11px'
+                                                    }}>
+                                                        Source: {previewNode.images[0].source}
+                                                    </div>
+                                                </div>
+                                            )}
                                             <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.woven_content) }} />
                                             <MermaidRenderer content={previewNode.woven_content} />
                                         </>
@@ -1012,6 +1045,7 @@ export const KalpaPage: React.FC = () => {
                                     </p>
                                 </div>
                                 <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                                    <Button variant="outline" onClick={() => setShowImagePicker(true)}>更換圖片</Button>
                                     <Button variant="outline" onClick={() => setPreviewNode(null)}>關閉</Button>
                                     <Button variant="primary" onClick={() => setShowPublishModal(true)}>發佈文章</Button>
                                 </div>
@@ -1025,6 +1059,15 @@ export const KalpaPage: React.FC = () => {
                     targetType="kalpa_node"
                     targetId={previewNode.id!}
                     onClose={() => setShowPublishModal(false)}
+                />
+            )}
+            {showImagePicker && previewNode && (
+                <ImagePicker
+                    onSelect={handleImageSelect}
+                    onClose={() => setShowImagePicker(false)}
+                    suggestedKeywords={previewNode.target_title}
+                    suggestedTopic={previewNode.target_title}
+                    sectionContent={previewNode.woven_content}
                 />
             )}
         </div >

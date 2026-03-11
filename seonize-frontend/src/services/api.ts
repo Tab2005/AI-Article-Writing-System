@@ -351,6 +351,7 @@ export interface KalpaNode {
   status: 'pending' | 'weaving' | 'completed' | 'failed';
   woven_content?: string;
   anchor_used?: string;
+  images?: any[];
   woven_at?: string;
   // CMS 發布資訊
   cms_config_id?: string;

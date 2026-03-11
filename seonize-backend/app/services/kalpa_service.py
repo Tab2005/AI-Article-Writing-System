@@ -359,6 +359,20 @@ class KalpaService:
             node.anchor_used = selected_anchor
             node.woven_at = datetime.now(timezone.utc)
             node.status = "completed"
+            
+            # --- Kalpa 圖片整合：自動配圖 ---
+            try:
+                from app.services.image_service import ImageService
+                # 使用標題作為搜尋核心，提升相關度
+                search_query = node.target_title
+                # 取得 1 張最相關照片
+                images = await ImageService.search_stock_photos(search_query, limit=1)
+                if images:
+                    node.images = images
+                    logger.info(f"Auto-paired image for node {node_id}: {images[0]['url']}")
+            except Exception as img_e:
+                logger.error(f"Auto image pairing failed for node {node_id}: {img_e}")
+            # ---------------------------
         except Exception as e:
             logger.error(f"Weaving failed for node {node_id}: {str(e)}")
             node.status = "failed"
