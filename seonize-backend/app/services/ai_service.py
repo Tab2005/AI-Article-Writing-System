@@ -30,6 +30,33 @@ class AIService:
     
     _config: Optional[AIConfig] = None
     
+    @staticmethod
+    def _clean_json_string(s: str) -> str:
+        """清理 AI 回傳的 JSON 字串，處理 Markdown 標籤與特殊字元"""
+        import re
+        # 1. 移除 Markdown 程式碼區塊標記
+        s = re.sub(r'```json\s*', '', s)
+        s = re.sub(r'```\s*', '', s)
+        s = s.strip()
+        
+        # 2. 找到第一個 { 和最後一個 } 或 [ ]
+        match_obj = re.search(r'(\{[\s\S]*\})', s)
+        if not match_obj:
+            match_obj = re.search(r'(\[[\s\S]*\])', s)
+            
+        if match_obj:
+            s = match_obj.group(1)
+            
+        # 3. 處理換行與非法控制字元 (保留正常的換行但轉義)
+        # JSON 不允許未轉義的換行在字串中，但 AI 常會這樣產出
+        # 這裡我們主要移除真正的控制字元
+        s = "".join(ch for ch in s if ord(ch) >= 32 or ch in "\n\r\t")
+        
+        # 4. 常見修復：移除物件或陣列末尾多餘的逗號 (Trailing Commas)
+        s = re.sub(r',\s*([\]}])', r'\1', s)
+        
+        return s
+
     @classmethod
     def get_config(cls) -> AIConfig:
         """取得目前設定 - 優先從資料庫讀取,其次從環境變數"""
@@ -237,10 +264,11 @@ SERP 標題：
 2. **語義覆蓋**：利用相關搜尋詞來細分章節，確保覆蓋該關鍵字的完整知識場景。
 3. **優勢補強**：參考上述「內容缺口」，在章節中加入對手未提及的獨特視角。
 4. **標題選定**：若是背景資訊中提供有「使用者指定標題」，請優先使用該標題作為回傳 JSON 中的 h1 欄位。
-5. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
-6. **輸出格式**：必須輸出純 JSON 物件。
+6. **嚴格 JSON 格式**：請確保輸出的 JSON 結構完整且正確，所有的字串必須使用雙引號，且內部的引號與換行必須正確轉義。嚴禁在輸出中包含任何前言、後記或 Markdown 格式以外的文字。
+7. **結構邏輯**：大綱需包含 H1 (標題) 與多個 H2/H3。
+8. **輸出格式**：必須輸出純 JSON 物件。
 
-# 輸出 JSON 結構
+# 輸出 JSON 結構 (嚴格遵守)
 {{
     "h1": "吸引人的 GEO 優化標題",
     "sections": [
@@ -262,11 +290,22 @@ SERP 標題：
         try:
             result = await cls.generate_content(prompt, temperature=0.7)
             import json
-            import re
-            json_match = re.search(r'\{[\s\S]*\}', result)
-            if json_match:
-                return json.loads(json_match.group())
-            raise ValueError("AI 回覆中找不到有效的 JSON 結構")
+            cleaned_result = cls._clean_json_string(result)
+            try:
+                return json.loads(cleaned_result)
+            except json.JSONDecodeError as je:
+                # 如果還是失敗，嘗試更激進的清理 (移除字串內未轉義的換行)
+                import re
+                # 尋找 JSON 中的字串內容並將換行轉為 \n
+                # 這是一個簡單的啟發式方法
+                radical_clean = re.sub(r'(?<=: ")(.*?)(?="[,}])', 
+                                     lambda m: m.group(1).replace('\n', '\\n').replace('\r', ''), 
+                                     cleaned_result, flags=re.DOTALL)
+                try:
+                    return json.loads(radical_clean)
+                except:
+                    # 如果仍然失敗，丟出原始錯誤
+                    raise je
         except Exception as e:
             import logging
             logging.error(f"Failed to generate AI outline: {e}")
