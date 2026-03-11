@@ -80,7 +80,8 @@ class KalpaService:
                     title = t
             else:
                 # 預設標題模板
-                title = f"{e}{a}{p}怎麼辦？2026 最新解決教學與修復步驟"
+                current_yr = datetime.now().year
+                title = f"{e}{a}{p}怎麼辦？{current_yr} 最新解決教學與修復步驟"
             
             results.append({
                 "entity": e,
@@ -205,13 +206,15 @@ class KalpaService:
         
         要求：
         1. 產出 5 個不同的錨點文字。
-        2. 風格多樣：包含專業指南感、風險管理感、實戰經驗感、以及具備時效性（設定在 2026 年）。
+        2. 風格多樣：包含專業指南感、風險管理感、實戰經驗感、以及具備時效性（設定在 {current_year} 年）。
         3. 內容必須與「{industry}」高度相關。
         4. 格式：僅回傳一個 JSON 陣列，例如 ["文字1", "文字2", ...]，不要有任何其他解釋。
         """
         
         system_prompt_template = KalpaService._get_active_template(db, user_id, "kalpa_anchor_generation", default_system)
-        system_prompt = system_prompt_template.replace("{industry}", industry).replace("{money_page_url}", money_page_url)
+        system_prompt = system_prompt_template.replace("{industry}", industry)\
+                                              .replace("{money_page_url}", money_page_url)\
+                                              .replace("{current_year}", str(datetime.now().year))
         
         user_prompt = f"請為產業「{industry}」以及目標網址「{money_page_url}」生成 5 個法寶袋錨點文字。"
         
@@ -234,7 +237,8 @@ class KalpaService:
         except Exception as e:
             logger.error(f"Failed to generate anchor variants: {str(e)}")
             # 基本回退
-            return ["查看更多專業指南", "點擊獲取專家建議", "2026 產業佈局清單", "專業避坑與優化方案", "從入門到精通的實戰筆記"]
+            current_yr = datetime.now().year
+            return ["查看更多專業指南", "點擊獲取專家建議", f"{current_yr} 產業佈局清單", "專業避坑與優化方案", "從入門到精通的實戰筆記"]
 
     @staticmethod
     async def weave_node(db: Session, node_id: str, user_id: str) -> KalpaNode:
@@ -294,7 +298,8 @@ class KalpaService:
         system_template = KalpaService._get_active_template(db, user_id, "kalpa_weaving_system", default_system)
         system_prompt = system_template.replace("{persona_role}", persona['role'])\
                                        .replace("{persona_tone}", persona['tone'])\
-                                       .replace("{title}", node.target_title)
+                                       .replace("{title}", node.target_title)\
+                                       .replace("{current_year}", str(datetime.now().year))
 
         # 4. 構建 User Prompt (配合指令倉庫模板)
         default_user = f"""
@@ -315,7 +320,7 @@ class KalpaService:
         3. HTML 對照表格。
         4. 結尾自然植入連結：[{{selected_anchor}}]({{money_page_url}})
         
-        請注意時效性，背景設定為 2026 年最新趨勢與實踐方案。
+        請注意時效性，背景設定為 {current_year} 年最新趨勢與實踐方案。
         """
         
         user_template = KalpaService._get_active_template(db, user_id, "kalpa_weaving_user", default_user)
@@ -327,7 +332,8 @@ class KalpaService:
                                    .replace("{pain_point}", node.pain_point)\
                                    .replace("{selected_anchor}", selected_anchor)\
                                    .replace("{money_page_url}", matrix.money_page_url or "https://example.com")\
-                                   .replace("{persona_role}", persona['role'])
+                                   .replace("{persona_role}", persona['role'])\
+                                   .replace("{current_year}", str(datetime.now().year))
 
         try:
             logger.info(f"Starting weaving for node {node_id} (title: {node.target_title})")
@@ -454,9 +460,9 @@ class KalpaService:
         2. actions (動作)：使用者對這些實體執行的具體行為（例如：入金, 提現, 註冊）。
         3. pain_points (痛點)：執行動作時最常遇到的困難、錯誤、恐懼或不便（例如：失敗, 等很久, 報錯）。
         4. suggested_title_template (建議標題模板)：為該主題量身打造的一個意圖標題模板。必須包含預留位置 {entity}, {action}, {pain_point}。
-           請發揮創意，設計一個引人入勝、能解決痛點且具備 2026 年時效性的標題。
+           請發揮創意，設計一個引人入勝、能解決痛點且具備 {current_year} 年時效性的標題。
            【注意】：標題內容請保持連貫，預留位置前後「不要」有空格（除非是英文詞彙），確保讀起來流暢。
-           例如："2026實戰：當{entity}{action}遭遇{pain_point}時的終極優化方案"
+           例如："{current_year}實戰：當{entity}{action}遭遇{pain_point}時的終極優化方案"
         5. exclusion_rules (排除規則)：這是一個 JSON 物件，定義該產業中不合理的組合。
            格式為 { "實體關鍵字": ["禁止出現的動作或痛點詞彙"] }。
            例如針對『加密貨幣錢包』，規則可能是：{"MetaMask": ["KYC認證", "提現"], "冷錢包": ["入金"]}。
@@ -467,7 +473,8 @@ class KalpaService:
         """
         
         system_template = KalpaService._get_active_template(db, user_id, "kalpa_brainstorming", default_system)
-        system_prompt = system_template.replace("{topic}", topic)
+        system_prompt = system_template.replace("{topic}", topic)\
+                                       .replace("{current_year}", str(datetime.now().year))
         
         user_prompt = f"請針對主題『{topic}』進行天道解析建模。"
         
@@ -563,8 +570,8 @@ class KalpaService:
         # 預設：資深領域策略官
         return {
             "role": f"資深 {ind} 策略諮詢顧問",
-            "tone": "全面、平衡、深入淺出，提供 2026 年最新趨勢剖析與多元化優化視野。",
-            "intro": f"針對 {ind} 領域中的『{pain_point}』現狀，我們綜合了 2026 年最新的數據指標，旨在為您提供一個具備未來前瞻性的解決框架。"
+            "tone": "全面、平衡、深入淺出，提供 {current_year} 年最新趨勢剖析與多元化優化視野。",
+            "intro": f"針對 {ind} 領域中的『{{pain_point}}』現狀，我們綜合了 {datetime.now().year} 年最新的數據指標，旨在為您提供一個具備未來前瞻性的解決框架。"
         }
 
 kalpa_service = KalpaService()

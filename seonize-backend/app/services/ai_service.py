@@ -8,6 +8,7 @@ from typing import Optional, Generator, AsyncGenerator, List, Dict, Any
 from enum import Enum
 from pydantic import BaseModel
 from app.core.config import settings
+from datetime import datetime
 
 
 class AIProvider(str, Enum):
@@ -238,7 +239,8 @@ SERP 標題：
                                  .replace("{keywords}", ', '.join(keywords))\
                                  .replace("{paa}", chr(10).join(f'  - {p}' for p in paa[:5]) if paa else '無')\
                                  .replace("{related_searches}", ', '.join(related[:8]) if related else '無')\
-                                 .replace("{ai_overview}", ai_overview.get('description') or ai_overview.get('snippet') or '無' if isinstance(ai_overview, dict) else '無')
+                                 .replace("{ai_overview}", ai_overview.get('description') or ai_overview.get('snippet') or '無' if isinstance(ai_overview, dict) else '無')\
+                                 .replace("{current_year}", str(datetime.now().year))
             
             # 支援手動標籤 {content_gap}
             if "{content_gap}" in prompt:
@@ -362,7 +364,8 @@ SERP 標題：
                                  .replace("{keyword_density}", str(keyword_density))\
                                  .replace("{research_context}", research_context or '暫無可用研究數據')\
                                  .replace("{eeat_strategy}", strategy_info)\
-                                 .replace("{content_gap}", strategy_info) # 兼用
+                                 .replace("{content_gap}", strategy_info)\
+                                 .replace("{current_year}", str(datetime.now().year))
         else:
             mode_instructions = {
                 "seo": "注重關鍵字自然嵌入，保持 1.5-2.5% 關鍵字密度",
@@ -414,9 +417,10 @@ SERP 標題：
     async def generate_ai_titles(cls, keyword: str, titles: List[str], intent: str = "informational", user_id: Optional[int] = None, custom_prompt: Optional[str] = None) -> List[Dict[str, Any]]:
         """基於競爭對手生成 AI 建議標題 (GEO 優化模式)"""
         if not titles:
+            current_yr = datetime.now().year
             return [
-                {"title": f"什麼是 {keyword}？2026 最完整定義與基礎指南", "strategy": "定義型", "reason": "預設生成"},
-                {"title": f"{keyword}怎麼辦？2026 最新解決教學與修復步驟", "strategy": "教學型", "reason": "預設生成"}
+                {"title": f"什麼是 {keyword}？{current_yr} 最完整定義與基礎指南", "strategy": "定義型", "reason": "預設生成"},
+                {"title": f"{keyword}怎麼辦？{current_yr} 最新解決教學與修復步驟", "strategy": "教學型", "reason": "預設生成"}
             ]
             
         # 1. 優先從新模板系統讀取啟用的模板
@@ -458,7 +462,9 @@ SERP 標題：
 
         if custom_prompt:
             # 使用者自定義指令 (支援變數替換)
-            prompt = custom_prompt.replace("{keyword}", keyword).replace("{intent}", intent)
+            prompt = custom_prompt.replace("{keyword}", keyword)\
+                                 .replace("{intent}", intent)\
+                                 .replace("{current_year}", str(datetime.now().year))
             # 注入競爭對手標題
             competitor_list = chr(10).join(f'- {t}' for t in titles[:10])
             prompt = prompt.replace("{titles}", competitor_list)
@@ -467,10 +473,11 @@ SERP 標題：
                 prompt += f"\n\n# 競爭對手標題 (SERP Top 10)：\n{competitor_list}"
         else:
             # 系統預設指令
+            current_yr = datetime.now().year
             prompt = f"""你是一位資深的 SEO 與 GEO (生成式引擎優化) 專家。你的任務是分析競爭對手標題，並產出 5 個具備高點擊率且極易被 AI 搜尋引擎 (如 ChatGPT, SearchGPT, Gemini) 引用為摘要的標題。
 
 # 輸入數據
-- 目前年份：2026 年
+- 目前年份：{current_yr} 年
 - 核心關鍵字：{keyword}
 - 預估搜尋意圖：{intent}
 - 競爭對手標題 (SERP Top 10)：
@@ -482,12 +489,12 @@ SERP 標題：
 2. **清單意圖 (Listicle)**：強調條列式內容。格式：「[數字] 個 [關鍵字] 推薦清單」、「[數字] 大重點」。
 3. **教學意圖 (Procedural)**：針對操作流程。格式：「如何 [達成目標]？」、「[關鍵字] 步驟指南」。
 4. **比較意圖 (Comparison)**：協助使用者決策。格式：「[A] vs [B] 完整比較」、「為什麼選擇 [關鍵字]」。
-5. **權威/趨勢型 (Authority/Trends)**：強調最新與深度。格式：「2026 [關鍵字] 完整指南」、「深度解析 [關鍵字] 的原理」。
+5. **權威/趨勢型 (Authority/Trends)**：強調最新與深度。格式：「{current_yr} [關鍵字] 完整指南」、「深度解析 [關鍵字] 的原理」。
 
 # 任務要求
 - 必須自然包含核心關鍵字。
 - 標題長度控制在 25-30 個中文字之間。
-- **時效性限制：若標題提及年份，必須使用 2026 年，嚴格禁止出現 2024 或 2025。**
+- **時效性限制：若標題提及年份，必須使用 {current_yr} 年，嚴格禁止出現先前年份。**
 - 嚴格禁止與現有標題重複。
 - 每個標題必須標註其對應的策略類型。
 
@@ -508,10 +515,11 @@ SERP 標題：
                 return json.loads(json_match.group())
             
             # 備用方案：如果 JSON 解析失敗
+            current_yr = datetime.now().year
             return [
-                {"title": f"什麼是 {keyword}？2026 最完整定義與基礎指南", "strategy": "定義型", "reason": "觸發 AI 定義摘要"},
+                {"title": f"什麼是 {keyword}？{current_yr} 最完整定義與基礎指南", "strategy": "定義型", "reason": "觸發 AI 定義摘要"},
                 {"title": f"如何優化 {keyword}？從入門到精通的 5 個教學步驟", "strategy": "教學型", "reason": "符合操作流程意圖"},
-                {"title": f"2026 年必看 7 大 {keyword} 推薦清單與實測評比", "strategy": "清單型", "reason": "清單格式極易被 AI 抓取"},
+                {"title": f"{current_yr} 年必看 7 大 {keyword} 推薦清單與實測評比", "strategy": "清單型", "reason": "清單格式極易被 AI 抓取"},
             ]
         except Exception as e:
             return [{"title": f"生成失敗: {str(e)}", "strategy": "錯誤", "reason": "系統發生異常"}]
