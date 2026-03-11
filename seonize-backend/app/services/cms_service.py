@@ -349,6 +349,30 @@ class CMSManager:
                 except Exception as e:
                     logger.error(f"⚠️ 媒體同步或自動分類失敗: {e}")
 
+                # C. 優先使用 KalpaNode / Project 自身的圖片欄位作為特色圖片 (若內容無圖片)
+                if not featured_media and hasattr(item, "images") and item.images:
+                    try:
+                        logger.info("🎨 內容無圖片，從節點圖片欄位獲取特色圖片")
+                        # 處理 JSON 欄位
+                        images_list = item.images if isinstance(item.images, list) else []
+                        if images_list:
+                            main_image = images_list[0]
+                            image_url = main_image.get("url")
+                            image_alt = main_image.get("alt", title)
+                            
+                            from app.services.image_service import ImageService
+                            # 下載遠端圖片到本機 (若是 Pexels 等網址)
+                            download_res = await ImageService.download_image(image_url)
+                            local_path = download_res.get("local_path")
+                            
+                            if local_path and os.path.exists(local_path):
+                                remote_media_id = await wp_client.upload_media(local_path, alt_text=image_alt)
+                                if remote_media_id:
+                                    featured_media = remote_media_id
+                                    logger.info(f"🌟 已從節點欄位設定特色圖片: ID {featured_media}")
+                    except Exception as im_e:
+                        logger.warning(f"⚠️ 從節點欄位獲取特色圖片失敗: {im_e}")
+
             result = await client.publish(title, content, status, scheduled_at, categories, featured_media)
             
             if result["success"]:

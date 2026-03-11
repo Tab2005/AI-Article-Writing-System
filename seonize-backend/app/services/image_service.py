@@ -55,6 +55,45 @@ class ImageService:
             raise e
 
     @classmethod
+    async def download_image(cls, url: str) -> dict:
+        """從遠端 URL 下載圖片並轉換為 WebP 存入 uploads (回傳本地路徑與網址)"""
+        if not url or url.startswith("/uploads/"):
+            return {"url": url, "local_path": url.lstrip("/") if url else ""}
+
+        cls.ensure_upload_dir()
+        from PIL import Image
+        import io
+        import httpx
+
+        file_name = f"remote_{uuid.uuid4().hex[:12]}.webp"
+        file_path = os.path.join(cls.UPLOAD_DIR, file_name)
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                response = await client.get(url)
+                if response.status_code == 200:
+                    image_data = response.content
+                    image = Image.open(io.BytesIO(image_data))
+                    
+                    if image.mode in ("RGBA", "P"):
+                        image = image.convert("RGB")
+                    
+                    image.save(file_path, "WEBP", quality=80, optimize=True)
+                    logger.info(f"Downloaded and converted remote image to {file_path}")
+                    
+                    return {
+                        "url": f"/{cls.UPLOAD_DIR}/{file_name}",
+                        "local_path": file_path,
+                        "filename": file_name
+                    }
+                else:
+                    logger.warning(f"Failed to download image from {url}, status: {response.status_code}")
+            except Exception as e:
+                logger.error(f"Error downloading image from {url}: {e}")
+        
+        return {"url": url, "local_path": ""}
+
+    @classmethod
     async def search_stock_photos(cls, query: str, limit: int = 10) -> List[dict]:
         """同時從 Pexels 與 Pixabay 搜尋圖片 (自動翻譯中文)"""
         # 1. 如果包含中文字符，自動翻譯為英文以提升準確度

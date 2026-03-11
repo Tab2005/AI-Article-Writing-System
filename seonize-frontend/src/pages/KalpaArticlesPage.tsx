@@ -4,6 +4,7 @@ import PublishModal from '../components/PublishModal';
 import { kalpaApi } from '../services/api';
 import type { KalpaNode, KalpaMatrix } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
+import ImagePicker from '../components/common/ImagePicker';
 import './KalpaPage.css';
 
 type ViewMode = 'project-list' | 'article-detail';
@@ -17,6 +18,7 @@ export const KalpaArticlesPage: React.FC = () => {
     const [previewNode, setPreviewNode] = useState<KalpaNode | null>(null);
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [showPublishModal, setShowPublishModal] = useState(false);
+    const [showImagePicker, setShowImagePicker] = useState(false);
 
     useEffect(() => {
         fetchMatrices();
@@ -54,6 +56,34 @@ export const KalpaArticlesPage: React.FC = () => {
         setSelectedProject(null);
         setArticles([]);
         setSearchQuery(''); // 返回列表時重設專案搜尋
+    };
+
+    const handleImageSelect = (image: { url: string; alt: string; caption: string; source: string }) => {
+        if (!previewNode) return;
+        const updatedNode = { ...previewNode, images: [image] };
+        setPreviewNode(updatedNode);
+        
+        // 同步更新列表中的資料
+        setArticles(prev => prev.map(a => a.id === updatedNode.id ? { ...a, ...updatedNode } : a));
+        
+        // 呼叫 API 儲存變更
+        saveNodeChanges(updatedNode);
+        
+        setShowImagePicker(false);
+    };
+
+    const saveNodeChanges = async (node: KalpaNode) => {
+        if (!node.id) return;
+        try {
+            await kalpaApi.updateNode(node.id, {
+                images: node.images,
+                woven_content: node.woven_content,
+                anchor_used: node.anchor_used
+            });
+            console.log("Successfully saved node changes");
+        } catch (error) {
+            console.error('Failed to save node changes:', error);
+        }
     };
 
     // 過濾專案列表
@@ -253,6 +283,28 @@ export const KalpaArticlesPage: React.FC = () => {
                             <div className="markdown-body">
                                 {previewNode.woven_content ? (
                                     <>
+                                        {/* Kalpa 圖片展示 */}
+                                        {previewNode.images && previewNode.images.length > 0 && (
+                                            <div className="preview-image-container" style={{ marginBottom: 'var(--space-6)', position: 'relative' }}>
+                                                <img 
+                                                    src={previewNode.images[0].url} 
+                                                    alt={previewNode.images[0].alt} 
+                                                    style={{ width: '100%', borderRadius: 'var(--radius-lg)', maxHeight: '400px', objectFit: 'cover' }}
+                                                />
+                                                <div className="image-source-tag" style={{
+                                                    position: 'absolute',
+                                                    bottom: '10px',
+                                                    right: '10px',
+                                                    backgroundColor: 'rgba(0,0,0,0.6)',
+                                                    color: 'white',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '4px',
+                                                    fontSize: '11px'
+                                                }}>
+                                                    Source: {previewNode.images[0].source}
+                                                </div>
+                                            </div>
+                                        )}
                                         <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.woven_content) }} />
                                         <MermaidRenderer content={previewNode.woven_content} />
                                     </>
@@ -273,6 +325,7 @@ export const KalpaArticlesPage: React.FC = () => {
                                 <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{previewNode.anchor_used || '預設'}</span>
                             </div>
                             <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+                                <Button variant="outline" onClick={() => setShowImagePicker(true)}>更換圖片</Button>
                                 <Button variant="primary" onClick={() => setShowPublishModal(true)}>🚀 發布至 CMS</Button>
                                 <Button variant="outline" onClick={() => setPreviewNode(null)}>關閉預覽</Button>
                             </div>
@@ -287,6 +340,15 @@ export const KalpaArticlesPage: React.FC = () => {
                     targetId={previewNode.id}
                     onClose={() => setShowPublishModal(false)}
                     onSuccess={() => fetchProjectArticles(selectedProject!)}
+                />
+            )}
+            {showImagePicker && previewNode && (
+                <ImagePicker
+                    onSelect={handleImageSelect}
+                    onClose={() => setShowImagePicker(false)}
+                    suggestedKeywords={previewNode.target_title}
+                    suggestedTopic={previewNode.target_title}
+                    sectionContent={previewNode.woven_content}
                 />
             )}
         </div>

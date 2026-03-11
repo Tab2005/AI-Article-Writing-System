@@ -16,6 +16,11 @@ class BrainstormRequest(BaseModel):
 class BatchWeaveRequest(BaseModel):
     node_ids: List[str]
 
+class NodeUpdateRequest(BaseModel):
+    woven_content: Optional[str] = None
+    images: Optional[List[Dict[str, Any]]] = None
+    anchor_used: Optional[str] = None
+
 @router.post("/brainstorm")
 async def brainstorm_kalpa_elements(
     request: BrainstormRequest,
@@ -252,6 +257,40 @@ async def list_all_woven_articles(
         return articles
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文章查詢失敗: {str(e)}")
+
+@router.post("/node/{node_id}/update")
+async def update_kalpa_node(
+    node_id: str,
+    data: NodeUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """
+    更新單一編織節點的內容或圖片 (僅限擁有者)
+    """
+    from app.models.db_models import KalpaNode, KalpaMatrix
+    # 聯表查詢以驗證所有權
+    node = db.query(KalpaNode).join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id)\
+             .filter(KalpaNode.id == node_id).first()
+    
+    if not node:
+        raise HTTPException(status_code=404, detail="節點不存在")
+        
+    if current_user.role not in ["super_admin", "admin"]:
+        # 再次確認歸屬矩陣的使用者
+        matrix = db.query(KalpaMatrix).filter(KalpaMatrix.id == node.matrix_id).first()
+        if not matrix or matrix.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="存取權限不足")
+
+    if data.woven_content is not None:
+        node.woven_content = data.woven_content
+    if data.images is not None:
+        node.images = data.images
+    if data.anchor_used is not None:
+        node.anchor_used = data.anchor_used
+        
+    db.commit()
+    return {"success": True, "node": node.to_dict()}
 
 @router.get("/{matrix_id}")
 async def get_kalpa_matrix(
