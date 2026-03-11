@@ -274,8 +274,8 @@ class KalpaService:
 
         # 3. 構建 System Prompt (配合指令倉庫模板)
         default_system = """
-        你現在的身份是：{persona['role']}。
-        你的寫作語氣：{persona['tone']}
+        你現在的身份是：{persona_role}。
+        你的寫作語氣：{persona_tone}
         
         寫作規範要求 (人像化優化架構)：
         1. **自然開場**：在文章最開頭，直接以 100 字內總結解決方案，避免使用「總之」、「綜上所述」等 AI 常用開頭訊息。
@@ -289,7 +289,7 @@ class KalpaService:
         - 嚴禁使用「值得注意的是」、「首先、其次、最後」、「總結來說」等制式過渡詞。
         - **標點符號規範**：禁止使用「——」作為內容連接符號；盡量減少使用「」來重點標示，改用自然的語句強調。
         - 句子要有長短變化，避免平鋪直敘。
-        - 針對 {node.pain_point} 的描述要帶入實際場景，增加代入感。
+        - 針對 {pain_point} 的描述要帶入實際場景，增加代入感。
         
         【核心指令：微上下文植入】
         在結論段落，以專業風險管理的角度，自然引導讀者點擊指定的權威頁面。
@@ -299,26 +299,27 @@ class KalpaService:
         system_prompt = system_template.replace("{persona_role}", persona['role'])\
                                        .replace("{persona_tone}", persona['tone'])\
                                        .replace("{title}", node.target_title)\
+                                       .replace("{pain_point}", node.pain_point)\
                                        .replace("{current_year}", str(datetime.now().year))
 
         # 4. 構建 User Prompt (配合指令倉庫模板)
         default_user = """
-        {{persona_intro}}
+        {persona_intro}
         
         請撰寫專業解決方案指南。
-        【重要】：直接從正文內容開始寫，不要輸出標題『{{title}}』。
+        【重要】：直接從正文內容開始寫，不要輸出標題『{title}』。
         
         核心要素：
-        - 產業背景：{{industry}}
-        - 實體：{{entity}}
-        - 動作：{{action}}
-        - 痛點：{{pain_point}}
+        - 產業背景：{industry}
+        - 實體：{entity}
+        - 動作：{action}
+        - 痛點：{pain_point}
         
         文章必須包含：
-        1. 針對 {{pain_point}} 的深度解析與同理。
-        2. 完全符合 {{persona_role}} 背景的專業建議，嚴禁使用無關產業的術語（除非是類比）。
+        1. 針對 {pain_point} 的深度解析與同理。
+        2. 完全符合 {persona_role} 背景的專業建議，嚴禁使用無關產業的術語（除非是類比）。
         3. HTML 對照表格。
-        4. 結尾自然植入連結：[{{selected_anchor}}]({{money_page_url}})
+        4. 結尾自然植入連結：[{selected_anchor}]({money_page_url})
         
         請注意時效性，背景設定為 {current_year} 年最新趨勢與實踐方案。
         """
@@ -563,15 +564,15 @@ class KalpaService:
         if matched:
             return {
                 "role": f"資深 {ind} {matched['role_suffix']}",
-            "tone": matched["tone"],
-            "intro": matched["intro_template"].format(ind=ind, pp=pain_point, current_year=datetime.now().year)
-        }
+                "tone": matched["tone"],
+                "intro": matched["intro_template"].format(ind=ind, pp=pain_point, current_year=datetime.now().year)
+            }
 
-    # 預設：資深領域策略官
-    return {
-        "role": f"資深 {ind} 策略諮詢顧問",
-        "tone": f"全面、平衡、深入淺出，提供 {datetime.now().year} 年最新趨勢剖析與多元化優化視野。",
-        "intro": f"針對 {ind} 領域中的『{pain_point}』現狀，我們綜合了 {datetime.now().year} 年最新的數據指標，旨在為您提供一個具備未來前瞻性的解決框架。"
-    }
+        # 預設：資深領域策略官
+        return {
+            "role": f"資深 {ind} 策略諮詢顧問",
+            "tone": f"全面、平衡、深入淺出，提供 {datetime.now().year} 年最新趨勢剖析與多元化優化視野。",
+            "intro": f"針對 {ind} 領域中的『{pain_point}』現狀，我們綜合了 {datetime.now().year} 年最新的數據指標，旨在為您提供一個具備未來前瞻性的解決框架。"
+        }
 
 kalpa_service = KalpaService()
