@@ -8,6 +8,7 @@ from fastapi import UploadFile
 from app.core.config import settings
 from app.models.db_models import Settings
 from app.core.database import SessionLocal
+from app.services.ai_service import AIService
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,13 @@ class ImageService:
 
     @classmethod
     async def search_stock_photos(cls, query: str, limit: int = 10) -> List[dict]:
-        """同時從 Pexels 與 Pixabay 搜尋圖片"""
+        """同時從 Pexels 與 Pixabay 搜尋圖片 (自動翻譯中文)"""
+        # 1. 如果包含中文字符，自動翻譯為英文以提升準確度
+        search_query = query
+        if any('\u4e00' <= char <= '\u9fff' for char in query):
+            search_query = await cls._translate_query(query)
+            logger.info(f"Translated query: '{query}' -> '{search_query}'")
+
         db = SessionLocal()
         try:
             # 優先次序：環境變數 > 資料庫
@@ -66,9 +73,9 @@ class ImageService:
 
         tasks = []
         if pexels_key:
-            tasks.append(cls._search_pexels(query, pexels_key, limit))
+            tasks.append(cls._search_pexels(search_query, pexels_key, limit))
         if pixabay_key:
-            tasks.append(cls._search_pixabay(query, pixabay_key, limit))
+            tasks.append(cls._search_pixabay(search_query, pixabay_key, limit))
         
         if not tasks:
             logger.warning("No stock photo API keys found.")
@@ -139,6 +146,20 @@ class ImageService:
             except Exception as e:
                 logger.error(f"Pixabay search failed: {e}")
         return []
+
+    @classmethod
+    async def _translate_query(cls, query: str) -> str:
+        """將搜尋字詞翻譯為精簡的英文關鍵字"""
+        prompt = f"將以下中文搜尋詞翻譯為適合圖片搜尋的 1-3 個英文關鍵字（只需輸出英文單字，不要標點符號）：{query}"
+        try:
+            translated = await AIService.generate_content(prompt, temperature=0.3)
+            # 簡單清理結果，只保留英文、空格和連字號
+            import re
+            clean_val = re.sub(r'[^a-zA-Z0-9\s\-]', '', translated).strip()
+            return clean_val or query
+        except Exception as e:
+            logger.error(f"Failed to translate query: {e}")
+            return query
 
     @classmethod
     async def suggest_metadata(cls, content: str, topic: str = "") -> dict:

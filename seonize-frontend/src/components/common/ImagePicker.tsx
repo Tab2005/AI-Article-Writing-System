@@ -135,6 +135,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
                                 {results.map((img, idx) => (
                                     <div key={idx} className="result-item" onClick={() => selectWithMetadata(img)}>
                                         <img src={img.url} alt={img.alt} loading="lazy" />
+                                        <div className="source-label">{img.source}</div>
                                         <div className="result-overlay">選取圖片</div>
                                     </div>
                                 ))}
