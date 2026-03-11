@@ -475,6 +475,8 @@ export interface SettingsData {
   dataforseo_login: string;
   dataforseo_password: string;
   dataforseo_serp_mode: string;
+  pixabay_api_key?: string;
+  pexels_api_key?: string;
   system_provided?: string[];
 }
 
