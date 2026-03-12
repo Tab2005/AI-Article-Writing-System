@@ -320,6 +320,7 @@ class KalpaService:
         2. 完全符合 {persona_role} 背景的專業建議，嚴禁使用無關產業的術語（除非是類比）。
         3. HTML 對照表格。
         4. 圖片插入（重要）：請在文章中段（例如第一或二個段落後）插入標記 `[IMAGE_PLACEHOLDER_1]`，並在文章後半部（例如解決方案段落）插入標記 `[IMAGE_PLACEHOLDER_2]`。
+           【注意】：插入標記後請直接繼續下一個段落，不要在標記下方重複撰寫圖片說明文字，系統會自動處理。
         5. 結尾自然植入連結：[{selected_anchor}]({money_page_url})
         
         請注意時效性，背景設定為 {current_year} 年最新趨勢與實踐方案。
@@ -330,7 +331,7 @@ class KalpaService:
         # --- 運行時修正：確保資料庫模板也包含多圖標籤指令 (方案 A) ---
         if "[IMAGE_PLACEHOLDER_1]" not in user_template:
             logger.info("Patching user_template at runtime to include multi-image instructions.")
-            instruction = "\n        4. 圖片插入（重要）：請在文章中段插入標記 `[IMAGE_PLACEHOLDER_1]`，並在文章後半部插入標記 `[IMAGE_PLACEHOLDER_2]`。"
+            instruction = "\n        4. 圖片插入（重要）：請在文章中段插入標記 `[IMAGE_PLACEHOLDER_1]`，並在文章後半部插入標記 `[IMAGE_PLACEHOLDER_2]`。\n           【注意】：標記下方請勿撰寫圖片說明文字，避免重複。"
             if "文章必須包含：" in user_template:
                 user_template = user_template.replace("文章必須包含：", f"文章必須包含：{instruction}")
             else:
