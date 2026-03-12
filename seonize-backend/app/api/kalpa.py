@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.services.kalpa_service import kalpa_service
 from app.core.auth import get_current_user
 from app.core.database import get_db
-from app.services.credit_service import CreditService, CREDIT_COSTS
+from app.services.credit_service import CreditService
 
 # 配置路由依賴為全域登入
 router = APIRouter(dependencies=[Depends(get_current_user)])

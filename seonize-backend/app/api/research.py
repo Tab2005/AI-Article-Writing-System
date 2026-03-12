@@ -14,7 +14,7 @@ from app.services.serp_service import SERPService
 from app.services.dataforseo_service import DataForSEOService
 from app.services.ai_service import AIService
 
-from app.services.credit_service import CreditService, CREDIT_COSTS
+from app.services.credit_service import CreditService
 
 logger = logging.getLogger(__name__)
 
@@ -305,7 +305,7 @@ async def analyze_intent(request: Dict[str, str], db: Session = Depends(get_db),
     """
     AI 意圖分析 (消耗 2 點)
     """
-    COST = CREDIT_COSTS["ai_intent_analysis"]
+    COST = CreditService.get_cost(db, "ai_intent_analysis")
     CreditService.deduct(db, current_user, COST, f"AI 意圖分析: {request.get('keyword', '')}")
     
     try:

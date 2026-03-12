@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.core.database import get_db
 import logging
-from app.services.credit_service import CreditService, CREDIT_COSTS
+from app.services.credit_service import CreditService
 import uuid
 from datetime import datetime
 

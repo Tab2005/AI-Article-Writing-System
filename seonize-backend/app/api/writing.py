@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from app.models.project import OptimizationMode
 from app.services.ai_service import AIService
-from app.services.credit_service import CreditService, CREDIT_COSTS
+from app.services.credit_service import CreditService
 from app.core.auth import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -436,7 +436,7 @@ async def analyze_quality(
         raise HTTPException(status_code=403, detail="找不到專案或權限不足")
 
     # 2. 點數扣除
-    COST = CREDIT_COSTS.get("quality_audit", 3)
+    COST = CreditService.get_cost(db, "quality_audit")
     tx = CreditService.deduct(db, current_user, COST, f"品質健檢: {db_project.primary_keyword}")
 
     try:
