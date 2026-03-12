@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.models.db_models import Settings
 from app.services.ai_service import AIService, AIProvider
 from app.core.auth import get_current_admin
+from app.core.config import settings as settings_lib
 
 router = APIRouter(dependencies=[Depends(get_current_admin)])
 
