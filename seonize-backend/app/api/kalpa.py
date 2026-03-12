@@ -167,10 +167,10 @@ async def weave_kalpa_node(
     消耗 8 點，失敗時自動退還
     """
     # 1. 權限檢查：單節點編織需一般會員以上
-    CreditService.check_feature_access(current_user, "kalpa_weave_node")
+    CreditService.check_feature_access(db, current_user, "kalpa_weave_node")
 
     # 2. 扣除點數
-    COST = CREDIT_COSTS["kalpa_weave_node"]
+    COST = CreditService.get_cost(db, "kalpa_weave_node")
     tx = CreditService.deduct(db, current_user, COST, f"Kalpa 節點成稿 [{node_id[:8]}]")
     try:
         node = await kalpa_service.weave_node(db, node_id, current_user.id)
@@ -222,13 +222,13 @@ async def batch_weave_kalpa_nodes(
     批量啟動「神諭編織」(深度會員享有階梯折扣)
     """
     # 1. 權限檢查：批量編織需深度會員
-    CreditService.check_feature_access(current_user, "kalpa_batch_weave")
+    CreditService.check_feature_access(db, current_user, "kalpa_batch_weave")
     
     if not request.node_ids:
         raise HTTPException(status_code=400, detail="未提供要編織的節點 ID")
 
     node_count = len(request.node_ids)
-    COST = CreditService.calculate_batch_kalpa_cost(current_user, node_count)
+    COST = CreditService.calculate_batch_kalpa_cost(db, current_user, node_count)
     user_id = current_user.id
 
     tx = CreditService.deduct(db, current_user, COST, f"Kalpa 批量成稿 {node_count} 節點")

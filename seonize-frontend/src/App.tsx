@@ -25,6 +25,7 @@ import {
   ProfilePage,
   UserManagementPage,
   SystemGuidePage,
+  CreditManagementPage,
 } from './pages';
 import './index.css';
 
@@ -85,6 +86,7 @@ function App() {
                 <Route element={<ProtectedRoute requireAdmin />}>
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/admin/users" element={<UserManagementPage />} />
+                  <Route path="/admin/credits" element={<CreditManagementPage />} />
                 </Route>
               </Route>
             </Route>

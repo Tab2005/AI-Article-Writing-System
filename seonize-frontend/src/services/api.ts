@@ -527,6 +527,10 @@ export const adminApi = {
 
   deleteUser: (userId: string) =>
     request<any>(`/api/admin/users/${userId}`, { method: 'DELETE' }),
+
+  getCreditConfig: () => request<any>('/api/admin/credits/config'),
+  updateCreditConfig: (data: any) =>
+    request<any>('/api/admin/credits/config', { method: 'PUT', body: data }),
 };
 
 // CMS API

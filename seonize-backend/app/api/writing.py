@@ -135,7 +135,7 @@ async def generate_section(
         prompt_content = template.content
         
     # ── 點數檢查與扣減 ──────────────────────────
-    COST = CREDIT_COSTS["writing_section"]
+    COST = CreditService.get_cost(db, "writing_section")
     tx = CreditService.deduct(db, current_user, COST, "生成段落")
     # ────────────────────────────────────────────
 
@@ -219,10 +219,10 @@ async def generate_full_article(
 
     # ── 點數檢查與扣減 ──────────────────────────
     # 1. 權限檢查：全篇生成需一般會員以上
-    CreditService.check_feature_access(current_user, "writing_full")
+    CreditService.check_feature_access(db, current_user, "writing_full")
     
     # 2. 扣減點數
-    COST = CREDIT_COSTS["writing_full"]
+    COST = CreditService.get_cost(db, "writing_full")
     tx = CreditService.deduct(db, current_user, COST, "生成完整文章")
     # ────────────────────────────────────────────
 

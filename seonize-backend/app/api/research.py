@@ -91,9 +91,9 @@ async def research_serp(
     if not search_data:
         search_data = {"results": [], "error": "未能取得搜尋數據，請重試。"}
 
-    # 點數處理：僅在非快取命中 (cache_hit=False) 時扣除 2 點
+    # 點數處理：僅在非快取命中 (cache_hit=False) 時扣除點數
     if not search_data.get("cache_hit"):
-        COST = CREDIT_COSTS["serp_query"]
+        COST = CreditService.get_cost(db, "serp_query")
         CreditService.deduct(db, current_user, COST, f"SERP 查詢: {request.keyword}")
     
     
@@ -183,10 +183,10 @@ async def get_keyword_data(
     獲取關鍵字詳細成交數據 (需 Lv.2 一般會員 + 消耗 3 點)
     """
     # 1. 等級檢查
-    CreditService.check_feature_access(current_user, "dataforseo_keywords")
+    CreditService.check_feature_access(db, current_user, "dataforseo_keywords")
     
     # 2. 扣除點數
-    COST = CREDIT_COSTS["dataforseo_keywords"]
+    COST = CreditService.get_cost(db, "dataforseo_keywords")
     CreditService.deduct(db, current_user, COST, f"關鍵字數據查詢: {keyword}")
 
     try:

@@ -32,7 +32,8 @@ async def search_images(
     
     try:
         # 扣除點數
-        CreditService.deduct(db, current_user, 1, f"圖庫搜尋: {q}")
+        COST = CreditService.get_cost(db, "image_stock_search")
+        CreditService.deduct(db, current_user, COST, f"圖庫搜尋: {q}")
         
         results = await ImageService.search_stock_photos(q, limit)
         return {"success": True, "data": results}

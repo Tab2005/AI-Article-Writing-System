@@ -20,3 +20,4 @@ export { default as UserManagementPage } from './UserManagementPage';
 export { NotFoundPage } from './NotFoundPage';
 export { default as CMSPage } from './CMSPage';
 export { SystemGuidePage } from './SystemGuidePage';
+export { default as CreditManagementPage } from './CreditManagementPage';
