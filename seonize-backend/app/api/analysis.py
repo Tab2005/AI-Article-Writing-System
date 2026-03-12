@@ -195,7 +195,7 @@ async def generate_outline(
     from app.models.db_models import Project, PromptTemplate
     
     # 點數扣除
-    COST = CREDIT_COSTS["create_outline"]
+    COST = CreditService.get_cost(db, "create_outline")
     tx = CreditService.deduct(db, current_user, COST, f"AI 大綱生成: {request.keyword}")
 
     research_data = {}
@@ -355,8 +355,7 @@ async def get_content_gap(
         )
 
     # 3. 點數扣除邏輯 (前置檢查)
-    from app.services.credit_service import CreditService, CREDIT_COSTS
-    COST = CREDIT_COSTS.get("content_gap_analysis", 3)
+    COST = CreditService.get_cost(db, "content_gap_analysis")
     
     # 確保點數充足再執行
     CreditService.check_balance(current_user, COST)

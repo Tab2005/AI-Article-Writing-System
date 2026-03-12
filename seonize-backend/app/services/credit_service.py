@@ -47,7 +47,12 @@ DEFAULT_CREDIT_CONFIG = {
         {"threshold": 20, "rate": 0.70},
         {"threshold": 6, "rate": 0.80},
         {"threshold": 2, "rate": 0.85}
-    ]
+    ],
+    "level_names": {
+        "1": "暫時試用",
+        "2": "一般會員",
+        "3": "深度會員"
+    }
 }
 
 class CreditService:

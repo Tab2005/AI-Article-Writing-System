@@ -133,9 +133,9 @@ const CreditManagementPage: React.FC = () => {
                                         value={featureAccess[feature] || 1}
                                         onChange={(e) => handleAccessChange(feature, parseInt(e.target.value))}
                                     >
-                                        <option value={1}>Lv.1 Basic (暫時試用)</option>
-                                        <option value={2}>Lv.2 Pro (一般會員)</option>
-                                        <option value={3}>Lv.3 Business (深度會員)</option>
+                                        <option value={1}>Lv.1 {config.level_names?.["1"] || "Basic"}</option>
+                                        <option value={2}>Lv.2 {config.level_names?.["2"] || "Pro"}</option>
+                                        <option value={3}>Lv.3 {config.level_names?.["3"] || "Business"}</option>
                                     </select>
                                 </div>
                             ))}
