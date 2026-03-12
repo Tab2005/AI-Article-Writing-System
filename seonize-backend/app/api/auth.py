@@ -13,6 +13,7 @@ from typing import Optional
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.db_models import User
+from app.services.credit_service import CreditService
 from app.core.auth import create_access_token, get_password_hash, verify_password, get_current_user
 
 logger = logging.getLogger(__name__)
@@ -193,8 +194,11 @@ async def mock_upgrade(
     """
     模擬升級會員等級 (僅供測試階段使用)
     """
-    if level not in [1, 2, 3]:
-        raise HTTPException(status_code=400, detail="無效的會員等級（1-3）。")
+    config = CreditService.get_config(db)
+    level_names = config.get("level_names", {})
+    
+    if str(level) not in level_names:
+        raise HTTPException(status_code=400, detail=f"無效的會員等級（目前可用：{', '.join(level_names.keys())}）。")
     
     current_user.membership_level = level
     # 順便給點補點以便測試
@@ -202,7 +206,15 @@ async def mock_upgrade(
         current_user.credits = max(current_user.credits, 500)
     elif level == 3:
         current_user.credits = max(current_user.credits, 2000)
+    elif level >= 4:
+        current_user.credits = max(current_user.credits, 5000)
         
     db.commit()
     db.refresh(current_user)
-    return {"message": f"已成功模擬升級至 Lv.{level}", "user": current_user.to_dict()}
+    return {"message": f"已成功模擬升級至 {level_names.get(str(level), f'Lv.{level}')}", "user": current_user.to_dict()}
+
+@router.get("/membership/levels")
+async def get_membership_levels(db: Session = Depends(get_db)):
+    """獲取目前配置的會員等級清單"""
+    config = CreditService.get_config(db)
+    return config.get("level_names", {})

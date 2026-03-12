@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { adminApi } from '../services/api';
+import { adminApi, authApi } from '../services/api';
 import { Button, Input, Select } from '../components/ui';
 import './UserManagementPage.css';
 
@@ -28,7 +28,8 @@ const ROLE_LABELS: Record<string, { label: string; className: string }> = {
     user: { label: 'User', className: 'badge--user' },
 };
 
-const LEVEL_LABELS: Record<number, string> = { 1: 'Basic', 2: 'Pro', 3: 'Business' };
+// 這裡是舊的的標籤預設值，將被組件內的狀態取代
+const LEVEL_LABELS_DEFAULT: Record<number, string> = { 1: 'Basic', 2: 'Pro', 3: 'Business' };
 
 const UserManagementPage: React.FC = () => {
     const { user: currentUser } = useAuth();
@@ -45,6 +46,16 @@ const UserManagementPage: React.FC = () => {
     const [editForm, setEditForm] = useState({ role: '', credits: 0, membership_level: 1, username: '', new_password: '' });
     const [creditsDelta, setCreditsDelta] = useState(0);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+    const [membershipLevels, setMembershipLevels] = useState<Record<string, string>>(LEVEL_LABELS_DEFAULT as any);
+
+    const fetchLevels = async () => {
+        try {
+            const data = await authApi.getMembershipLevels();
+            setMembershipLevels(data);
+        } catch (e) {
+            console.error('Failed to fetch membership levels:', e);
+        }
+    };
 
     const showMessage = (type: string, text: string) => {
         setMessage({ type, text });
@@ -75,7 +86,7 @@ const UserManagementPage: React.FC = () => {
         }
     }, [page, search, roleFilter]);
 
-    useEffect(() => { fetchUsers(); fetchStats(); }, [fetchUsers]);
+    useEffect(() => { fetchUsers(); fetchStats(); fetchLevels(); }, [fetchUsers]);
 
     const openEdit = (u: UserRecord) => {
         setEditingUser(u);
@@ -236,7 +247,7 @@ const UserManagementPage: React.FC = () => {
                                         </span>
                                         {u.id === currentUser?.id && <span className="um-badge badge--self">（我）</span>}
                                     </td>
-                                    <td><span className="um-level">Lv.{u.membership_level} {LEVEL_LABELS[u.membership_level]}</span></td>
+                                    <td><span className="um-level">Lv.{u.membership_level} {membershipLevels[u.membership_level] || `Level ${u.membership_level}`}</span></td>
                                     <td><span className="um-credits">💎 {u.credits}</span></td>
                                     <td>{u.project_count}</td>
                                     <td className="um-date">{new Date(u.created_at).toLocaleDateString('zh-TW')}</td>
@@ -302,11 +313,10 @@ const UserManagementPage: React.FC = () => {
                             <Select
                                 label="會員等級"
                                 value={String(editForm.membership_level)}
-                                options={[
-                                    { value: '1', label: 'Lv.1 Basic' },
-                                    { value: '2', label: 'Lv.2 Pro' },
-                                    { value: '3', label: 'Lv.3 Business' },
-                                ]}
+                                options={Object.entries(membershipLevels).map(([val, label]) => ({
+                                    value: val,
+                                    label: `Lv.${val} ${label}`
+                                }))}
                                 onChange={e => setEditForm(f => ({ ...f, membership_level: Number(e.target.value) }))}
                                 fullWidth
                             />

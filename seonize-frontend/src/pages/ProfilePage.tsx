@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { authApi } from '../services/api';
 import './ProfilePage.css';
 
 const ProfilePage: React.FC = () => {
@@ -14,6 +15,14 @@ const ProfilePage: React.FC = () => {
     // Credit History State
     const [creditLogs, setCreditLogs] = useState<any[]>([]);
     const [logsLoading, setLogsLoading] = useState(false);
+    const [membershipLevels, setMembershipLevels] = useState<Record<string, string>>({});
+
+    const fetchLevels = async () => {
+        try {
+            const data = await authApi.getMembershipLevels();
+            setMembershipLevels(data);
+        } catch (e) { /* ignore */ }
+    };
 
     const fetchCreditHistory = async () => {
         setLogsLoading(true);
@@ -127,8 +136,9 @@ const ProfilePage: React.FC = () => {
     useEffect(() => {
         if (user) {
             fetchCreditHistory();
+            fetchLevels();
         }
-    }, []);
+    }, [user]);
 
     if (!user) return null;
 
@@ -223,10 +233,7 @@ const ProfilePage: React.FC = () => {
                         <div className="stat-item">
                             <span className="stat-label">會員等級</span>
                             <span className={`stat-value badge-level-${currentLevel}`}>
-                                Lv.{currentLevel} {
-                                    currentLevel === 3 ? '深度會員' :
-                                        currentLevel === 2 ? '一般會員' : '暫時試用'
-                                }
+                                Lv.{currentLevel} {membershipLevels[currentLevel] || (currentLevel === 3 ? '深度會員' : currentLevel === 2 ? '一般會員' : '暫時試用')}
                             </span>
                         </div>
                         <div className="stat-item">

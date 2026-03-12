@@ -202,6 +202,7 @@ export const authApi = {
       body: data,
     }),
   validate: () => request<{ status: string; user: any }>('/api/auth/validate'),
+  getMembershipLevels: () => request<Record<string, string>>('/api/auth/membership/levels'),
 };
 
 // Projects API
