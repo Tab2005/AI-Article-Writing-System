@@ -85,6 +85,29 @@ const CreditManagementPage: React.FC = () => {
         });
     };
 
+    const handleLevelNameChange = (level: string, name: string) => {
+        setConfig({
+            ...config,
+            level_names: { ...config.level_names, [level]: name }
+        });
+    };
+
+    const addLevel = () => {
+        const nextLevel = (Object.keys(config.level_names || {}).length + 1).toString();
+        setConfig({
+            ...config,
+            level_names: { ...config.level_names, [nextLevel]: `新等級 ${nextLevel}` }
+        });
+    };
+
+    const removeLevel = (level: string) => {
+        const newLevelNames = { ...config.level_names };
+        delete newLevelNames[level];
+        setConfig({ ...config, level_names: newLevelNames });
+    };
+
+    const levelOptions = Object.entries(config.level_names || {}).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+
     return (
         <div className="cm-page">
             <header className="cm-header">
@@ -102,28 +125,32 @@ const CreditManagementPage: React.FC = () => {
             )}
 
             <div className="cm-grid">
-                {/* 1. 功能點數消耗 */}
                 <section className="cm-section glass-card">
-                    <h2 className="cm-section-title">✨ 功能點數消耗 (Costs)</h2>
+                    <h2 className="cm-section-title">✨ 功能點數消耗配置</h2>
                     <div className="cm-costs-list">
                         {Object.entries(costs).map(([key, value]: [string, any]) => (
                             <div className="cm-cost-item" key={key}>
-                                <label className="cm-cost-label">{key}</label>
-                                <Input
-                                    type="number"
-                                    value={value}
-                                    onChange={(e) => handleCostChange(key, e.target.value)}
-                                    className="cm-cost-input"
-                                />
+                                <div className="cm-cost-info">
+                                    <span className="cm-cost-name">{COST_NAME_MAPPING[key] || key}</span>
+                                    <span className="cm-cost-key">{key}</span>
+                                </div>
+                                <div className="cm-cost-action">
+                                    <Input
+                                        type="number"
+                                        value={value}
+                                        onChange={(e) => handleCostChange(key, e.target.value)}
+                                        className="cm-cost-input"
+                                    />
+                                    <span className="cm-cost-unit">點</span>
+                                </div>
                             </div>
                         ))}
                     </div>
                 </section>
 
                 <div className="cm-column">
-                    {/* 2. 等級權限設定 */}
                     <section className="cm-section glass-card">
-                        <h2 className="cm-section-title">🛡️ 等級權限設定 (Feature Access)</h2>
+                        <h2 className="cm-section-title">🛡️ 等級與權限分配</h2>
                         <div className="cm-access-list">
                             {Object.entries(feature_access_levels_mapping).map(([feature, label]) => (
                                 <div className="cm-access-item" key={feature}>
@@ -133,12 +160,36 @@ const CreditManagementPage: React.FC = () => {
                                         value={featureAccess[feature] || 1}
                                         onChange={(e) => handleAccessChange(feature, parseInt(e.target.value))}
                                     >
-                                        <option value={1}>Lv.1 {config.level_names?.["1"] || "Basic"}</option>
-                                        <option value={2}>Lv.2 {config.level_names?.["2"] || "Pro"}</option>
-                                        <option value={3}>Lv.3 {config.level_names?.["3"] || "Business"}</option>
+                                        {levelOptions.map(([lvl, name]) => (
+                                            <option key={lvl} value={lvl}>Lv.{lvl} {name as string}</option>
+                                        ))}
                                     </select>
                                 </div>
                             ))}
+                        </div>
+                        <p className="cm-hint">※ 功能僅限高於或等於設定等級之會員使用。</p>
+                    </section>
+
+                    {/* 2.5 會員等級管理 */}
+                    <section className="cm-section glass-card">
+                        <h2 className="cm-section-title">💎 會員等級名稱定義</h2>
+                        <div className="cm-levels-list">
+                            {levelOptions.map(([lvl, name]) => (
+                                <div className="cm-level-row" key={lvl}>
+                                    <div className="cm-level-badge">Lv.{lvl}</div>
+                                    <Input
+                                        value={name as string}
+                                        onChange={(e) => handleLevelNameChange(lvl, e.target.value)}
+                                        className="cm-level-input"
+                                    />
+                                    {parseInt(lvl) > 3 && (
+                                        <button className="cm-btn-remove" onClick={() => removeLevel(lvl)}>×</button>
+                                    )}
+                                </div>
+                            ))}
+                            <Button variant="secondary" onClick={addLevel} className="cm-add-btn">
+                                + 新增會員等級
+                            </Button>
                         </div>
                     </section>
 
@@ -179,12 +230,31 @@ const CreditManagementPage: React.FC = () => {
     );
 };
 
-// 內部對應表，用於更友善地顯示功能名稱
+// 功能點數中文對應表
+const COST_NAME_MAPPING: Record<string, string> = {
+    "writing_section": "生成章節內容 (Section)",
+    "writing_full": "生成完整文章 (Full Article)",
+    "writing_optimize": "文章優化 (Optimize)",
+    "kalpa_brainstorm": "因果靈感發想 (Brainstorm)",
+    "kalpa_weave_node": "神諭編織 (Weave Node)",
+    "kalpa_batch_weave": "批量編織 (Batch Weave)",
+    "cms_ai_schedule": "AI 自動排程發布",
+    "quality_audit": "品質健檢 (Audit)",
+    "image_stock_search": "圖庫搜尋 (Stock Search)",
+    "serp_query": "SERP 搜尋查詢",
+    "dataforseo_keywords": "關鍵字流量數據",
+    "ai_intent_analysis": "AI 意圖分析",
+    "create_outline": "AI 大綱生成",
+    "competitor_analysis": "競爭者分析 (Competitor)",
+    "content_gap_analysis": "內容缺口分析 (Gap Analysis)"
+};
+
+// 權限功能中文對應表
 const feature_access_levels_mapping = {
-    "writing_full": "生成完整文章 (Generate Full)",
-    "kalpa_batch_weave": "批量編製 (Batch Weave)",
-    "cms_access": "站點管理入口 (CMS Access)",
-    "dataforseo_keywords": "關鍵字流量數據 (SEO Data)",
+    "writing_full": "生成完整文章權限",
+    "kalpa_batch_weave": "批量編製權限",
+    "cms_access": "站點管理入口權限",
+    "dataforseo_keywords": "關鍵字流量數據權限",
 };
 
 export default CreditManagementPage;
