@@ -108,9 +108,8 @@ async def get_settings(db: Session = Depends(get_db)):
             else:
                 settings[key] = value
 
-        # 檢查是否由環境變數提供
-        env_val = getattr(settings_lib, key.upper(), None)
-        if env_val:
+        # 檢查是否真理由環境變數提供（而非僅是程式碼中的預設值）
+        if key.upper() in os.environ:
             system_provided.append(key)
     
     return SettingsResponse(
