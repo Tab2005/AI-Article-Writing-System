@@ -187,12 +187,75 @@ class WordPressService(CMSBase):
             logger.error(f"WP Create Category failed: {e}")
             return None
 
+    def _convert_to_blocks(self, content: str) -> str:
+        """將 Markdown/HTML 混合內容轉換為 WordPress Gutenberg 區塊標記"""
+        import re
+        import markdown2
+
+        blocks = []
+        lines = content.split('\n')
+        current_paragraph = []
+        
+        def flush_paragraph():
+            if current_paragraph:
+                p_text = '\n'.join(current_paragraph).strip()
+                if p_text:
+                    html = markdown2.markdown(p_text).strip()
+                    # 確保段落被 wp:paragraph 封裝
+                    blocks.append(f'<!-- wp:paragraph -->\n{html}\n<!-- /wp:paragraph -->')
+                current_paragraph.clear()
+
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            # A. 標題
+            if line.startswith('#'):
+                flush_paragraph()
+                level = len(line.split(' ')[0])
+                if level > 6: level = 6 # WP 只支援到 h6
+                title_text = line.lstrip('#').strip()
+                blocks.append(f'<!-- wp:heading {{"level":{level}}} -->\n<h{level}>{title_text}</h{level}>\n<!-- /wp:heading -->')
+            
+            # B. 圖片
+            elif line.startswith('![') and '](' in line:
+                flush_paragraph()
+                img_match = re.match(r'!\[(.*?)\]\((.*?)\)', line)
+                if img_match:
+                    alt, url = img_match.groups()
+                    blocks.append(f'<!-- wp:image {{"align":"center","sizeSlug":"large","linkDestination":"none"}} -->\n<figure class="wp-block-image aligncenter size-large"><img src="{url}" alt="{alt}"/><figcaption class="wp-element-caption">{alt}</figcaption></figure>\n<!-- /wp:image -->')
+            
+            # C. 表格 (HTML 格式)
+            elif line.startswith('<table'):
+                flush_paragraph()
+                table_lines = []
+                while i < len(lines):
+                    table_lines.append(lines[i])
+                    if '</table>' in lines[i]:
+                        break
+                    i += 1
+                table_html = '\n'.join(table_lines)
+                blocks.append(f'<!-- wp:table -->\n<figure class="wp-block-table">{table_html}</figure>\n<!-- /wp:table -->')
+            
+            # D. 空行
+            elif not line:
+                flush_paragraph()
+            
+            # E. 一般文字段落
+            else:
+                current_paragraph.append(lines[i])
+            
+            i += 1
+        
+        flush_paragraph()
+        return '\n\n'.join(blocks)
+
     async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None, featured_media: Optional[int] = None) -> Dict[str, Any]:
         auth = self._get_auth()
         headers = {'Authorization': f'Basic {auth}'}
         
-        import markdown2
-        html_content = markdown2.markdown(content)
+        # 使用區塊化轉換 (Gutenberg Blocks)
+        html_content = self._convert_to_blocks(content)
 
         # 狀態映射修正：WordPress 使用 publish, Ghost 使用 published
         wp_status = "draft"
