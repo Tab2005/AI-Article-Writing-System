@@ -24,6 +24,7 @@ import {
   CMSPage,
   ProfilePage,
   UserManagementPage,
+  SystemGuidePage,
 } from './pages';
 import './index.css';
 
@@ -78,6 +79,7 @@ function App() {
                   <Route path="articles" element={<KalpaArticlesPage />} />
                 </Route>
                 <Route path="/cms" element={<CMSPage />} />
+                <Route path="/cms/guide" element={<SystemGuidePage />} />
 
                 {/* 僅限超管訪問的設定頁面 */}
                 <Route element={<ProtectedRoute requireAdmin />}>

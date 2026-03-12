@@ -216,6 +216,10 @@ const navItems: NavItem[] = [
         <line x1="12" x2="12" y1="3" y2="15" />
       </svg>
     ),
+    children: [
+      { path: '/cms', label: '站點設定' },
+      { path: '/cms/guide', label: '操作指南' },
+    ]
   },
   {
     path: '/admin/users',

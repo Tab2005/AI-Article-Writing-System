@@ -19,3 +19,4 @@ export { default as ProfilePage } from './ProfilePage';
 export { default as UserManagementPage } from './UserManagementPage';
 export { NotFoundPage } from './NotFoundPage';
 export { default as CMSPage } from './CMSPage';
+export { default as SystemGuidePage } from './SystemGuidePage';
