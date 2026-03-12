@@ -1,22 +1,77 @@
 import React from 'react';
-import { 
-  BookOpen, 
-  Layout, 
-  Eye, 
-  Share2, 
-  Shield, 
-  Zap, 
-  Image as ImageIcon,
-  ArrowRight
-} from 'lucide-react';
 import './SystemGuidePage.css';
+
+const IconWrapper: React.FC<{ children: React.ReactNode; size?: number; color?: string }> = ({ children, size = 24, color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {children}
+  </svg>
+);
+
+const BookOpenIcon = () => (
+  <IconWrapper size={48}>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </IconWrapper>
+);
+
+const LayoutIcon = ({ size = 28 }: { size?: number }) => (
+  <IconWrapper size={size}>
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M3 9h18" />
+    <path d="M9 21V9" />
+  </IconWrapper>
+);
+
+const EyeIcon = ({ size = 28 }: { size?: number }) => (
+  <IconWrapper size={size}>
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </IconWrapper>
+);
+
+const ShareIcon = ({ size = 28 }: { size?: number }) => (
+  <IconWrapper size={size}>
+    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+    <polyline points="16 6 12 2 8 6" />
+    <line x1="12" x2="12" y1="2" y2="15" />
+  </IconWrapper>
+);
+
+const ShieldIcon = ({ size = 28 }: { size?: number }) => (
+  <IconWrapper size={size}>
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z" />
+  </IconWrapper>
+);
+
+const ZapIcon = ({ size = 24, color }: { size?: number; color?: string }) => (
+  <IconWrapper size={size} color={color}>
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </IconWrapper>
+);
+
+const ImageIcon = ({ size = 24, color }: { size?: number; color?: string }) => (
+  <IconWrapper size={size} color={color}>
+    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+    <circle cx="9" cy="9" r="2" />
+    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+  </IconWrapper>
+);
 
 const SystemGuidePage: React.FC = () => {
   return (
     <div className="guide-container">
       <header className="guide-header">
         <div className="guide-icon-wrapper">
-          <BookOpen size={48} />
+          <BookOpenIcon />
         </div>
         <h1 className="guide-title">Seonize 系統操作指南</h1>
         <p className="guide-subtitle">掌握全方位的 AI SEO 內容創作與發布流程</p>
@@ -27,7 +82,7 @@ const SystemGuidePage: React.FC = () => {
         <section className="guide-section">
           <div className="guide-section-header">
             <div className="guide-section-icon" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
-              <Layout size={28} />
+              <LayoutIcon size={28} />
             </div>
             <h2 className="guide-section-label">1. 專案管理與基礎流程</h2>
           </div>
@@ -51,7 +106,7 @@ const SystemGuidePage: React.FC = () => {
         <section className="guide-section">
           <div className="guide-section-header">
             <div className="guide-section-icon" style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24' }}>
-              <Eye size={28} />
+              <EyeIcon size={28} />
             </div>
             <h2 className="guide-section-label">2. 劫之眼術 (Kalpa Eye)</h2>
           </div>
@@ -77,7 +132,7 @@ const SystemGuidePage: React.FC = () => {
             </div>
             <div className="guide-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <Zap size={24} color="#fbbf24" />
+                <ZapIcon size={24} color="#fbbf24" />
                 <h3 className="guide-card-title" style={{ marginBottom: 0 }}>圖片持久化管理器</h3>
               </div>
               <p className="guide-card-text">
@@ -91,7 +146,7 @@ const SystemGuidePage: React.FC = () => {
         <section className="guide-section">
           <div className="guide-section-header">
             <div className="guide-section-icon" style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}>
-              <Share2 size={28} />
+              <ShareIcon size={28} />
             </div>
             <h2 className="guide-section-label">3. 多平台發布與優化</h2>
           </div>
@@ -118,7 +173,7 @@ const SystemGuidePage: React.FC = () => {
         <section className="guide-section">
           <div className="guide-section-header">
             <div className="guide-section-icon" style={{ backgroundColor: 'rgba(168, 85, 247, 0.2)', color: '#c084fc' }}>
-              <Shield size={28} />
+              <ShieldIcon size={28} />
             </div>
             <h2 className="guide-section-label">4. 指令倉庫與核心機制</h2>
           </div>
