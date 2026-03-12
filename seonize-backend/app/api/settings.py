@@ -5,6 +5,7 @@ Seonize Backend - Settings API Router
 
 from fastapi import APIRouter, Depends, HTTPException, status
 import logging
+import os
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.orm import Session
