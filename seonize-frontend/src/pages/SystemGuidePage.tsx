@@ -66,7 +66,7 @@ const ImageIcon = ({ size = 24, color }: { size?: number; color?: string }) => (
   </IconWrapper>
 );
 
-const SystemGuidePage: React.FC = () => {
+export const SystemGuidePage: React.FC = () => {
   return (
     <div className="guide-container">
       <header className="guide-header">
@@ -198,4 +198,5 @@ const SystemGuidePage: React.FC = () => {
   );
 };
 
-export default SystemGuidePage;
+// End of SystemGuidePage
+
