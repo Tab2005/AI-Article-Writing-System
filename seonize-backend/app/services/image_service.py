@@ -94,8 +94,9 @@ class ImageService:
         return {"url": url, "local_path": ""}
 
     @classmethod
-    async def search_stock_photos(cls, query: str, limit: int = 10) -> List[dict]:
+    async def search_stock_photos(cls, query: str, limit: int = 10, orientation: Optional[str] = None) -> List[dict]:
         """同時從 Pexels 與 Pixabay 搜尋圖片 (自動翻譯中文)"""
+        # orientation: None, 'landscape', 'portrait', 'square'
         # 1. 如果包含中文字符，自動翻譯為英文以提升準確度
         search_query = query
         if any('\u4e00' <= char <= '\u9fff' for char in query):
@@ -112,9 +113,9 @@ class ImageService:
 
         tasks = []
         if pexels_key:
-            tasks.append(cls._search_pexels(search_query, pexels_key, limit))
+            tasks.append(cls._search_pexels(search_query, pexels_key, limit, orientation))
         if pixabay_key:
-            tasks.append(cls._search_pixabay(search_query, pixabay_key, limit))
+            tasks.append(cls._search_pixabay(search_query, pixabay_key, limit, orientation))
         
         if not tasks:
             logger.warning("No stock photo API keys found.")
@@ -133,8 +134,12 @@ class ImageService:
         return combined_results
 
     @classmethod
-    async def _search_pexels(cls, query: str, api_key: str, limit: int) -> List[dict]:
+    async def _search_pexels(cls, query: str, api_key: str, limit: int, orientation: Optional[str] = None) -> List[dict]:
         url = f"https://api.pexels.com/v1/search?query={query}&per_page={limit}"
+        if orientation:
+            # Pexels supports: landscape, portrait, square
+            url += f"&orientation={orientation}"
+        
         headers = {"Authorization": api_key}
         
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -157,7 +162,7 @@ class ImageService:
         return []
 
     @classmethod
-    async def _search_pixabay(cls, query: str, api_key: str, limit: int) -> List[dict]:
+    async def _search_pixabay(cls, query: str, api_key: str, limit: int, orientation: Optional[str] = None) -> List[dict]:
         url = "https://pixabay.com/api/"
         params = {
             "key": api_key,
@@ -166,6 +171,10 @@ class ImageService:
             "image_type": "photo",
             "safesearch": "true"
         }
+        if orientation:
+            # Pixabay supports: all, horizontal, vertical
+            pb_orient = "horizontal" if orientation == "landscape" else "vertical" if orientation == "portrait" else "all"
+            params["orientation"] = pb_orient
         
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:

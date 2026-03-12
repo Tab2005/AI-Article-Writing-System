@@ -383,8 +383,8 @@ class KalpaService:
                 from app.services.image_service import ImageService
                 # 使用標題作為搜尋核心，提升相關度
                 search_query = node.target_title
-                # 取得至少 3 張照片 (1 張特色圖, 2 張內文圖)
-                images = await ImageService.search_stock_photos(search_query, limit=10)
+                # 取得至少 3 張照片 (1 張特色圖, 2 張內文圖)，限橫式 (landscape)
+                images = await ImageService.search_stock_photos(search_query, limit=10, orientation="landscape")
                 
                 if images:
                     node.images = images[:3] # 儲存前三張作為主要備選
