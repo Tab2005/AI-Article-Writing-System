@@ -319,7 +319,8 @@ class KalpaService:
         1. 針對 {pain_point} 的深度解析與同理。
         2. 完全符合 {persona_role} 背景的專業建議，嚴禁使用無關產業的術語（除非是類比）。
         3. HTML 對照表格。
-        4. 結尾自然植入連結：[{selected_anchor}]({money_page_url})
+        4. 圖片插入（重要）：請在文章中段（例如第一或二個段落後）插入標記 `[IMAGE_PLACEHOLDER_1]`，並在文章後半部（例如解決方案段落）插入標記 `[IMAGE_PLACEHOLDER_2]`。
+        5. 結尾自然植入連結：[{selected_anchor}]({money_page_url})
         
         請注意時效性，背景設定為 {current_year} 年最新趨勢與實踐方案。
         """
@@ -360,18 +361,37 @@ class KalpaService:
             node.woven_at = datetime.now(timezone.utc)
             node.status = "completed"
             
-            # --- Kalpa 圖片整合：自動配圖 ---
+            # --- Kalpa 圖片整合：自動配圖與內文插圖 ---
             try:
                 from app.services.image_service import ImageService
                 # 使用標題作為搜尋核心，提升相關度
                 search_query = node.target_title
-                # 取得 1 張最相關照片
-                images = await ImageService.search_stock_photos(search_query, limit=1)
+                # 取得至少 3 張照片 (1 張特色圖, 2 張內文圖)
+                images = await ImageService.search_stock_photos(search_query, limit=5)
+                
                 if images:
-                    node.images = images
-                    logger.info(f"Auto-paired image for node {node_id}: {images[0]['url']}")
+                    node.images = images[:3] # 儲存前三張作為主要備選
+                    logger.info(f"Auto-paired {len(node.images)} images for node {node_id}")
+                    
+                    # 替換內文預留位置
+                    # 第一張保留給封面圖 (特色圖片)，內文從第二張開始放
+                    if len(images) > 1:
+                        img2 = images[1]
+                        alt2 = await ImageService.generate_alt_text(content, node.target_title)
+                        content = content.replace("[IMAGE_PLACEHOLDER_1]", f"![{alt2}]({img2['url']})\n*{alt2}*")
+                    
+                    if len(images) > 2:
+                        img3 = images[2]
+                        # 為第二張插圖產生略有不同的 alt (可選)
+                        alt3 = f"{node.target_title} 參考案例"
+                        content = content.replace("[IMAGE_PLACEHOLDER_2]", f"![{alt3}]({img3['url']})\n*{alt3}*")
+                    
+                    # 清理可能沒被替換到的標籤 (避免留在畫面上)
+                    content = content.replace("[IMAGE_PLACEHOLDER_1]", "").replace("[IMAGE_PLACEHOLDER_2]", "")
+                    node.woven_content = content # 更新最終內容
+
             except Exception as img_e:
-                logger.error(f"Auto image pairing failed for node {node_id}: {img_e}")
+                logger.error(f"Auto image pairing or placeholder replacement failed for node {node_id}: {img_e}")
             # ---------------------------
         except Exception as e:
             logger.error(f"Weaving failed for node {node_id}: {str(e)}")
