@@ -111,7 +111,7 @@ const CreditManagementPage: React.FC = () => {
     return (
         <div className="cm-page">
             <header className="cm-header">
-                <h1 className="cm-title">會員與點數管理</h1>
+                <h1 className="cm-title">等級配置</h1>
                 <p className="cm-subtitle">自由定義各功能的點數消耗、等級權限與批量折扣規則</p>
                 <Button variant="cta" onClick={handleSave} loading={isSaving} className="cm-save-btn">
                     儲存所有變更

@@ -260,7 +260,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/admin/credits',
-    label: '點數權限配置',
+    label: '等級配置',
     adminOnly: true,
     icon: (
       <svg
