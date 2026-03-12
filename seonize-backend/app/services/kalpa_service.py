@@ -356,6 +356,12 @@ class KalpaService:
                 content = content.strip().rstrip("-[") + "\n- [ ] (後續步驟請參考官方指南)"
 
             logger.info(f"Successfully generated content for node {node_id}")
+            # Debug: Log content snippet to check for placeholders
+            logger.info(f"AI Content Preview: {content[:500]}...")
+            if "[IMAGE_PLACEHOLDER" in content.upper():
+                logger.info(f"Found placeholders in node {node_id} content!")
+            else:
+                logger.warning(f"NO placeholders found in node {node_id} content. Raw fragment: {content[-500:]}")
             node.woven_content = content
             node.anchor_used = selected_anchor
             node.woven_at = datetime.now(timezone.utc)
@@ -367,28 +373,38 @@ class KalpaService:
                 # 使用標題作為搜尋核心，提升相關度
                 search_query = node.target_title
                 # 取得至少 3 張照片 (1 張特色圖, 2 張內文圖)
-                images = await ImageService.search_stock_photos(search_query, limit=5)
+                images = await ImageService.search_stock_photos(search_query, limit=10)
                 
                 if images:
                     node.images = images[:3] # 儲存前三張作為主要備選
                     logger.info(f"Auto-paired {len(node.images)} images for node {node_id}")
                     
-                    # 替換內文預留位置
-                    # 第一張保留給封面圖 (特色圖片)，內文從第二張開始放
+                    # 替換內文預留位置 (使用正則進行不區分大小寫替換)
+                    import re
+                    
+                    # 檢查是否有預留位置
+                    p1_match = re.search(r'\[IMAGE_PLACEHOLDER_1\]', content, re.IGNORECASE)
+                    p2_match = re.search(r'\[IMAGE_PLACEHOLDER_2\]', content, re.IGNORECASE)
+                    
+                    if not p1_match and not p2_match:
+                        logger.warning(f"No image placeholders found in content for node {node_id}. AI might have ignored instructions.")
+                    
                     if len(images) > 1:
                         img2 = images[1]
                         alt2 = await ImageService.generate_alt_text(content, node.target_title)
-                        content = content.replace("[IMAGE_PLACEHOLDER_1]", f"![{alt2}]({img2['url']})\n*{alt2}*")
+                        replacement = f"\n![{alt2}]({img2['url']})\n*{alt2}*\n"
+                        content = re.sub(r'\[IMAGE_PLACEHOLDER_1\]', replacement, content, flags=re.IGNORECASE)
                     
                     if len(images) > 2:
                         img3 = images[2]
-                        # 為第二張插圖產生略有不同的 alt (可選)
                         alt3 = f"{node.target_title} 參考案例"
-                        content = content.replace("[IMAGE_PLACEHOLDER_2]", f"![{alt3}]({img3['url']})\n*{alt3}*")
+                        replacement = f"\n![{alt3}]({img3['url']})\n*{alt3}*\n"
+                        content = re.sub(r'\[IMAGE_PLACEHOLDER_2\]', replacement, content, flags=re.IGNORECASE)
                     
-                    # 清理可能沒被替換到的標籤 (避免留在畫面上)
-                    content = content.replace("[IMAGE_PLACEHOLDER_1]", "").replace("[IMAGE_PLACEHOLDER_2]", "")
+                    # 清理可能沒被替換到的標籤
+                    content = re.sub(r'\[IMAGE_PLACEHOLDER_\d+\]', '', content, flags=re.IGNORECASE)
                     node.woven_content = content # 更新最終內容
+                    logger.info(f"Successfully processed inline images for node {node_id}")
 
             except Exception as img_e:
                 logger.error(f"Auto image pairing or placeholder replacement failed for node {node_id}: {img_e}")
