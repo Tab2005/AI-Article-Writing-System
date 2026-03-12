@@ -259,6 +259,27 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    path: '/admin/credits',
+    label: '點數權限配置',
+    adminOnly: true,
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect width="20" height="12" x="2" y="6" rx="2" />
+        <circle cx="12" cy="12" r="2" />
+        <path d="M6 12h.01M18 12h.01" />
+      </svg>
+    ),
+  },
+  {
     path: '/settings',
     label: '系統設定',
     adminOnly: true,
