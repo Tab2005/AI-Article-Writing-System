@@ -404,13 +404,13 @@ class KalpaService:
                     if len(images) > 1:
                         img2 = images[1]
                         alt2 = await ImageService.generate_alt_text(content, node.target_title)
-                        replacement = f"\n![{alt2}]({img2['url']})\n*{alt2}*\n"
+                        replacement = f"\n![{alt2}]({img2['url']})\n"
                         content = re.sub(r'\[IMAGE_PLACEHOLDER_1\]', replacement, content, flags=re.IGNORECASE)
                     
                     if len(images) > 2:
                         img3 = images[2]
                         alt3 = f"{node.target_title} 參考案例"
-                        replacement = f"\n![{alt3}]({img3['url']})\n*{alt3}*\n"
+                        replacement = f"\n![{alt3}]({img3['url']})\n"
                         content = re.sub(r'\[IMAGE_PLACEHOLDER_2\]', replacement, content, flags=re.IGNORECASE)
                     
                     # 清理可能沒被替換到的標籤
