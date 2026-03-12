@@ -326,6 +326,17 @@ class KalpaService:
         """
         
         user_template = KalpaService._get_active_template(db, user_id, "kalpa_weaving_user", default_user)
+        
+        # --- 運行時修正：確保資料庫模板也包含多圖標籤指令 (方案 A) ---
+        if "[IMAGE_PLACEHOLDER_1]" not in user_template:
+            logger.info("Patching user_template at runtime to include multi-image instructions.")
+            instruction = "\n        4. 圖片插入（重要）：請在文章中段插入標記 `[IMAGE_PLACEHOLDER_1]`，並在文章後半部插入標記 `[IMAGE_PLACEHOLDER_2]`。"
+            if "文章必須包含：" in user_template:
+                user_template = user_template.replace("文章必須包含：", f"文章必須包含：{instruction}")
+            else:
+                user_template += f"\n\n指令補充：{instruction}"
+        # -----------------------------------------------------
+
         user_prompt = user_template.replace("{persona_intro}", persona['intro'])\
                                    .replace("{title}", node.target_title)\
                                    .replace("{industry}", matrix.industry)\
