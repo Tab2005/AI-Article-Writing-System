@@ -123,6 +123,7 @@ class CreditService:
 
         CreditService.check_balance(user, cost)
 
+        db.add(user) # 確保 user 掛載到目前 session
         user.credits -= cost
         balance_after = user.credits
         db.commit()
@@ -142,6 +143,7 @@ class CreditService:
         if user.role == "super_admin" or cost == 0:
             return {"refunded": 0, "balance": user.credits}
 
+        db.add(user) # 確保 user 掛載到目前 session
         user.credits += cost
         balance_after = user.credits
         db.commit()

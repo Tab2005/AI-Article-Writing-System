@@ -9,6 +9,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from app.core.database import get_db
 from app.core.config import settings
 
 # 密碼雜湊設定 - 使用 pbkdf2_sha256 以獲得更好的環境相容性 (避免 bcrypt 4.0+ 與 passlib 的衝突)
@@ -35,11 +37,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> Any:
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> Any:
     """
     FastAPI 依賴函數：驗證 Token 並獲取資料庫中的使用者物件
     """
-    from app.core.database import SessionLocal
     from app.models.db_models import User
     
     credentials_exception = HTTPException(
@@ -47,7 +51,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Any:
         detail="憑證失效或未登入，請重新登入。",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    db = SessionLocal()
+    
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
@@ -64,8 +68,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Any:
         raise credentials_exception
     except Exception:
         raise credentials_exception
-    finally:
-        db.close()
 
 async def get_current_admin(current_user: Any = Depends(get_current_user)) -> Any:
     """
