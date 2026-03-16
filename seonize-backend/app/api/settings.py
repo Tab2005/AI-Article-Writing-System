@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import logging
 import os
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.db_models import Settings
@@ -75,7 +75,7 @@ class TestConnectionResponse(BaseModel):
 class AIProviderInfo(BaseModel):
     id: str
     name: str
-    models: List[str]
+    models: List[Any]
     description: str
 
 
@@ -171,7 +171,7 @@ async def get_ai_providers(db: Session = Depends(get_db)):
     from app.services.zeabur_client import ZeaburClient
     
     # 取得靜態的提供者列表 (包含備用模型)
-    providers = AIService.get_available_providers()
+    providers = await AIService.get_available_providers()
     
     # 嘗試用目前儲存的 API Key 向 Zeabur API 動態查詢最新模型
     try:

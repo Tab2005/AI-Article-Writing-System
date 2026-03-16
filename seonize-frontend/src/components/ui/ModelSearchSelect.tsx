@@ -35,7 +35,7 @@ export const ModelSearchSelect: React.FC<ModelSearchSelectProps> = ({
   const normalizedModels = useMemo(() => {
     return models.map(m => {
       if (typeof m === 'string') {
-        return { id: m, name: m };
+        return { id: m, name: m } as ModelInfo;
       }
       return m;
     });
@@ -50,6 +50,28 @@ export const ModelSearchSelect: React.FC<ModelSearchSelectProps> = ({
       m.name.toLowerCase().includes(lowerSearch)
     );
   }, [normalizedModels, searchTerm]);
+
+  // 分組過濾後的模型
+  const groupedModels = useMemo(() => {
+    const groups: Record<string, ModelInfo[]> = {};
+    
+    filteredModels.forEach((m: ModelInfo) => {
+      let provider = '其他';
+      if (m.id.startsWith('openai/')) provider = 'OpenAI';
+      else if (m.id.startsWith('anthropic/')) provider = 'Anthropic';
+      else if (m.id.startsWith('google/')) provider = 'Google';
+      else if (m.id.startsWith('deepseek/')) provider = 'DeepSeek';
+      else if (m.id.startsWith('meta/')) provider = 'Meta (Llama)';
+      else if (m.id.startsWith('mistralai/')) provider = 'Mistral';
+      else if (m.id.startsWith('perplexity/')) provider = 'Perplexity';
+      else if (m.id.includes('/')) provider = m.id.split('/')[0].toUpperCase();
+
+      if (!groups[provider]) groups[provider] = [];
+      groups[provider].push(m);
+    });
+
+    return groups;
+  }, [filteredModels]);
 
   // 當選擇時
   const handleSelect = (id: string) => {
@@ -80,11 +102,16 @@ export const ModelSearchSelect: React.FC<ModelSearchSelectProps> = ({
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span className="model-search-select__value">
-          {selectedModel ? selectedModel.name || selectedModel.id : '請選擇模型...'}
+          {selectedModel ? (
+            <span className="model-search-select__selected-text">
+              <span className="model-search-select__selected-name">{selectedModel.name || selectedModel.id}</span>
+              <span className="model-search-select__selected-id">{selectedModel.id}</span>
+            </span>
+          ) : '請選擇模型...'}
         </span>
         <svg 
           className="model-search-select__icon" 
-          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
         >
           <path d="m6 9 6 6 6-6"/>
         </svg>
@@ -93,10 +120,13 @@ export const ModelSearchSelect: React.FC<ModelSearchSelectProps> = ({
       {isOpen && (
         <div className="model-search-select__dropdown">
           <div className="model-search-select__search-wrapper">
+            <svg className="model-search-select__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+            </svg>
             <input
               type="text"
               className="model-search-select__search"
-              placeholder="搜尋模型名稱或 ID..."
+              placeholder="搜尋模型..."
               autoFocus
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -105,20 +135,36 @@ export const ModelSearchSelect: React.FC<ModelSearchSelectProps> = ({
           </div>
           
           <div className="model-search-select__options">
-            {filteredModels.length > 0 ? (
-              filteredModels.map(m => (
-                <div 
-                  key={m.id} 
-                  className={`model-search-select__option ${m.id === value ? 'model-search-select__option--selected' : ''}`}
-                  onClick={() => handleSelect(m.id)}
-                >
-                  <div className="model-search-select__option-name">{m.name || m.id}</div>
-                  <div className="model-search-select__option-id">{m.id}</div>
-                  {m.pricing && (
-                    <div className="model-search-select__option-meta">
-                      ${(parseFloat(m.pricing.prompt) * 1000000).toFixed(2)} / 1M tokens
+            {Object.keys(groupedModels).length > 0 ? (
+              Object.entries(groupedModels).map(([provider, providerModels]) => (
+                <div key={provider} className="model-search-select__group">
+                  <div className="model-search-select__group-title">{provider}</div>
+                  {providerModels.map(m => (
+                    <div 
+                      key={m.id} 
+                      className={`model-search-select__option ${m.id === value ? 'model-search-select__option--selected' : ''}`}
+                      onClick={() => handleSelect(m.id)}
+                    >
+                      <div className="model-search-select__option-content">
+                        <div className="model-search-select__option-main">
+                          <span className="model-search-select__option-name">{m.name || m.id}</span>
+                          <span className="model-search-select__option-id">{m.id}</span>
+                        </div>
+                        {m.pricing && (
+                          <div className="model-search-select__option-pricing">
+                            <span className="pricing-tag">
+                              ${(parseFloat(m.pricing.prompt) * 1000000).toFixed(2)}/M
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {m.context_length && (
+                        <div className="model-search-select__option-footer">
+                          Context: {Math.round(m.context_length / 1024)}K
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
               ))
             ) : (
