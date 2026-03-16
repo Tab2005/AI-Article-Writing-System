@@ -122,13 +122,13 @@ class AIService:
             }
         ]
         
-        # 加入 OpenRouter 預設模型
+        # 加入 OpenRouter 預設模型 (用於 API 失敗或未設定時)
         openrouter_models = [
-            "anthropic/claude-3.5-sonnet",
-            "google/gemini-2.0-flash",
-            "openai/gpt-4o",
-            "openai/gpt-4o-mini",
-            "deepseek/deepseek-chat"
+            {"id": "anthropic/claude-3.5-sonnet", "name": "Claude 3.5 Sonnet"},
+            {"id": "google/gemini-2.0-flash", "name": "Gemini 2.0 Flash"},
+            {"id": "openai/gpt-4o", "name": "GPT-4o"},
+            {"id": "openai/gpt-4o-mini", "name": "GPT-4o Mini"},
+            {"id": "deepseek/deepseek-chat", "name": "DeepSeek Chat"}
         ]
         
         # 如果當前是 OpenRouter 且有 Key，嘗試抓取最新列表
@@ -138,6 +138,7 @@ class AIService:
                 client = OpenRouterClient(config.api_key)
                 fetched_models = await client.get_models()
                 if fetched_models:
+                    # 後端統一回傳給前端的是模型清單，前端自己處理顯示
                     openrouter_models = fetched_models
             except Exception as e:
                 import logging
@@ -146,7 +147,7 @@ class AIService:
         providers.append({
             "id": AIProvider.OPENROUTER,
             "name": "OpenRouter",
-            "models": openrouter_models,
+            "models": openrouter_models, # 現在這是一個對應物件的清單
             "description": "OpenRouter 提供的 AI 整合服務 (存取數百種模型)"
         })
         

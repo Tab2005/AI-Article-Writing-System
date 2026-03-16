@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Select, KPICard } from '../components/ui';
+import { ModelSearchSelect } from '../components/ui/ModelSearchSelect';
 import { settingsApi, type SettingsData, type AIProvider } from '../services/api';
 import './SettingsPage.css';
 
@@ -214,7 +215,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   const selectedProvider = providers.find((p) => p.id === settings.ai_provider);
-  const modelOptions = selectedProvider?.models.map((m) => ({ value: m, label: m })) || [];
+  const models = selectedProvider?.models || [];
 
   if (loading) {
     return (
@@ -387,7 +388,7 @@ export const SettingsPage: React.FC = () => {
               onChange={(e) => setSettings({ ...settings, ai_api_key: e.target.value })}
               fullWidth
             />
-            <Select
+            <ModelSearchSelect
               label={
                 <div className="field-label-wrapper">
                   模型
@@ -396,11 +397,10 @@ export const SettingsPage: React.FC = () => {
                   )}
                 </div>
               }
-              options={modelOptions}
+              models={models}
               value={settings.ai_model}
               disabled={settings.system_provided?.includes('ai_model')}
-              onChange={(e) => setSettings({ ...settings, ai_model: e.target.value })}
-              fullWidth
+              onChange={(val) => setSettings({ ...settings, ai_model: val })}
             />
             <div className="settings-form__actions">
               <Button

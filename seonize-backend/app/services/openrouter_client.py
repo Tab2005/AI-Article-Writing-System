@@ -5,9 +5,17 @@ OpenRouter AI Client
 import httpx
 import logging
 import json
+import time
 from typing import Optional, List, Dict, Any, AsyncGenerator
 
 logger = logging.getLogger(__name__)
+
+# 全域模型快取
+_MODELS_CACHE = {
+    "timestamp": 0,
+    "data": []
+}
+CACHE_TTL = 3600  # 快取 1 小時
 
 class OpenRouterClient:
     """OpenRouter API 客戶端"""
@@ -23,13 +31,20 @@ class OpenRouterClient:
             "X-Title": "Seonize AI Writing System"
         }
 
-    async def get_models(self) -> List[str]:
+    async def get_models(self) -> List[Dict[str, Any]]:
         """
-        從 OpenRouter 取得可用模型列表
+        從 OpenRouter 取得可用模型列表與詳細資訊
         
         Returns:
-            可用模型名稱列表 (如 'anthropic/claude-3.5-sonnet')
+            模型詳細資訊列表 [{"id": "...", "name": "...", "pricing": {...}}]
         """
+        global _MODELS_CACHE
+        
+        # 檢查快取
+        now = time.time()
+        if _MODELS_CACHE["data"] and (now - _MODELS_CACHE["timestamp"] < CACHE_TTL):
+            return _MODELS_CACHE["data"]
+
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 url = f"{self.base_url}/models"
@@ -38,28 +53,27 @@ class OpenRouterClient:
                 
                 data = response.json()
                 if "data" in data and isinstance(data["data"], list):
-                    # OpenRouter 返回的模型 ID 通常帶有路徑，如 openai/gpt-4o
-                    models = sorted([m["id"] for m in data["data"] if "id" in m])
-                    if models:
-                        logger.info(f"Fetched {len(models)} models from OpenRouter")
-                        return models
-                
-                return [
-                    "anthropic/claude-3.5-sonnet",
-                    "google/gemini-2.0-flash",
-                    "openai/gpt-4o",
-                    "openai/gpt-4o-mini",
-                    "deepseek/deepseek-chat"
-                ]
+                    processed_models = []
+                    for m in data["data"]:
+                        processed_models.append({
+                            "id": m.get("id"),
+                            "name": m.get("name"),
+                            "context_length": m.get("context_length"),
+                            "pricing": m.get("pricing"),
+                            "description": m.get("description", "")[:100] + "..." if m.get("description") else ""
+                        })
+                    
+                    # 更新快取
+                    _MODELS_CACHE = {
+                        "timestamp": now,
+                        "data": processed_models
+                    }
+                    return processed_models
                 
         except Exception as e:
             logger.warning(f"Failed to fetch models from OpenRouter: {e}")
-            return [
-                "anthropic/claude-3.5-sonnet",
-                "google/gemini-2.0-flash",
-                "openai/gpt-4o",
-                "openai/gpt-4o-mini"
-            ]
+            
+        return []
 
     async def generate(
         self,

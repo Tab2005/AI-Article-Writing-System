@@ -475,7 +475,7 @@ export const promptsApi = {
 export interface AIProvider {
   id: 'zeabur' | 'openrouter' | string;
   name: string;
-  models: string[];
+  models: any[]; // 支援原始字串陣列或詳細模型物件陣列
   description: string;
 }
 
