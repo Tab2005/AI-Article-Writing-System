@@ -131,12 +131,18 @@ async def update_user(
     if update_data.credits is not None:
         if not is_admin:
              raise HTTPException(status_code=403, detail="僅限超級管理員修改點數。")
+        old_val = user.credits
         user.credits = max(0, update_data.credits)
+        from app.services.credit_service import CreditService
+        CreditService._write_log(db, user.id, user.credits - old_val, user.credits, "管理員手動調整點數")
 
     if update_data.credits_delta is not None:
         if not is_admin:
              raise HTTPException(status_code=403, detail="僅限超級管理員修改點數。")
+        old_val = user.credits
         user.credits = max(0, user.credits + update_data.credits_delta)
+        from app.services.credit_service import CreditService
+        CreditService._write_log(db, user.id, user.credits - old_val, user.credits, "管理員調整點數增減")
 
     if update_data.membership_level is not None:
         if not is_admin:
@@ -196,6 +202,11 @@ async def adjust_credits(
 
     old_credits = user.credits
     user.credits = max(0, user.credits + amount)
+    
+    # 記錄異動
+    from app.services.credit_service import CreditService
+    CreditService._write_log(db, user.id, user.credits - old_credits, user.credits, reason)
+    
     db.commit()
 
     return {

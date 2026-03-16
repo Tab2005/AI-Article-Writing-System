@@ -53,6 +53,13 @@ export function useApiWithCredits() {
             throw err;
         }
 
+        // 如果是成功且為非 GET 請求，主動觸發點數重新整理
+        if (res.ok && options.method && options.method !== 'GET') {
+            if ((window as any).refreshAuthUser) {
+                (window as any).refreshAuthUser();
+            }
+        }
+
         return res;
     }, []);
 
