@@ -83,17 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         (window as any).refreshAuthUser = refreshUser;
-        
-        // 每 60 秒自動重新驗證與同步一次 (點數餘額同步)
-        const heartBeat = setInterval(() => {
-            if (localStorage.getItem('seonize_token')) {
-                refreshUser();
-            }
-        }, 60000);
-
         return () => {
             delete (window as any).refreshAuthUser;
-            clearInterval(heartBeat);
         };
     }, [refreshUser]);
 
