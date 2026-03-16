@@ -95,6 +95,9 @@ async def research_serp(
     if not search_data.get("cache_hit"):
         COST = CreditService.get_cost(db, "serp_query")
         CreditService.deduct(db, current_user, COST, f"SERP 查詢: {request.keyword}")
+    else:
+        # 快取命中，記錄一筆 0 點操作以免用戶疑惑
+        CreditService._write_log(db, current_user.id, 0, current_user.credits, f"SERP 查詢 (快取命中): {request.keyword}")
     
     
     results = search_data.get("results", []) or []

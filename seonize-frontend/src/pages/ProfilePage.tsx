@@ -303,21 +303,26 @@ const ProfilePage: React.FC = () => {
                                 <table className="credit-table">
                                     <thead>
                                         <tr>
-                                            <th>日期</th>
-                                            <th>操作項目</th>
-                                            <th>點數變動</th>
-                                            <th>餘額快照</th>
+                                            <th>時間</th>
+                                            <th>異動項目</th>
+                                            <th className="text-center">點數異動</th>
+                                            <th className="text-center">餘額 snapshot</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {creditLogs.map((log) => (
                                             <tr key={log.id}>
-                                                <td className="log-date">{new Date(log.created_at).toLocaleString()}</td>
-                                                <td className="log-op">{log.operation}</td>
-                                                <td className={`log-delta ${log.delta > 0 ? 'plus' : 'minus'}`}>
-                                                    {log.delta > 0 ? `+${log.delta}` : log.delta}
+                                                <td className="log-date">
+                                                    {new Date(log.created_at).toLocaleString('zh-TW', {
+                                                        month: '2-digit', day: '2-digit',
+                                                        hour: '2-digit', minute: '2-digit'
+                                                    })}
                                                 </td>
-                                                <td className="log-balance">💎 {log.balance}</td>
+                                                <td className="log-op">{log.operation}</td>
+                                                <td className={`log-delta text-center ${log.delta > 0 ? 'plus' : log.delta < 0 ? 'minus' : 'neutral'}`}>
+                                                    {log.delta > 0 ? `+${log.delta}` : log.delta === 0 ? '--' : log.delta}
+                                                </td>
+                                                <td className="log-balance text-center">💎 {log.balance}</td>
                                             </tr>
                                         ))}
                                     </tbody>

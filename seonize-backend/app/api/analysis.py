@@ -53,11 +53,16 @@ class AnalysisResponse(BaseModel):
 @router.post("/intent", response_model=AnalysisResponse)
 async def analyze_intent(
     request: AnalysisRequest,
+    db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
     """
-    執行意圖分析與策略建議 (僅限登入使用者)
+    執行意圖分析與策略建議 (消耗 2 點)
     """
+    # 點數扣除
+    COST = CreditService.get_cost(db, "ai_intent_analysis")
+    CreditService.deduct(db, current_user, COST, f"AI 意圖分析: {request.keyword}")
+
     # 意圖偵測邏輯 (保持不變)
     keyword_lower = request.keyword.lower()
     

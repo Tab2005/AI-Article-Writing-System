@@ -35,6 +35,10 @@ async def brainstorm_kalpa_elements(
     logger.info(f"User {current_user.email} brainstorm topic: {request.topic}")
     
     try:
+        # 點數扣除
+        COST = CreditService.get_cost(db, "kalpa_brainstorm")
+        CreditService.deduct(db, current_user, COST, f"天道解析 (Brainstorm): {request.topic}")
+        
         results = await kalpa_service.brainstorm_elements(db, request.topic, current_user.id)
         return results
     except Exception as e:

@@ -303,10 +303,17 @@ class SEOCheckResponse(BaseModel):
 
 
 @router.post("/seo-check", response_model=SEOCheckResponse)
-async def check_seo(request: SEOCheckRequest):
+async def check_seo(
+    request: SEOCheckRequest,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
     """
-    SEO 體檢與優化建議 (僅限登入使用者)
+    SEO 體檢與優化建議 (消耗 5 點)
     """
+    COST = CreditService.get_cost(db, "writing_optimize") # 使用寫作優化點數
+    CreditService.deduct(db, current_user, COST, f"SEO 體檢: {request.primary_keyword}")
+
     content = request.content
     word_count = len(content.replace(" ", "").replace("\n", ""))
     

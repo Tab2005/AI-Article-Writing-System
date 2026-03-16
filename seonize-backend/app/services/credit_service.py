@@ -117,6 +117,8 @@ class CreditService:
         """
         if user.role == "super_admin":
             logger.info(f"[Credits] SKIP deduct for super_admin {user.email}: {operation}")
+            # 即使不扣點，也留下一筆紀錄以便追蹤
+            CreditService._write_log(db, user.id, 0, user.credits, f"[管理員] {operation}")
             return {"deducted": 0, "balance": user.credits, "skipped": True}
 
         CreditService.check_balance(user, cost)
@@ -203,9 +205,11 @@ class CreditService:
 
     @staticmethod
     def _write_log(db: Session, user_id: str, delta: int, balance: int, operation: str):
-        """寫入 CreditLog（安靜失敗，不影響主流程）"""
+        """寫入 CreditLog（確保不影響主交易 commit）"""
         try:
             from app.models.db_models import CreditLog
+            # 建立獨立的 Session 或僅在當前 session 新增但不 commit 整個?
+            # 這裡為了保險，先 add 並 flush，最終 commit 交由外部或這裡獨立
             log = CreditLog(
                 user_id=user_id,
                 delta=delta,
@@ -214,7 +218,11 @@ class CreditService:
                 created_at=datetime.now(timezone.utc)
             )
             db.add(log)
-            db.commit()
+            db.commit() # 日誌必須 commit
         except Exception as e:
-            logger.warning(f"[Credits] 無法寫入 CreditLog: {e}")
-            db.rollback()
+            logger.warning(f"[Credits] 無法寫入 CreditLog (可能是資料表未建立): {e}")
+            # 如果是資料表問題，不應該 rollback 掉外部已經完成的餘額更新
+            # 但在同一個 Session 中 rollback 會影響所有 pending 更改
+            # 故這裡不呼叫 db.rollback()，除非我們確定要放棄整個操作
+            # 若操作已經在 deduct 呼叫了 db.commit()，則此處 rollback 作用範圍有限
+            pass
