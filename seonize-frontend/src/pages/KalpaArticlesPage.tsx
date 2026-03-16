@@ -60,7 +60,14 @@ export const KalpaArticlesPage: React.FC = () => {
 
     const handleImageSelect = (image: { url: string; alt: string; caption: string; source: string }) => {
         if (!previewNode) return;
-        const updatedNode = { ...previewNode, images: [image] };
+        
+        // 優化：手動插圖應該是插入到內文，而不僅是更換封面
+        const imageMarkdown = `\n\n![${image.alt}](${image.url})\n*${image.caption}*\n\n`;
+        const updatedNode = { 
+            ...previewNode, 
+            woven_content: (previewNode.woven_content || '') + imageMarkdown
+        };
+        
         setPreviewNode(updatedNode);
         
         // 同步更新列表中的資料

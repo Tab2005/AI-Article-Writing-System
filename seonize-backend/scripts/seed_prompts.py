@@ -99,12 +99,15 @@ def seed_prompts():
 
         # 3. 內容寫作模板 (使用 .format 替換)
         writing_prompt = """撰寫文章章節。
+{research_context}
+重要指令：
+- 請在適當位置（建議在第二或第三個段落後）插入標記 `[IMAGE_PLACEHOLDER_1]`。
+- 嚴禁在標記下方撰寫圖片說明文字。
 
 文章標題：{h1}
 章節標題：{heading}
 必須嵌入的關鍵字：{keywords}
 前文摘要：{previous_summary}
-{research_context}
 優化模式指南：{intent}
 
 請以 Markdown 格式撰寫約 {target_word_count} 字的章節內容，並確保關鍵字密度約 {keyword_density}%。
@@ -115,11 +118,12 @@ def seed_prompts():
 - `{h1}`: 文章總標題
 - `{heading}`: 當前章節標題
 - `{keywords}`: 當前章節必須嵌入的關鍵字清單
-- `{previous_summary}`: 前一段落的摘要內容 (保持上下文連貫)
+- `{previous_summary}`: 前一段落的摘要內容
 - `{research_context}`: 相關的競爭對手或研究參考資料
 - `{intent}`: 當前文章的搜尋意圖定向
 - `{target_word_count}`: 本節目標字數
-- `{keyword_density}`: 推薦的關鍵字密度百分比"""
+- `{keyword_density}`: 推薦的關鍵字密度百分比
+- `[IMAGE_PLACEHOLDER_1]`: 圖片插入預留位置 (系統自動配圖)"""
 
         # 4. 劫之眼：神諭編織模板
         kalpa_prompt = """{persona_intro}
@@ -133,6 +137,11 @@ def seed_prompts():
 - 解決痛點 (Pain Point)：{pain_point}
 - 推薦內部連結錨點：{selected_anchor}
 - 目標 Landing Page：{money_page_url}
+
+重要插圖指令：
+- 請在文章中段插入標記 `[IMAGE_PLACEHOLDER_1]`。
+- 請在文章後半部插入標記 `[IMAGE_PLACEHOLDER_2]`。
+- 標記處由系統自動配圖，請勿撰寫額外文字描述。
 
 你的角色定位：{persona_role}
 
@@ -148,7 +157,9 @@ def seed_prompts():
 - `{pain_point}`: 針對的用戶痛點
 - `{selected_anchor}`: 系統分配的內部連結關鍵字
 - `{money_page_url}`: 最終轉化頁面的網址
-- `{persona_role}`: AI 具體的角色名稱設定"""
+- `{persona_role}`: AI 具體的角色名稱設定
+- `[IMAGE_PLACEHOLDER_1]`: 圖片預留位置 1 (自動配圖)
+- `[IMAGE_PLACEHOLDER_2]`: 圖片預留位置 2 (自動配圖)"""
 
         templates = [
             PromptTemplate(category="title_generation", name="系統預設標題指令", content=title_prompt, is_active=True),

@@ -158,10 +158,37 @@ async def generate_section(
             CreditService.refund(db, current_user, COST, "AI 生成段落內容為空")
             raise HTTPException(status_code=500, detail="AI 生成內容為空，已退還點數。")
 
+        content = result["content"]
+        
+        # --- 圖片插入處理 (與 Kalpa 邏輯對齊) ---
+        try:
+            if "[IMAGE_PLACEHOLDER" in content.upper():
+                from app.services.image_service import ImageService
+                # 使用章節標題搜尋圖片
+                search_query = result["heading"]
+                images = await ImageService.search_stock_photos(search_query, limit=5, orientation="landscape")
+                
+                if images:
+                    import re
+                    # 替換前兩個預留位置
+                    for i in range(1, 3):
+                        placeholder = f"[IMAGE_PLACEHOLDER_{i}]"
+                        if i-1 < len(images) and re.search(re.escape(placeholder), content, re.IGNORECASE):
+                            img = images[i-1]
+                            alt = await ImageService.generate_alt_text(content, search_query)
+                            replacement = f"\n![{alt}]({img['url']})\n"
+                            content = re.sub(re.escape(placeholder), replacement, content, flags=re.IGNORECASE)
+                    
+                    # 清理剩餘標籤
+                    content = re.sub(r'\[IMAGE_PLACEHOLDER_\d+\]', '', content, flags=re.IGNORECASE)
+        except Exception as e:
+            import logging
+            logging.error(f"Writing image replacement failed: {e}")
+
         return WritingResponse(
             heading=result["heading"],
-            content=result["content"],
-            word_count=result["word_count"],
+            content=content,
+            word_count=len(content.replace(" ", "").replace("\n", "")),
             embedded_keywords=result["embedded_keywords"],
             summary=result["summary"],
         )

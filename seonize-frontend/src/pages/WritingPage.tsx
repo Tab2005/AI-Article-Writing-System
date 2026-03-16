@@ -268,7 +268,8 @@ export const WritingPage: React.FC = () => {
     setSections(prev => {
       return prev.map(s => {
         if (s.id === activeSectionId) {
-          const imageMarkdown = `\n![${image.alt}](${image.url})\n*${image.caption}*\n`;
+          const imageMarkdown = `\n\n![${image.alt}](${image.url})\n*${image.caption}*\n\n`;
+          // 這裡簡單地將圖片附加在最後，若要更精準插入，通常需要一個編輯器組件
           return { ...s, content: s.content + imageMarkdown };
         }
         return s;

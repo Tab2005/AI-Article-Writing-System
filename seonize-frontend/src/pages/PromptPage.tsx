@@ -66,16 +66,22 @@ const PROMPT_HINTS: Record<string, string[]> = {
     '{related_searches}: 相關搜尋詞',
     '{ai_overview}: AI 搜尋綜述'
   ],
-  content_writing: [
-    '{h1}: 文章總標題',
-    '{heading}: 當前章節標題',
-    '{keywords}: 章節必要關鍵字',
-    '{previous_summary}: 前文銜接摘要',
-    '{research_context}: 競爭對手研究資料',
-    '{intent}: 搜尋意圖定向',
-    '{target_word_count}: 目標字數',
-    '{keyword_density}: 關鍵字密度 (%)'
-  ],
+  content_writing: (
+    <>
+      <div className="prompt-hint-title">支援變數：</div>
+      <ul className="prompt-hint-list">
+        <li>{`{h1}`} - 文章總標題</li>
+        <li>{`{heading}`} - 當前章節標題</li>
+        <li>{`{keywords}`} - 必須嵌入的關鍵字清單</li>
+        <li>{`{previous_summary}`} - 前一篇章節的內容摘要</li>
+        <li>{`{research_context}`} - 相關研究參考資料</li>
+        <li>{`{intent}`} - 搜尋意圖與優化模式</li>
+        <li>{`{target_word_count}`} - 目標字數</li>
+        <li>{`{keyword_density}`} - 目標關鍵字密度 %</li>
+        <li><strong>[IMAGE_PLACEHOLDER_1]</strong> - 插入圖片位置 1 (自動配圖)</li>
+      </ul>
+    </>
+  ),
   kalpa_brainstorming: [
     '{topic}: 產業主題'
   ],
@@ -88,14 +94,6 @@ const PROMPT_HINTS: Record<string, string[]> = {
     '{persona_tone}: 語氣設定',
     '{title}: 文章總標題'
   ],
-  kalpa_weaving_user: [
-    '{persona_intro}: 人格背景介紹',
-    '{title}: 本篇節點標題',
-    '{industry}: 產業背景',
-    '{entity}: 主題實體 (Subject)',
-    '{action}: 具體操作 (Action)',
-    '{pain_point}: 解決痛點 (Pain Point)',
-    '{selected_anchor}: 內部連結錨點',
     '{money_page_url}: 轉化頁網址',
     '{persona_role}: AI 角色腳本'
   ],
