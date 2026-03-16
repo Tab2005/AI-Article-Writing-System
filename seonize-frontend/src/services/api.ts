@@ -473,7 +473,7 @@ export const promptsApi = {
 
 // Settings API
 export interface AIProvider {
-  id: string;
+  id: 'zeabur' | 'openrouter' | string;
   name: string;
   models: string[];
   description: string;

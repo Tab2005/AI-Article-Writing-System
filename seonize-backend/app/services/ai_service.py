@@ -13,6 +13,8 @@ from datetime import datetime
 
 class AIProvider(str, Enum):
     ZEABUR = "zeabur"
+    GEMINI = "gemini"
+    OPENROUTER = "openrouter"
 
 
 from app.services.zeabur_client import ZEABUR_FALLBACK_MODELS
@@ -107,9 +109,11 @@ class AIService:
         cls._config = config
     
     @classmethod
-    def get_available_providers(cls) -> list[dict]:
-        """取得可用的 AI 提供者 (由 zeabur_client 提供模型列表)"""
-        return [
+    async def get_available_providers(cls) -> list[dict]:
+        """取得可用的 AI 提供者"""
+        config = cls.get_config()
+        
+        providers = [
             {
                 "id": AIProvider.ZEABUR,
                 "name": "Zeabur AI Hub",
@@ -117,6 +121,36 @@ class AIService:
                 "description": "Zeabur 提供的 AI 閘道服務 (支援多種先進模型)"
             }
         ]
+        
+        # 加入 OpenRouter 預設模型
+        openrouter_models = [
+            "anthropic/claude-3.5-sonnet",
+            "google/gemini-2.0-flash",
+            "openai/gpt-4o",
+            "openai/gpt-4o-mini",
+            "deepseek/deepseek-chat"
+        ]
+        
+        # 如果當前是 OpenRouter 且有 Key，嘗試抓取最新列表
+        if config.provider == AIProvider.OPENROUTER and config.api_key:
+            try:
+                from app.services.openrouter_client import OpenRouterClient
+                client = OpenRouterClient(config.api_key)
+                fetched_models = await client.get_models()
+                if fetched_models:
+                    openrouter_models = fetched_models
+            except Exception as e:
+                import logging
+                logging.warning(f"Failed to fetch models from OpenRouter: {e}")
+                
+        providers.append({
+            "id": AIProvider.OPENROUTER,
+            "name": "OpenRouter",
+            "models": openrouter_models,
+            "description": "OpenRouter 提供的 AI 整合服務 (存取數百種模型)"
+        })
+        
+        return providers
     
     @classmethod
     async def test_connection(cls, api_key: str, provider: str, model: str = "gpt-4o-mini") -> dict:
@@ -125,9 +159,13 @@ class AIService:
             if provider == AIProvider.ZEABUR:
                 from app.services.zeabur_client import ZeaburClient
                 client = ZeaburClient(api_key)
-                # 簡單生成測試
                 await client.generate("Hello", model=model or "gpt-4o-mini", max_tokens=5)
                 return {"success": True, "provider": provider, "message": "Zeabur AI Hub 連線成功"}
+            elif provider == AIProvider.OPENROUTER:
+                from app.services.openrouter_client import OpenRouterClient
+                client = OpenRouterClient(api_key)
+                await client.generate("Hello", model=model or "openai/gpt-4o-mini", max_tokens=5)
+                return {"success": True, "provider": provider, "message": "OpenRouter 連線成功"}
             else:
                 return {"success": False, "provider": provider, "message": "不支援的提供者"}
         except Exception as e:
@@ -154,6 +192,16 @@ class AIService:
                 temperature=temperature or config.temperature,
                 max_tokens=max_tokens or config.max_tokens,
             )
+        elif config.provider == AIProvider.OPENROUTER:
+            from app.services.openrouter_client import OpenRouterClient
+            client = OpenRouterClient(config.api_key)
+            return await client.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                model=config.model,
+                temperature=temperature or config.temperature,
+                max_tokens=max_tokens or config.max_tokens,
+            )
         else:
             raise NotImplementedError(f"Provider {config.provider} not implemented")
     
@@ -173,6 +221,16 @@ class AIService:
                 prompt=prompt,
                 system_prompt=system_prompt,
                 model=config.model,
+            ):
+                yield chunk
+        elif config.provider == AIProvider.OPENROUTER:
+            from app.services.openrouter_client import OpenRouterClient
+            client = OpenRouterClient(config.api_key)
+            async for chunk in client.generate_stream(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                model=config.model,
+                temperature=config.temperature,
             ):
                 yield chunk
         else:

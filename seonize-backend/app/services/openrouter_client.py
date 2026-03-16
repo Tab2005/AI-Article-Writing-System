@@ -1,0 +1,164 @@
+"""
+OpenRouter AI Client
+支援透過 OpenRouter 呼叫數百種 AI 模型 (OpenAI 相容 API)
+"""
+import httpx
+import logging
+import json
+from typing import Optional, List, Dict, Any, AsyncGenerator
+
+logger = logging.getLogger(__name__)
+
+class OpenRouterClient:
+    """OpenRouter API 客戶端"""
+    
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://openrouter.ai/api/v1"
+        self.timeout = 120.0
+        self.headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://seonize.ai",
+            "X-Title": "Seonize AI Writing System"
+        }
+
+    async def get_models(self) -> List[str]:
+        """
+        從 OpenRouter 取得可用模型列表
+        
+        Returns:
+            可用模型名稱列表 (如 'anthropic/claude-3.5-sonnet')
+        """
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                url = f"{self.base_url}/models"
+                response = await client.get(url, headers=self.headers)
+                response.raise_for_status()
+                
+                data = response.json()
+                if "data" in data and isinstance(data["data"], list):
+                    # OpenRouter 返回的模型 ID 通常帶有路徑，如 openai/gpt-4o
+                    models = sorted([m["id"] for m in data["data"] if "id" in m])
+                    if models:
+                        logger.info(f"Fetched {len(models)} models from OpenRouter")
+                        return models
+                
+                return [
+                    "anthropic/claude-3.5-sonnet",
+                    "google/gemini-2.0-flash",
+                    "openai/gpt-4o",
+                    "openai/gpt-4o-mini",
+                    "deepseek/deepseek-chat"
+                ]
+                
+        except Exception as e:
+            logger.warning(f"Failed to fetch models from OpenRouter: {e}")
+            return [
+                "anthropic/claude-3.5-sonnet",
+                "google/gemini-2.0-flash",
+                "openai/gpt-4o",
+                "openai/gpt-4o-mini"
+            ]
+
+    async def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        model: str = "openai/gpt-4o-mini",
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> str:
+        """
+        生成文字內容
+        """
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                url = f"{self.base_url}/chat/completions"
+                response = await client.post(
+                    url,
+                    headers=self.headers,
+                    json=payload,
+                )
+                response.raise_for_status()
+                
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+                
+                logger.info(f"OpenRouter response received, length: {len(content)}")
+                return content
+                
+        except httpx.HTTPStatusError as e:
+            error_msg = f"API 錯誤 ({e.response.status_code})"
+            try:
+                error_data = e.response.json()
+                if "error" in error_data:
+                    error_msg = error_data["error"].get("message", error_msg)
+            except:
+                pass
+            logger.error(f"OpenRouter HTTP error: {error_msg}")
+            raise RuntimeError(f"OpenRouter API 錯誤: {error_msg}")
+        except Exception as e:
+            logger.error(f"OpenRouter error: {e}")
+            raise RuntimeError(f"OpenRouter 呼叫失敗: {str(e)}")
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        model: str = "openai/gpt-4o-mini",
+        temperature: float = 0.7,
+    ) -> AsyncGenerator[str, None]:
+        """
+        串流生成文字內容
+        """
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "stream": True,
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                url = f"{self.base_url}/chat/completions"
+                async with client.stream("POST", url, headers=self.headers, json=payload) as response:
+                    response.raise_for_status()
+                    
+                    async for line in response.aiter_lines():
+                        if not line or not line.startswith("data: "):
+                            continue
+                        
+                        data_str = line[6:].strip()
+                        if data_str == "[DONE]":
+                            break
+                        
+                        try:
+                            data = json.loads(data_str)
+                            if "choices" in data and len(data["choices"]) > 0:
+                                delta = data["choices"][0].get("delta", {})
+                                if "content" in delta:
+                                    yield delta["content"]
+                        except json.JSONDecodeError:
+                            continue
+                            
+        except Exception as e:
+            logger.error(f"OpenRouter stream error: {e}")
+            yield f" [Error: {str(e)}] "

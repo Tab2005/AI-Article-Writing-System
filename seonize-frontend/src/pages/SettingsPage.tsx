@@ -75,6 +75,18 @@ export const SettingsPage: React.FC = () => {
           ],
           description: 'Zeabur 提供的 AI 閘道服務 (支援多種先進模型)'
         },
+        {
+          id: 'openrouter',
+          name: 'OpenRouter',
+          models: [
+            "anthropic/claude-3.5-sonnet",
+            "google/gemini-2.0-flash",
+            "openai/gpt-4o",
+            "openai/gpt-4o-mini",
+            "deepseek/deepseek-chat"
+          ],
+          description: 'OpenRouter 提供的 AI 整合服務 (存取數百種模型)'
+        },
       ]);
     }
   };
