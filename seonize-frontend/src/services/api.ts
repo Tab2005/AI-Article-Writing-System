@@ -203,6 +203,12 @@ export const authApi = {
     }),
   validate: () => request<{ status: string; user: any }>('/api/auth/validate'),
   getMembershipLevels: () => request<Record<string, string>>('/api/auth/membership/levels'),
+  getCreditHistory: (page: number = 1, perPage: number = 20) => 
+    request<{ logs: any[]; total: number; page: number; per_page: number; total_pages: number }>(
+      `/api/auth/credits/history?page=${page}&per_page=${perPage}`
+    ),
+  updateProfile: (data: { username?: string; old_password?: string; new_password?: string }) =>
+    request<{ message: string; user: any }>('/api/auth/profile', { method: 'PATCH', body: data }),
 };
 
 // Projects API

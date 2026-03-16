@@ -27,15 +27,8 @@ const ProfilePage: React.FC = () => {
     const fetchCreditHistory = async () => {
         setLogsLoading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/auth/credits/history`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('seonize_token')}`,
-                },
-            });
-            const data = await response.json();
-            if (response.ok) {
-                setCreditLogs(data.logs || []);
-            }
+            const data = await authApi.getCreditHistory();
+            setCreditLogs(data.logs || []);
         } catch (error) {
             console.error('Failed to fetch credit history:', error);
         } finally {
@@ -49,24 +42,11 @@ const ProfilePage: React.FC = () => {
         setMessage({ type: '', text: '' });
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/auth/profile`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('seonize_token')}`,
-                },
-                body: JSON.stringify({ username }),
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                updateUser(data.user);
-                setMessage({ type: 'success', text: '基本資料已成功更新' });
-            } else {
-                setMessage({ type: 'error', text: data.detail || '更新失敗' });
-            }
-        } catch (error) {
-            setMessage({ type: 'error', text: '網路錯誤，請稍後再試' });
+            const data = await authApi.updateProfile({ username });
+            updateUser(data.user);
+            setMessage({ type: 'success', text: '基本資料已成功更新' });
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message || '更新失敗' });
         } finally {
             setIsLoading(false);
         }
@@ -83,26 +63,13 @@ const ProfilePage: React.FC = () => {
         setMessage({ type: '', text: '' });
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/auth/profile`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('seonize_token')}`,
-                },
-                body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                setMessage({ type: 'success', text: '密碼已成功變更' });
-                setOldPassword('');
-                setNewPassword('');
-                setConfirmPassword('');
-            } else {
-                setMessage({ type: 'error', text: data.detail || '密碼變更失敗' });
-            }
-        } catch (error) {
-            setMessage({ type: 'error', text: '網路錯誤，請稍後再試' });
+            await authApi.updateProfile({ old_password: oldPassword, new_password: newPassword });
+            setMessage({ type: 'success', text: '密碼已成功變更' });
+            setOldPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message || '密碼變更失敗' });
         } finally {
             setIsLoading(false);
         }
@@ -112,7 +79,7 @@ const ProfilePage: React.FC = () => {
         setIsLoading(true);
         setMessage({ type: '', text: '' });
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/auth/membership/mock-upgrade?level=${level}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/auth/membership/mock-upgrade?level=${level}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('seonize_token')}`,
