@@ -380,6 +380,10 @@ async def analyze_competition(
     if not db_project:
         raise HTTPException(status_code=403, detail="找不到專案或權限不足")
 
+    # 點數扣除
+    COST = CreditService.get_cost(db, "competitor_analysis")
+    CreditService.deduct(db, current_user, COST, f"競品深度分析: {db_project.primary_keyword}")
+
     # 2. 取得 SERP 結果
     serp_data = db_project.research_data or {}
     results = serp_data.get("results", [])
