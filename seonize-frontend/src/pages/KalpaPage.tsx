@@ -105,6 +105,7 @@ export const KalpaPage: React.FC = () => {
     const [filterEntity, setFilterEntity] = useState<string>('');
     const [filterAction, setFilterAction] = useState<string>('');
     const [filterPain, setFilterPain] = useState<string>('');
+    const [filterStatus, setFilterStatus] = useState<string>('');
 
     // 天道解析狀態
     const [brainstormTopic, setBrainstormTopic] = useState('');
@@ -384,7 +385,8 @@ export const KalpaPage: React.FC = () => {
     const filteredResults = results.filter(n => {
         return (filterEntity === '' || n.entity === filterEntity) &&
             (filterAction === '' || n.action === filterAction) &&
-            (filterPain === '' || n.pain_point === filterPain);
+            (filterPain === '' || n.pain_point === filterPain) &&
+            (filterStatus === '' || n.status === filterStatus);
     });
 
     // 動態從結果提取篩選選項 (確保與當前矩陣內容同步)
@@ -929,9 +931,26 @@ export const KalpaPage: React.FC = () => {
                                         {uniquePains.map(p => <option key={p} value={p}>{p}</option>)}
                                     </select>
                                 </div>
+                                <div className="filter-separator"></div>
+                                <div className="filter-group">
+                                    <label>
+                                        <span className="filter-icon">📋</span> 狀態篩選
+                                    </label>
+                                    <select
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value)}
+                                        className="filter-select"
+                                    >
+                                        <option value="">全部狀態</option>
+                                        <option value="pending">待編織</option>
+                                        <option value="weaving">神諭編織中</option>
+                                        <option value="completed">已編織</option>
+                                        <option value="failed">失敗</option>
+                                    </select>
+                                </div>
 
                                 <div className="filter-actions-right">
-                                    {(filterEntity || filterAction || filterPain) && (
+                                    {(filterEntity || filterAction || filterPain || filterStatus) && (
                                         <button className="filter-reset-btn" onClick={handleResetFilters}>
                                             重置篩選 ↺
                                         </button>
