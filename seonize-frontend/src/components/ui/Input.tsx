@@ -4,7 +4,7 @@ import './Input.css';
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: React.ReactNode;
   error?: string;
-  hint?: string;
+  hint?: React.ReactNode;
   icon?: React.ReactNode;
   fullWidth?: boolean;
 }
@@ -42,7 +42,7 @@ export const Input: React.FC<InputProps> = ({
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: React.ReactNode;
   error?: string;
-  hint?: string;
+  hint?: React.ReactNode;
   fullWidth?: boolean;
 }
 

@@ -247,3 +247,35 @@
     grid-template-columns: 1fr;
   }
 }
+
+.prompt-hint-container {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: rgba(var(--color-primary-rgb), 0.05);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+}
+
+.prompt-hint-title {
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  margin-bottom: var(--space-1);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.prompt-hint-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prompt-hint-list li {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}

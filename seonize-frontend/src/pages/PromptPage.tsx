@@ -52,6 +52,55 @@ const CATEGORY_LABELS: Record<string, { title: string; desc: string; icon: strin
   },
 };
 
+const PROMPT_HINTS: Record<string, string[]> = {
+  title_generation: [
+    '{keyword}: 核心搜尋關鍵字',
+    '{intent}: 搜尋意圖分析',
+    '{titles}: 競爭對手標題清單'
+  ],
+  outline_generation: [
+    '{keyword}: 核心搜尋關鍵字',
+    '{intent}: 搜尋意圖',
+    '{keywords}: 推薦延伸詞',
+    '{paa}: Google 常問問題 (PAA)',
+    '{related_searches}: 相關搜尋詞',
+    '{ai_overview}: AI 搜尋綜述'
+  ],
+  content_writing: [
+    '{h1}: 文章總標題',
+    '{heading}: 當前章節標題',
+    '{keywords}: 章節必要關鍵字',
+    '{previous_summary}: 前文銜接摘要',
+    '{research_context}: 競爭對手研究資料',
+    '{intent}: 搜尋意圖定向',
+    '{target_word_count}: 目標字數',
+    '{keyword_density}: 關鍵字密度 (%)'
+  ],
+  kalpa_brainstorming: [
+    '{topic}: 產業主題'
+  ],
+  kalpa_anchor_generation: [
+    '{industry}: 產業背景',
+    '{money_page_url}: 轉化頁網址'
+  ],
+  kalpa_weaving_system: [
+    '{persona_role}: 人格角色名稱',
+    '{persona_tone}: 語氣設定',
+    '{title}: 文章總標題'
+  ],
+  kalpa_weaving_user: [
+    '{persona_intro}: 人格背景介紹',
+    '{title}: 本篇節點標題',
+    '{industry}: 產業背景',
+    '{entity}: 主題實體 (Subject)',
+    '{action}: 具體操作 (Action)',
+    '{pain_point}: 解決痛點 (Pain Point)',
+    '{selected_anchor}: 內部連結錨點',
+    '{money_page_url}: 轉化頁網址',
+    '{persona_role}: AI 角色腳本'
+  ],
+};
+
 export const PromptPage: React.FC = () => {
   const [allTemplates, setAllTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -322,19 +371,14 @@ export const PromptPage: React.FC = () => {
                   rows={10}
                   fullWidth
                   hint={
-                    category === 'title_generation'
-                      ? '支援 {keyword}, {intent}, {titles} 變數。'
-                      : category === 'outline_generation'
-                        ? '支援 {keyword}, {intent}, {keywords}, {paa}, {related_searches}, {ai_overview} 變數。'
-                        : category === 'kalpa_brainstorming'
-                          ? '支援 {topic} 變數。'
-                          : category === 'kalpa_anchor_generation'
-                            ? '支援 {industry}, {money_page_url} 變數。'
-                            : category === 'kalpa_weaving_system'
-                              ? '支援 {persona_role}, {persona_tone}, {title} 變數。'
-                              : category === 'kalpa_weaving_user'
-                                ? '支援 {persona_intro}, {title}, {industry}, {entity}, {action}, {pain_point}, {selected_anchor}, {money_page_url}, {persona_role} 變數。'
-                                : '支援相關專案變數。'
+                    <div className="prompt-hint-container">
+                      <p className="prompt-hint-title">支援變數說明：</p>
+                      <ul className="prompt-hint-list">
+                        {(PROMPT_HINTS[category] || ['支援專案相關變數']).map((h, i) => (
+                          <li key={i}>{h}</li>
+                        ))}
+                      </ul>
+                    </div>
                   }
                 />
 

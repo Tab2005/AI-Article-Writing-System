@@ -154,7 +154,7 @@ def seed_prompts():
             PromptTemplate(category="title_generation", name="系統預設標題指令", content=title_prompt, is_active=True),
             PromptTemplate(category="outline_generation", name="系統預設大綱指令", content=outline_prompt, is_active=True),
             PromptTemplate(category="content_writing", name="系統預設寫作指令", content=writing_prompt, is_active=True),
-            PromptTemplate(category="kalpa_weave", name="神諭編織：用戶內容指令 (預設)", content=kalpa_prompt, is_active=True),
+            PromptTemplate(category="kalpa_weaving_user", name="神諭編織：用戶內容指令 (預設)", content=kalpa_prompt, is_active=True),
         ]
         
         db.add_all(templates)
