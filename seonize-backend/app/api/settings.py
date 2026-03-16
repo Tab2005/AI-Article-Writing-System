@@ -167,10 +167,20 @@ async def update_settings(request: UpdateSettingsRequest, db: Session = Depends(
 
 @router.get("/providers", response_model=List[AIProviderInfo])
 async def get_ai_providers(db: Session = Depends(get_db)):
-    """取得可用的 AI 提供者列表（並嘗試自動從 Zeabur API 取得最新模型列表）"""
-    from app.services.zeabur_client import ZeaburClient
+    """取得可用的 AI 提供者列表"""
+    # 確保 AIService 抓取時使用的是資料庫中最新的金鑰與設定 (解決多程序/快取狀態不一致問題)
+    from app.services.ai_service import AIConfig
+    db_provider = Settings.get_value(db, "ai_provider", "zeabur")
+    db_api_key = Settings.get_value(db, "ai_api_key", "")
+    db_model = Settings.get_value(db, "ai_model", "gpt-4o-mini")
     
-    # 取得靜態的提供者列表 (包含備用模型)
+    AIService.set_config(AIConfig(
+        provider=AIProvider(db_provider),
+        api_key=db_api_key,
+        model=db_model
+    ))
+    
+    # 取得提供者列表 (現在會使用正確的金鑰去 OpenRouter 抓取)
     providers = await AIService.get_available_providers()
     
     # 嘗試用目前儲存的 API Key 向 Zeabur API 動態查詢最新模型

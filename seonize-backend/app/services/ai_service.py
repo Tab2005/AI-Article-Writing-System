@@ -122,7 +122,7 @@ class AIService:
             }
         ]
         
-        # 加入 OpenRouter 預設模型 (用於 API 失敗或未設定時)
+        # 加入 OpenRouter 預設模型 (用於 API 失敗時)
         openrouter_models = [
             {"id": "anthropic/claude-3.5-sonnet", "name": "Claude 3.5 Sonnet"},
             {"id": "google/gemini-2.0-flash", "name": "Gemini 2.0 Flash"},
@@ -131,23 +131,23 @@ class AIService:
             {"id": "deepseek/deepseek-chat", "name": "DeepSeek Chat"}
         ]
         
-        # 如果當前是 OpenRouter 且有 Key，嘗試抓取最新列表
-        if config.provider == AIProvider.OPENROUTER and config.api_key:
-            try:
-                from app.services.openrouter_client import OpenRouterClient
-                client = OpenRouterClient(config.api_key)
-                fetched_models = await client.get_models()
-                if fetched_models:
-                    # 後端統一回傳給前端的是模型清單，前端自己處理顯示
-                    openrouter_models = fetched_models
-            except Exception as e:
-                import logging
-                logging.warning(f"Failed to fetch models from OpenRouter: {e}")
+        # 嘗試抓取 OpenRouter 最新列表 (支援公開抓取)
+        try:
+            from app.services.openrouter_client import OpenRouterClient
+            # 傳入目前的 Key (如果是 OpenRouter)，否則傳空字串以公開抓取
+            active_key = config.api_key if config.provider == AIProvider.OPENROUTER else ""
+            client = OpenRouterClient(active_key)
+            fetched_models = await client.get_models()
+            if fetched_models:
+                openrouter_models = fetched_models
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to fetch models from OpenRouter: {e}")
                 
         providers.append({
             "id": AIProvider.OPENROUTER,
             "name": "OpenRouter",
-            "models": openrouter_models, # 現在這是一個對應物件的清單
+            "models": openrouter_models,
             "description": "OpenRouter 提供的 AI 整合服務 (存取數百種模型)"
         })
         

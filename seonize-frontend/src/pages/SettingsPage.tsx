@@ -388,20 +388,34 @@ export const SettingsPage: React.FC = () => {
               onChange={(e) => setSettings({ ...settings, ai_api_key: e.target.value })}
               fullWidth
             />
-            <ModelSearchSelect
-              label={
-                <div className="field-label-wrapper">
-                  模型
-                  {settings.system_provided?.includes('ai_model') && (
-                    <span className="system-badge">環境變數鎖定</span>
-                  )}
-                </div>
-              }
-              models={models}
-              value={settings.ai_model}
-              disabled={settings.system_provided?.includes('ai_model')}
-              onChange={(val) => setSettings({ ...settings, ai_model: val })}
-            />
+            <div className="model-selection-header">
+              <ModelSearchSelect
+                label={
+                  <div className="field-label-wrapper">
+                    模型
+                    {settings.system_provided?.includes('ai_model') && (
+                      <span className="system-badge">環境變數鎖定</span>
+                    )}
+                  </div>
+                }
+                models={models}
+                value={settings.ai_model}
+                disabled={settings.system_provided?.includes('ai_model')}
+                onChange={(val) => setSettings({ ...settings, ai_model: val })}
+              />
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                className="model-refresh-btn"
+                onClick={loadProviders}
+                title="重新整理模型清單"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.24L21 8"/>
+                  <path d="M21 3v5h-5"/>
+                </svg>
+              </Button>
+            </div>
             <div className="settings-form__actions">
               <Button
                 variant="secondary"

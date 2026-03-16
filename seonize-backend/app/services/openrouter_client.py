@@ -46,32 +46,52 @@ class OpenRouterClient:
             return _MODELS_CACHE["data"]
 
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            # 如果沒有 API Key，則不帶 Authorization 標頭抓取公開清單
+            headers = self.headers.copy()
+            if not self.api_key or self.api_key.startswith("****"):
+                if "Authorization" in headers:
+                    del headers["Authorization"]
+            
+            logger.info(f"Fetching models from OpenRouter... (Auth: {'Yes' if 'Authorization' in headers else 'No'})")
+
+            async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
                 url = f"{self.base_url}/models"
-                response = await client.get(url, headers=self.headers)
-                response.raise_for_status()
+                response = await client.get(url, headers=headers)
+                
+                if response.status_code != 200:
+                    logger.error(f"OpenRouter models API failed: {response.status_code} - {response.text[:200]}")
+                    return []
                 
                 data = response.json()
                 if "data" in data and isinstance(data["data"], list):
                     processed_models = []
                     for m in data["data"]:
+                        # 確保 ID 存在
+                        if not m.get("id"):
+                            continue
+                            
                         processed_models.append({
                             "id": m.get("id"),
-                            "name": m.get("name"),
+                            "name": m.get("name") or m.get("id"),
                             "context_length": m.get("context_length"),
                             "pricing": m.get("pricing"),
                             "description": m.get("description", "")[:100] + "..." if m.get("description") else ""
                         })
                     
+                    logger.info(f"Successfully processed {len(processed_models)} models from OpenRouter")
                     # 更新快取
                     _MODELS_CACHE = {
                         "timestamp": now,
                         "data": processed_models
                     }
                     return processed_models
+                else:
+                    logger.warning(f"OpenRouter returned unexpected data format: {str(data)[:200]}")
                 
         except Exception as e:
-            logger.warning(f"Failed to fetch models from OpenRouter: {e}")
+            logger.error(f"Exception during OpenRouter models fetch: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             
         return []
 

@@ -55,7 +55,24 @@ export const ModelSearchSelect: React.FC<ModelSearchSelectProps> = ({
   const groupedModels = useMemo(() => {
     const groups: Record<string, ModelInfo[]> = {};
     
+    // 定義推薦模型 ID
+    const recommendedIds = [
+      'anthropic/claude-3.5-sonnet',
+      'google/gemini-2.0-flash',
+      'openai/gpt-4o',
+      'openai/gpt-4o-mini',
+      'deepseek/deepseek-chat',
+      'deepseek/deepseek-r1'
+    ];
+
+    const recommended: ModelInfo[] = [];
+    
     filteredModels.forEach((m: ModelInfo) => {
+      // 檢查是否為推薦模型
+      if (recommendedIds.includes(m.id)) {
+        recommended.push(m);
+      }
+
       let provider = '其他';
       if (m.id.startsWith('openai/')) provider = 'OpenAI';
       else if (m.id.startsWith('anthropic/')) provider = 'Anthropic';
@@ -70,7 +87,13 @@ export const ModelSearchSelect: React.FC<ModelSearchSelectProps> = ({
       groups[provider].push(m);
     });
 
-    return groups;
+    // 只有在非搜尋模式或推薦模型清單中有內容時才顯示推薦分組
+    const finalGroups: Record<string, ModelInfo[]> = {};
+    if (recommended.length > 0) {
+      finalGroups['✨ 推薦、常用模型'] = recommended;
+    }
+    
+    return { ...finalGroups, ...groups };
   }, [filteredModels]);
 
   // 當選擇時
