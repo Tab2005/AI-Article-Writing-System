@@ -16,6 +16,12 @@ const ProfilePage: React.FC = () => {
     const [creditLogs, setCreditLogs] = useState<any[]>([]);
     const [logsLoading, setLogsLoading] = useState(false);
     const [membershipLevels, setMembershipLevels] = useState<Record<string, string>>({});
+    
+    // Pagination State
+    const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(20);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalLogs, setTotalLogs] = useState(0);
 
     const fetchLevels = async () => {
         try {
@@ -27,8 +33,10 @@ const ProfilePage: React.FC = () => {
     const fetchCreditHistory = async () => {
         setLogsLoading(true);
         try {
-            const data = await authApi.getCreditHistory();
+            const data = await authApi.getCreditHistory(page, perPage);
             setCreditLogs(data.logs || []);
+            setTotalPages(data.total_pages || 1);
+            setTotalLogs(data.total || 0);
         } catch (error) {
             console.error('Failed to fetch credit history:', error);
         } finally {
@@ -102,10 +110,15 @@ const ProfilePage: React.FC = () => {
 
     useEffect(() => {
         if (user) {
-            fetchCreditHistory();
             fetchLevels();
         }
     }, [user]);
+
+    useEffect(() => {
+        if (user) {
+            fetchCreditHistory();
+        }
+    }, [user, page, perPage]);
 
     if (!user) return null;
 
@@ -124,78 +137,92 @@ const ProfilePage: React.FC = () => {
                 </div>
             )}
 
-            <div className="profile-page__grid">
-                {/* 基本資料區塊 */}
-                <section className="profile-page__card glass-card">
-                    <h2 className="profile-page__card-title">基本資料</h2>
-                    <form onSubmit={handleUpdateProfile} className="profile-page__form">
-                        <div className="form-group">
-                            <label>電子郵件 (帳號)</label>
-                            <input type="text" value={user.email} disabled className="form-input--disabled" />
-                            <small>帳號 Email 無法修改</small>
-                        </div>
-                        <div className="form-group">
-                            <label>顯示名稱</label>
-                            <input
-                                type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                required
-                                className="form-input"
-                            />
-                        </div>
-                        <button type="submit" className="btn-profile btn-profile--primary" disabled={isLoading}>
-                            {isLoading ? '儲存中...' : '✓ 更新顯示名稱'}
-                        </button>
-                    </form>
-                </section>
+            <div className="profile-page__sections-wrapper">
+                {/* 帳號安全與基本資料大區塊 */}
+                <div className="profile-page__section-container profile-page__section-container--auth glass-card">
+                    <div className="profile-page__section-grid">
+                        {/* 基本資料區塊 */}
+                        <section className="profile-page__section">
+                            <h2 className="profile-page__section-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                基本資料
+                            </h2>
+                            <form onSubmit={handleUpdateProfile} className="profile-page__form">
+                                <div className="form-group">
+                                    <label>電子郵件 (帳號)</label>
+                                    <input type="text" value={user.email} disabled className="form-input--disabled" />
+                                    <small>帳號 Email 無法修改</small>
+                                </div>
+                                <div className="form-group">
+                                    <label>顯示名稱</label>
+                                    <input
+                                        type="text"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        required
+                                        className="form-input"
+                                    />
+                                </div>
+                                <button type="submit" className="btn-profile btn-profile--primary" disabled={isLoading}>
+                                    {isLoading ? '儲存中...' : '✓ 更新顯示名稱'}
+                                </button>
+                            </form>
+                        </section>
 
-                {/* 帳號安全區塊 */}
-                <section className="profile-page__card glass-card">
-                    <h2 className="profile-page__card-title">更換密碼</h2>
-                    <form onSubmit={handleChangePassword} className="profile-page__form">
-                        <div className="form-group">
-                            <label>舊密碼</label>
-                            <input
-                                type="password"
-                                value={oldPassword}
-                                onChange={(e) => setOldPassword(e.target.value)}
-                                placeholder="輸入目前使用的密碼"
-                                required
-                                className="form-input"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>新密碼</label>
-                            <input
-                                type="password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="至少 8 碼，建議包含大小寫與數字"
-                                required
-                                className="form-input"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>確認新密碼</label>
-                            <input
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="再次輸入新密碼以確認"
-                                required
-                                className="form-input"
-                            />
-                        </div>
-                        <button type="submit" className="btn-profile btn-profile--danger" disabled={isLoading}>
-                            {isLoading ? '處理中...' : '🔑 更換密碼'}
-                        </button>
-                    </form>
-                </section>
+                        {/* 帳號安全區塊 */}
+                        <section className="profile-page__section">
+                            <h2 className="profile-page__section-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3y-3.5 3.5z"/></svg>
+                                更換密碼
+                            </h2>
+                            <form onSubmit={handleChangePassword} className="profile-page__form">
+                                <div className="form-group">
+                                    <label>舊密碼</label>
+                                    <input
+                                        type="password"
+                                        value={oldPassword}
+                                        onChange={(e) => setOldPassword(e.target.value)}
+                                        placeholder="輸入目前使用的密碼"
+                                        required
+                                        className="form-input"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>新密碼</label>
+                                    <input
+                                        type="password"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="至少 8 碼"
+                                        required
+                                        className="form-input"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>確認新密碼</label>
+                                    <input
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        placeholder="再次輸入以確認"
+                                        required
+                                        className="form-input"
+                                    />
+                                </div>
+                                <button type="submit" className="btn-profile btn-profile--danger" disabled={isLoading}>
+                                    {isLoading ? '處理中...' : '🔑 更換密碼'}
+                                </button>
+                            </form>
+                        </section>
+                    </div>
+                </div>
 
-                {/* 資產概覽區塊 */}
-                <section className="profile-page__card glass-card profile-page__card--span">
-                    <h2 className="profile-page__card-title">資產與權限概覽</h2>
+                {/* 資產與權限概覽大區塊 */}
+                <div className="profile-page__section-container profile-page__section-container--assets glass-card">
+                    <h2 className="profile-page__section-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="12" x="2" y="6" rx="2" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01M18 12h.01" /></svg>
+                        資產與權限概覽
+                    </h2>
                     <div className="profile-page__stats">
                         <div className="stat-item">
                             <span className="stat-label">會員等級</span>
@@ -223,57 +250,74 @@ const ProfilePage: React.FC = () => {
                             <ul className="plan-features">
                                 <li>✓ 基本 SEO 研究</li>
                                 <li>✓ 單篇大綱生成</li>
-                                <li>✗ 完整文章生成 (需 Lv.2)</li>
-                                <li>✗ 劫之眼批量編織 (需 Lv.3)</li>
                             </ul>
                             {currentLevel < 2 && (
-                                <button className="btn-upgrade" onClick={() => handleMockUpgrade(2)}>立即升級一般會員</button>
+                                <button className="btn-upgrade" onClick={() => handleMockUpgrade(2)}>立即升級</button>
                             )}
                         </div>
                         <div className={`plan-card ${currentLevel === 2 ? 'active' : ''}`}>
                             <div className="plan-header">一般會員 (Basic)</div>
                             <ul className="plan-features">
-                                <li>✓ 所有研究功能</li>
                                 <li>✓ 完整文章自動化成稿</li>
                                 <li>✓ CMS 一鍵發布</li>
-                                <li>✗ 劫之眼批量折扣 (需 Lv.3)</li>
                             </ul>
                             {currentLevel < 3 && (
-                                <button className="btn-upgrade btn-upgrade--pro" onClick={() => handleMockUpgrade(3)}>升級深度會員 (特惠)</button>
+                                <button className="btn-upgrade btn-upgrade--pro" onClick={() => handleMockUpgrade(3)}>立即升級</button>
                             )}
                         </div>
                         <div className={`plan-card ${currentLevel === 3 ? 'active' : ''}`}>
                             <div className="plan-header">深度會員 (Pro)</div>
                             <ul className="plan-features">
-                                <li>✓ 解鎖劫之眼批量編織</li>
-                                <li>✓ 享有階梯點數折扣 (最高 7 折)</li>
-                                <li>✓ 優先權執行排程</li>
-                                <li>✓ 專屬 AI 撰寫法寶袋</li>
+                                <li>✓ 劫之眼批量編織</li>
+                                <li>✓ 享有階梯點數折扣</li>
                             </ul>
-                            {currentLevel < 3 && <div className="plan-hint">推薦長期使用者</div>}
                         </div>
                     </div>
 
                     <div className="profile-page__info-box" style={{ marginTop: 'var(--space-6)' }}>
-                        <p>💡 提示：點數將用於執行 AI 生成與 SEO 數據研究任務。您可以隨時聯絡管理員進行加值。</p>
+                        <p>💡 提示：點數將用於執行 AI 生成與 SEO 研究任務。您可以隨時聯絡管理員進行加值。</p>
                     </div>
-                </section>
+                </div>
 
-                {/* 交易紀錄區塊 */}
-                <section className="profile-page__card glass-card profile-page__card--span credit-history-section">
-                    <h2 className="profile-page__card-title">點數交易紀錄</h2>
+                {/* 點數交易紀錄區塊 */}
+                <div className="profile-page__section-container profile-page__section-container--history glass-card">
+                    <div className="profile-page__history-header">
+                        <h2 className="profile-page__section-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+                            點數交易紀錄
+                        </h2>
+                        <div className="profile-page__history-controls">
+                            <span className="history-count">共 {totalLogs} 筆</span>
+                            <div className="per-page-select">
+                                <label>每頁顯示</label>
+                                <select 
+                                    value={perPage} 
+                                    onChange={(e) => {
+                                        setPerPage(Number(e.target.value));
+                                        setPage(1);
+                                    }}
+                                >
+                                    <option value={10}>10 筆</option>
+                                    <option value={20}>20 筆</option>
+                                    <option value={50}>50 筆</option>
+                                    <option value={100}>100 筆</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="credit-history-container">
                         {logsLoading ? (
                             <div className="logs-loading">載入紀錄中...</div>
                         ) : creditLogs.length > 0 ? (
-                            <div className="table-responsive">
+                            <div className="table-wrapper">
                                 <table className="credit-table">
                                     <thead>
                                         <tr>
                                             <th>時間</th>
                                             <th>異動項目</th>
                                             <th className="text-center">點數異動</th>
-                                            <th className="text-center">餘額 snapshot</th>
+                                            <th className="text-center">餘額 SNAPSHOT</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -294,12 +338,32 @@ const ProfilePage: React.FC = () => {
                                         ))}
                                     </tbody>
                                 </table>
+                                
+                                <div className="profile-page__pagination">
+                                    <button 
+                                        className="pagination-btn"
+                                        disabled={page === 1}
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    >
+                                        上一頁
+                                    </button>
+                                    <div className="pagination-info">
+                                        第 {page} / {totalPages} 頁
+                                    </div>
+                                    <button 
+                                        className="pagination-btn"
+                                        disabled={page === totalPages}
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    >
+                                        下一頁
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <div className="no-logs">目前尚無點數異動紀錄</div>
                         )}
                     </div>
-                </section>
+                </div>
             </div>
         </div>
     );
