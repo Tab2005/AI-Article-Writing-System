@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { uiBus } from '../utils/ui-bus';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, DataTable, KPICard, MermaidRenderer } from '../components/ui';
 import { kalpaApi, cmsApi } from '../services/api';
@@ -276,7 +277,10 @@ export const KalpaPage: React.FC = () => {
     };
 
     const handleSave = async () => {
-        if (results.length === 0) return;
+        if (!projectName.trim()) {
+            uiBus.notify('請輸入專案名稱', 'warning');
+            return;
+        }
         setSaveLoading(true);
         try {
             const res = await kalpaApi.save({
@@ -292,16 +296,26 @@ export const KalpaPage: React.FC = () => {
             });
             if (res.success) {
                 setMatrixId(res.matrix_id);
-                // Refresh results to get IDs from database
-                const updatedMatrix = await kalpaApi.get(res.matrix_id);
-                setResults(updatedMatrix.nodes || []);
-                alert('專案儲存成功！');
+                uiBus.notify('專案儲存成功', 'success');
             }
-        } catch (error) {
-            console.error('Failed to save project:', error);
-            alert('儲存失敗，請檢查網路連線。');
+        } catch (err) {
+            console.error('Save failed:', err);
         } finally {
             setSaveLoading(false);
+        }
+    };
+
+    const handleRefresh = async () => {
+        if (!matrixId) return;
+        setLoading(true);
+        try {
+            const res = await kalpaApi.get(matrixId);
+            setResults(res.nodes || []);
+            uiBus.notify('數據已同步', 'success');
+        } catch (err) {
+            console.error('Refresh failed:', err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -343,6 +357,19 @@ export const KalpaPage: React.FC = () => {
         // 同步更新列表中的資料，確保後續「儲存專案」能把圖片存入資料庫
         setResults(prev => prev.map(n => (n.id === updatedNode.id || (n.entity === updatedNode.entity && n.action === updatedNode.action && n.pain_point === updatedNode.pain_point)) ? updatedNode : n));
         setShowImagePicker(false);
+    };
+
+    const handleResetNode = async (nodeId: string) => {
+        if (!confirm('確定要重置此節點狀態嗎？這將取消當前的編織任務並允許手動重新開始。')) return;
+        try {
+            const res = await kalpaApi.resetNode(nodeId);
+            if (res.success) {
+                setResults(prev => prev.map(n => n.id === nodeId ? { ...n, status: 'pending' } : n));
+                uiBus.notify('節點狀態已重置', 'success');
+            }
+        } catch (err) {
+            console.error('Reset node failed:', err);
+        }
     };
 
     const handleBatchWeave = () => {
@@ -412,6 +439,7 @@ export const KalpaPage: React.FC = () => {
         setFilterEntity('');
         setFilterAction('');
         setFilterPain('');
+        setFilterStatus('');
         setSelectedNodeIds([]);
     };
 
@@ -477,6 +505,26 @@ export const KalpaPage: React.FC = () => {
                         <div className="status-cell">
                             <span className="status-badge status-completed">已編織</span>
                             <button className="weave-btn preview" onClick={() => setPreviewNode(row)}>預覽</button>
+                        </div>
+                    );
+                }
+                if (statusStr === 'weaving') {
+                    return (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                            <span className="status-badge status-weaving">
+                                <span className="weaving-spinner"></span> 神諭編織中...
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>⏱️ 預計 40-60 秒</span>
+                                <button
+                                    onClick={() => handleResetNode(row.id!)}
+                                    className="text-btn"
+                                    style={{ fontSize: '11px', color: 'var(--color-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
+                                    title="如果長時間沒反應，可點擊重置"
+                                >
+                                    [重置]
+                                </button>
+                            </div>
                         </div>
                     );
                 }
@@ -872,7 +920,31 @@ export const KalpaPage: React.FC = () => {
 
                         <div className="results-table-container card">
                             <div className="results-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
-                                <h3 className="card-title" style={{ margin: 0 }}>矩陣節點預覽</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                                    <h3 className="card-title" style={{ margin: 0 }}>矩陣節點預覽</h3>
+                                    {matrixId && (
+                                        <button
+                                            className="refresh-btn"
+                                            onClick={handleRefresh}
+                                            title="手動刷新狀態"
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontSize: '16px',
+                                                padding: '4px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                color: 'var(--color-text-muted)',
+                                                transition: 'color 0.2s'
+                                            }}
+                                            onMouseOver={(e) => (e.currentTarget.style.color = 'var(--color-primary)')}
+                                            onMouseOut={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
+                                        >
+                                            🔄
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="batch-actions" style={{ display: 'flex', gap: 'var(--space-2)' }}>
                                     {selectedNodeIds.length > 0 && (
                                         <Button

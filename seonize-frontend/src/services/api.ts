@@ -431,8 +431,9 @@ export const kalpaApi = {
     }),
 
   getNode: (id: string) => request<KalpaNode>(`/api/kalpa/node/${id}`),
-  updateNode: (nodeId: string, data: Partial<KalpaNode>) => 
+  updateNode: (nodeId: string, data: Partial<KalpaNode>) =>
     request<{ success: boolean; node: KalpaNode }>(`/api/kalpa/node/${nodeId}/update`, { method: 'POST', body: data }),
+  resetNode: (nodeId: string) => request<{ success: boolean }>(`/api/kalpa/node/${nodeId}/reset`, { method: 'POST' }),
 };
 
 // Health check

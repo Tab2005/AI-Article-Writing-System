@@ -296,6 +296,20 @@ async def update_kalpa_node(
     db.commit()
     return {"success": True, "node": node.to_dict()}
 
+@router.post("/node/{node_id}/reset")
+async def reset_kalpa_node_status(
+    node_id: str,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """
+    手動重置節點狀態為待處理 (僅限擁有者)
+    """
+    success = kalpa_service.reset_node_status(db, node_id, current_user.id)
+    if not success:
+        raise HTTPException(status_code=404, detail="節點不存在或存取受限")
+    return {"success": True}
+
 @router.get("/{matrix_id}")
 async def get_kalpa_matrix(
     matrix_id: str,

@@ -581,6 +581,21 @@ class KalpaService:
         return True
 
     @staticmethod
+    def reset_node_status(db: Session, node_id: str, user_id: str) -> bool:
+        """
+        手動重置節點狀態為 pending (User 隔離)
+        """
+        node = db.query(KalpaNode).join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id)\
+                 .filter(KalpaNode.id == node_id, KalpaMatrix.user_id == user_id).first()
+        
+        if not node:
+            return False
+            
+        node.status = "pending"
+        db.commit()
+        return True
+
+    @staticmethod
     def _get_weaving_persona(pain_point: str, industry: str) -> Dict[str, str]:
         """
         【千人千面 v4】根據痛點內容與產業背景，動態生成 AI 寫作人格設定
