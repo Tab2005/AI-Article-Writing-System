@@ -137,15 +137,27 @@ export const KalpaPage: React.FC = () => {
 
     const handleBrainstorm = async () => {
         if (!brainstormTopic.trim()) return;
-        setIsBrainstorming(true);
-        try {
-            const data = await kalpaApi.brainstorm(brainstormTopic);
-            setTiandaoSuggestions(data);
-        } catch (error) {
-            console.error('Brainstorm failed:', error);
-        } finally {
-            setIsBrainstorming(false);
-        }
+
+        setCostConfirm({
+            open: true,
+            title: '天道解析確認',
+            description: `將針對「${brainstormTopic}」進行深度因果發想`,
+            cost: 3,
+            onConfirm: async () => {
+                setIsBrainstorming(true);
+                try {
+                    const data = await kalpaApi.brainstorm(brainstormTopic);
+                    setTiandaoSuggestions(data);
+                    // 扣點成功後重新整理點數
+                    if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
+                    uiBus.notify('天道解析完成', 'success');
+                } catch (error) {
+                    console.error('Brainstorm failed:', error);
+                } finally {
+                    setIsBrainstorming(false);
+                }
+            }
+        });
     };
 
     const applyTiandaoSuggestions = (overwrite: boolean = false) => {

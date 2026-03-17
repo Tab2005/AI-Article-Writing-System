@@ -126,10 +126,11 @@ class CreditService:
         db.add(user) # 確保 user 掛載到目前 session
         user.credits -= cost
         balance_after = user.credits
-        db.commit()
-
+        
         # 寫入 CreditLog
         CreditService._write_log(db, user.id, -cost, balance_after, operation)
+
+        db.commit()
 
         logger.info(f"[Credits] -{cost} pts | {user.email} | '{operation}' | 餘額: {balance_after}")
         return {"deducted": cost, "balance": balance_after, "skipped": False}
@@ -146,9 +147,10 @@ class CreditService:
         db.add(user) # 確保 user 掛載到目前 session
         user.credits += cost
         balance_after = user.credits
-        db.commit()
-
+        
         CreditService._write_log(db, user.id, +cost, balance_after, f"[退還] {reason}")
+
+        db.commit()
 
         logger.info(f"[Credits] +{cost} pts REFUND | {user.email} | 原因: {reason}")
         return {"refunded": cost, "balance": balance_after}
