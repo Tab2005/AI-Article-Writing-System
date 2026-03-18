@@ -45,8 +45,8 @@ class SERPService:
             return cls._config_cache
         
         try:
-            from app.core.database import SessionLocal
-            with SessionLocal() as db:
+            from app.core.database import get_db_context
+            with get_db_context() as db:
                 dfs_login = Settings.get_value(db, "dataforseo_login", "")
                 dfs_password = Settings.get_value(db, "dataforseo_password", "")
                 dfs_serp_mode = Settings.get_value(db, "dataforseo_serp_mode", "google_organic")

@@ -14,40 +14,37 @@ async def scan_scheduled_posts():
     """
     while True:
         try:
-            db: Session = SessionLocal()
-            now = datetime.datetime.now(datetime.timezone.utc)
-            
-            # 1. 掃描主要分析專案 (Projects)
-            scheduled_projects = db.query(Project).filter(
-                Project.publish_status == "scheduled",
-                Project.scheduled_at <= now,
-                Project.cms_config_id.isnot(None)
-            ).all()
+            from app.core.database import get_db_context
+            with get_db_context() as db:
+                now = datetime.datetime.now(datetime.timezone.utc)
+                
+                # 1. 掃描主要分析專案 (Projects)
+                scheduled_projects = db.query(Project).filter(
+                    Project.publish_status == "scheduled",
+                    Project.scheduled_at <= now,
+                    Project.cms_config_id.isnot(None)
+                ).all()
 
-            for project in scheduled_projects:
-                logger.info(f"Executing scheduled publish for project: {project.id}")
-                await cms_manager.publish_article(
-                    db, "project", project.id, project.cms_config_id, "published"
-                )
+                for project in scheduled_projects:
+                    logger.info(f"Executing scheduled publish for project: {project.id}")
+                    await cms_manager.publish_article(
+                        db, "project", project.id, project.cms_config_id, "published"
+                    )
 
-            # 2. 掃描矩陣寫文節點 (KalpaNodes)
-            scheduled_nodes = db.query(KalpaNode).filter(
-                KalpaNode.publish_status == "scheduled",
-                KalpaNode.scheduled_at <= now,
-                KalpaNode.cms_config_id.isnot(None)
-            ).all()
+                # 2. 掃描矩陣寫文節點 (KalpaNodes)
+                scheduled_nodes = db.query(KalpaNode).filter(
+                    KalpaNode.publish_status == "scheduled",
+                    KalpaNode.scheduled_at <= now,
+                    KalpaNode.cms_config_id.isnot(None)
+                ).all()
 
-            for node in scheduled_nodes:
-                logger.info(f"Executing scheduled publish for Kalpa node: {node.id}")
-                await cms_manager.publish_article(
-                    db, "kalpa_node", node.id, node.cms_config_id, "published"
-                )
-
-            db.close()
+                for node in scheduled_nodes:
+                    logger.info(f"Executing scheduled publish for Kalpa node: {node.id}")
+                    await cms_manager.publish_article(
+                        db, "kalpa_node", node.id, node.cms_config_id, "published"
+                    )
         except Exception as e:
             logger.error(f"Error in scheduler task: {e}")
-            if 'db' in locals():
-                db.close()
         
         # 每分鐘檢查一次
         await asyncio.sleep(60)
@@ -58,68 +55,65 @@ async def scan_auto_publish():
     """
     while True:
         try:
-            db: Session = SessionLocal()
-            now = datetime.datetime.now(datetime.timezone.utc)
-            
-            # 取得所有開啟自動發布的站點
-            configs = db.query(CMSConfig).filter(CMSConfig.auto_publish_enabled == True).all()
-            
-            for config in configs:
-                # 計算發布間隔（秒）
-                seconds_in_unit = {
-                    "hour": 3600,
-                    "day": 86400,
-                    "week": 604800
-                }.get(config.frequency_type, 86400)
+            from app.core.database import get_db_context
+            with get_db_context() as db:
+                now = datetime.datetime.now(datetime.timezone.utc)
                 
-                interval = seconds_in_unit / max(config.frequency_count, 1)
+                # 取得所有開啟自動發布的站點
+                configs = db.query(CMSConfig).filter(CMSConfig.auto_publish_enabled == True).all()
                 
-                # 檢查間隔是否達標
-                can_publish = False
-                if not config.last_auto_published_at:
-                    can_publish = True
-                else:
-                    # 確保最後發布時間具備時區資訊以進行比較
-                    last_published = config.last_auto_published_at
-                    if last_published.tzinfo is None:
-                        last_published = last_published.replace(tzinfo=datetime.timezone.utc)
+                for config in configs:
+                    # 計算發布間隔（秒）
+                    seconds_in_unit = {
+                        "hour": 3600,
+                        "day": 86400,
+                        "week": 604800
+                    }.get(config.frequency_type, 86400)
                     
-                    if (now - last_published).total_seconds() >= interval:
+                    interval = seconds_in_unit / max(config.frequency_count, 1)
+                    
+                    # 檢查間隔是否達標
+                    can_publish = False
+                    if not config.last_auto_published_at:
                         can_publish = True
-                
-                if can_publish:
-                    # 尋找該站點所屬的庫存文章（草稿）
-                    # 優先檢查 Project (主要分析寫文)
-                    target = db.query(Project).filter(
-                        Project.cms_config_id == config.id,
-                        Project.publish_status == "draft"
-                    ).order_by(Project.created_at.asc()).first()
+                    else:
+                        # 確保最後發布時間具備時區資訊以進行比較
+                        last_published = config.last_auto_published_at
+                        if last_published.tzinfo is None:
+                            last_published = last_published.replace(tzinfo=datetime.timezone.utc)
+                        
+                        if (now - last_published).total_seconds() >= interval:
+                            can_publish = True
                     
-                    target_type = "project"
-                    
-                    if not target:
-                        # 若無 Project，則檢查 KalpaNode (矩陣寫文)
-                        target = db.query(KalpaNode).filter(
-                            KalpaNode.cms_config_id == config.id,
-                            KalpaNode.publish_status == "draft"
-                        ).order_by(KalpaNode.created_at.asc()).first()
-                        target_type = "kalpa_node"
-                    
-                    if target:
-                        logger.info(f"Auto-publishing {target_type} {target.id} to {config.name} (Frequency: {config.frequency_count}/{config.frequency_type})")
-                        # 執行實際發布邏輯
-                        await cms_manager.publish_article(
-                            db, target_type, target.id, config.id, "published"
-                        )
-                        # 更新該站點的次後發布時間標記
-                        config.last_auto_published_at = datetime.datetime.now(datetime.timezone.utc)
-                        db.commit()
-            
-            db.close()
+                    if can_publish:
+                        # 尋找該站點所屬的庫存文章（草稿）
+                        # 優先檢查 Project (主要分析寫文)
+                        target = db.query(Project).filter(
+                            Project.cms_config_id == config.id,
+                            Project.publish_status == "draft"
+                        ).order_by(Project.created_at.asc()).first()
+                        
+                        target_type = "project"
+                        
+                        if not target:
+                            # 若無 Project，則檢查 KalpaNode (矩陣寫文)
+                            target = db.query(KalpaNode).filter(
+                                KalpaNode.cms_config_id == config.id,
+                                KalpaNode.publish_status == "draft"
+                            ).order_by(KalpaNode.created_at.asc()).first()
+                            target_type = "kalpa_node"
+                        
+                        if target:
+                            logger.info(f"Auto-publishing {target_type} {target.id} to {config.name} (Frequency: {config.frequency_count}/{config.frequency_type})")
+                            # 執行實際發布邏輯
+                            await cms_manager.publish_article(
+                                db, target_type, target.id, config.id, "published"
+                            )
+                            # 更新該站點的次後發布時間標記
+                            config.last_auto_published_at = datetime.datetime.now(datetime.timezone.utc)
+                            # get_db_context handles commit on exit
         except Exception as e:
             logger.error(f"Error in auto_publish task: {e}")
-            if 'db' in locals():
-                db.close()
         
         # 每分鐘掃描一次
         await asyncio.sleep(60)

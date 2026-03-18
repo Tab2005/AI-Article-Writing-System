@@ -103,13 +103,11 @@ class ImageService:
             search_query = await cls._translate_query(query)
             logger.info(f"Translated query: '{query}' -> '{search_query}'")
 
-        db = SessionLocal()
-        try:
+        from app.core.database import get_db_context
+        with get_db_context() as db:
             # 優先次序：環境變數 > 資料庫
             pexels_key = settings.PEXELS_API_KEY or Settings.get_value(db, "pexels_api_key", "")
             pixabay_key = settings.PIXABAY_API_KEY or Settings.get_value(db, "pixabay_api_key", "")
-        finally:
-            db.close()
 
         tasks = []
         if pexels_key:

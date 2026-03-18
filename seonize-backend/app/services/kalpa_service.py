@@ -458,32 +458,30 @@ class KalpaService:
         """
         背景任務：執行批量編織，並根據失敗狀況進行部分退款。
         """
-        from app.core.database import SessionLocal
+        from app.core.database import get_db_context
         from app.services.credit_service import CreditService
-        db = SessionLocal()
-        try:
-            from app.models.db_models import User
-            user = db.query(User).filter(User.id == user_id).first()
-            if not user:
-                return
+        
+        with get_db_context() as db:
+            try:
+                from app.models.db_models import User
+                user = db.query(User).filter(User.id == user_id).first()
+                if not user:
+                    return
 
-            results = await KalpaService.batch_weave_nodes(db, node_ids, user_id)
-            
-            # 部分退款邏輯
-            if results["failed"] > 0 and total_cost > 0:
-                refund_per_node = total_cost / results["total"]
-                refund_amount = math.ceil(refund_per_node * results["failed"])
+                results = await KalpaService.batch_weave_nodes(db, node_ids, user_id)
                 
-                CreditService.refund(
-                    db, user, refund_amount, 
-                    f"Kalpa 批量編織部分失敗 ({results['failed']}/{results['total']})"
-                )
-        except Exception as e:
-            logger.error(f"Background batch weave task failed: {e}")
-            # 如果整批任務沒跑完就崩潰，且沒跑出任何成功（或無法確認），則退還剩餘部分（這裏簡化處理，視情況全退或不退）
-            # 因為 batch_weave_nodes 內部有 try...except，通常會跑完。
-        finally:
-            db.close()
+                # 部分退款邏輯
+                if results["failed"] > 0 and total_cost > 0:
+                    refund_per_node = total_cost / results["total"]
+                    refund_amount = math.ceil(refund_per_node * results["failed"])
+                    
+                    CreditService.refund(
+                        db, user, refund_amount, 
+                        f"Kalpa 批量編織部分失敗 ({results['failed']}/{results['total']})"
+                    )
+            except Exception as e:
+                logger.error(f"Background batch weave task failed: {e}")
+                # get_db_context handles rollback on exception
 
     @staticmethod
     def list_all_articles(db: Session, user_id: Optional[str] = None, matrix_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -549,12 +547,19 @@ class KalpaService:
                 temperature=0.7
             )
             
-            # 清理可能的 Markdown 標記
-            clean_json = content.replace("```json", "").replace("```", "").strip()
-            import json
-            return json.loads(clean_json)
+            from app.utils.ai_utils import parse_ai_json
+            data = parse_ai_json(content)
+            if data:
+                return data
+                
+            return {
+                "entities": [],
+                "actions": [],
+                "pain_points": [],
+                "suggested_title_template": ""
+            }
         except Exception as e:
-            print(f"Brainstorm failed: {str(e)}")
+            logger.error(f"Brainstorm failed: {str(e)}")
             return {
                 "entities": [],
                 "actions": [],

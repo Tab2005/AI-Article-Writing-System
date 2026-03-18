@@ -32,50 +32,22 @@ class AIService:
     """統一 AI 服務類別"""
     
     _config: Optional[AIConfig] = None
-    
-    @staticmethod
-    def _clean_json_string(s: str) -> str:
-        """清理 AI 回傳的 JSON 字串，處理 Markdown 標籤與特殊字元"""
-        import re
-        # 1. 移除 Markdown 程式碼區塊標記
-        s = re.sub(r'```json\s*', '', s)
-        s = re.sub(r'```\s*', '', s)
-        s = s.strip()
-        
-        # 2. 找到第一個 { 和最後一個 } 或 [ ]
-        match_obj = re.search(r'(\{[\s\S]*\})', s)
-        if not match_obj:
-            match_obj = re.search(r'(\[[\s\S]*\])', s)
-            
-        if match_obj:
-            s = match_obj.group(1)
-            
-        # 3. 處理換行與非法控制字元 (保留正常的換行但轉義)
-        # JSON 不允許未轉義的換行在字串中，但 AI 常會這樣產出
-        # 這裡我們主要移除真正的控制字元
-        s = "".join(ch for ch in s if ord(ch) >= 32 or ch in "\n\r\t")
-        
-        # 4. 常見修復：移除物件或陣列末尾多餘的逗號 (Trailing Commas)
-        s = re.sub(r',\s*([\]}])', r'\1', s)
-        
-        # 5. 處理可能存在的 JSON 中未轉義的引號 (非常常見的 AI 錯誤)
-        # 這裡採取一個簡單的啟發式方法：如果一個雙引號前後都不是 JSON 的語法結構，則進行轉義
-        # 為了安全，這裡只處理基本的對話引號情境
-        # s = re.sub(r'(?<![:\[,])\s*"\s*(?![:,\]])', '\\"', s)
-        
-        return s
+    _config_timestamp: float = 0
+    _config_ttl: int = 300  # 5 分鐘快取
 
     @classmethod
     def get_config(cls) -> AIConfig:
-        """取得目前設定 - 優先從資料庫讀取,其次從環境變數"""
-        if cls._config is None:
+        """取得目前設定 - 優先從資料庫讀取 (帶快取), 其次從環境變數"""
+        import time
+        now = time.time()
+        
+        if cls._config is None or (now - cls._config_timestamp > cls._config_ttl):
             # 嘗試從資料庫載入設定
             try:
-                from app.core.database import SessionLocal
+                from app.core.database import get_db_context
                 from app.models.db_models import Settings
                 
-                db = SessionLocal()
-                try:
+                with get_db_context() as db:
                     provider = Settings.get_value(db, "ai_provider", None)
                     api_key = Settings.get_value(db, "ai_api_key", None)
                     model = Settings.get_value(db, "ai_model", None)
@@ -87,17 +59,17 @@ class AIService:
                             api_key=api_key,
                             model=model or "gemini-2.0-flash",
                         )
+                        cls._config_timestamp = now
                         return cls._config
-                finally:
-                    db.close()
             except Exception as e:
                 # 如果資料庫讀取失敗,記錄錯誤但繼續使用環境變數
                 import logging
                 logging.warning(f"Failed to load AI config from database: {e}")
             
-            # 從環境變數載入預設設定
-            cls._config = AIConfig(
-                provider=AIProvider(os.getenv("AI_PROVIDER", settings.AI_PROVIDER)),
+            # 只有在初次載入或過期時才重新從環境變數載入 (如果 DB 沒設定)
+            if cls._config is None:
+                cls._config = AIConfig(
+                    provider=AIProvider(os.getenv("AI_PROVIDER", settings.AI_PROVIDER)),
                 api_key=os.getenv("ZEABUR_AI_API_KEY", settings.ZEABUR_AI_API_KEY) or \
                         os.getenv("OPENROUTER_API_KEY", settings.OPENROUTER_API_KEY) or \
                         os.getenv("GEMINI_API_KEY", ""),
@@ -503,7 +475,6 @@ SERP 標題：
                 if active_template:
                     custom_prompt = active_template.content
             finally:
-                db.close()
         except Exception as e:
             import logging
             logging.warning(f"Failed to load active prompt template: {e}")
@@ -511,13 +482,10 @@ SERP 標題：
         # 2. 備用：從舊設定讀取 (保持相容性)
         if not custom_prompt:
             try:
-                from app.core.database import SessionLocal
+                from app.core.database import get_db_context
                 from app.models.db_models import Settings
-                db = SessionLocal()
-                try:
+                with get_db_context() as db:
                     custom_prompt = Settings.get_value(db, "ai_title_prompt", None)
-                finally:
-                    db.close()
             except Exception as e:
                 import logging
                 logging.warning(f"Failed to load legacy ai_title_prompt: {e}")
@@ -569,12 +537,10 @@ SERP 標題：
         
         try:
             result = await cls.generate_content(prompt, temperature=0.8)
-            # 解析 JSON 
-            import json
-            import re
-            json_match = re.search(r'\[[\s\S]*\]', result)
-            if json_match:
-                return json.loads(json_match.group())
+            from app.utils.ai_utils import parse_ai_json
+            parsed = parse_ai_json(result)
+            if parsed:
+                return parsed
             
             # 備用方案：如果 JSON 解析失敗
             current_yr = datetime.now().year
@@ -628,10 +594,10 @@ SERP 標題：
 """
         try:
             result = await cls.generate_content(prompt, temperature=0.5)
-            import json, re
-            json_match = re.search(r'\{[\s\S]*\}', result)
-            if json_match:
-                return json.loads(json_match.group())
+            from app.utils.ai_utils import parse_ai_json
+            parsed = parse_ai_json(result)
+            if parsed:
+                return parsed
             return {"score": 0, "grade": "錯誤", "issues": [{"severity": "🔴 致命", "description": "無法解析 AI 回覆"}]}
         except Exception as e:
             return {"score": 0, "grade": "錯誤", "message": str(e)}
@@ -659,10 +625,9 @@ SERP 標題：
 """
         try:
             result = await cls.generate_content(prompt, temperature=0.6)
-            import json, re
-            json_match = re.search(r'\{[\s\S]*\}', result)
-            if json_match:
-                data = json.loads(json_match.group())
+            from app.utils.ai_utils import parse_ai_json
+            data = parse_ai_json(result)
+            if data:
                 # 相容性轉換：如果 AI 回傳的是舊的單數欄位或字串，轉換為複數列表
                 if "eeat_strategy" in data and "eeat_strategies" not in data:
                     strategy = data.get("eeat_strategy")
@@ -697,10 +662,10 @@ SERP 標題：
 """
         try:
             result = await cls.generate_content(prompt, temperature=0.3)
-            import json, re
-            json_match = re.search(r'\{[\s\S]*\}', result)
-            if json_match:
-                return json.loads(json_match.group())
+            from app.utils.ai_utils import parse_ai_json
+            parsed = parse_ai_json(result)
+            if parsed:
+                return parsed
             return {"match_id": None, "suggest_name": "未分類", "reason": "解析失敗"}
         except Exception:
             return {"match_id": None, "suggest_name": "未分類", "reason": "系統異常"}

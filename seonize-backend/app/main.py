@@ -74,24 +74,22 @@ async def lifespan(app: FastAPI):
     
     # 確保 AI Provider 設定預設值為 zeabur（遷移後安全執行）
     try:
-        from app.core.database import SessionLocal
+        from app.core.database import get_db_context
         from app.models.db_models import Settings as DBSettings
-        db = SessionLocal()
-        current_provider = DBSettings.get_value(db, "ai_provider")
-        if not current_provider:
-            DBSettings.set_value(db, "ai_provider", app_settings.AI_PROVIDER)
-            DBSettings.set_value(db, "ai_model", app_settings.AI_MODEL)
-            logger.info(f"AI provider initialized to: {app_settings.AI_PROVIDER}")
-        db.close()
+        with get_db_context() as db:
+            current_provider = DBSettings.get_value(db, "ai_provider")
+            if not current_provider:
+                DBSettings.set_value(db, "ai_provider", app_settings.AI_PROVIDER)
+                DBSettings.set_value(db, "ai_model", app_settings.AI_MODEL)
+                logger.info(f"AI provider initialized to: {app_settings.AI_PROVIDER}")
     except Exception as db_err:
         logger.warning(f"AI provider init skipped (non-fatal): {db_err}")
     
     # 初始化預設指令模板
     try:
-        from app.core.database import SessionLocal
-        db = SessionLocal()
-        initialize_default_prompts(db)
-        db.close()
+        from app.core.database import get_db_context
+        with get_db_context() as db:
+            initialize_default_prompts(db)
     except Exception as e:
         logger.error(f"Default prompts initialization failed: {e}")
     
