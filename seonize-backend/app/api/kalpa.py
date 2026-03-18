@@ -56,6 +56,8 @@ async def delete_kalpa_matrix(
     """
     from app.models.db_models import KalpaMatrix
     query = db.query(KalpaMatrix).filter(KalpaMatrix.id == matrix_id)
+    
+    # 權限檢查：非管理員僅限本人，管理員可全站刪除
     if current_user.role not in ["super_admin", "admin"]:
         query = query.filter(KalpaMatrix.user_id == current_user.id)
         
@@ -150,12 +152,11 @@ async def list_kalpa_matrices(
     current_user: Any = Depends(get_current_user)
 ):
     """
-    列出已儲存的矩陣 (管理員可看全部)
+    列出已儲存的矩陣 (預設僅看本人，以保持清單整潔)
     """
     from app.models.db_models import KalpaMatrix
-    query = db.query(KalpaMatrix)
-    if current_user.role not in ["super_admin", "admin"]:
-        query = query.filter(KalpaMatrix.user_id == current_user.id)
+    # 無論是否為管理員，清單預設僅顯示本人建立的專案
+    query = db.query(KalpaMatrix).filter(KalpaMatrix.user_id == current_user.id)
         
     matrices = query.order_by(KalpaMatrix.created_at.desc()).all()
     return [m.to_dict() for m in matrices]
@@ -329,14 +330,19 @@ async def get_kalpa_matrix(
 
     from app.models.db_models import KalpaMatrix
     query = db.query(KalpaMatrix).filter(KalpaMatrix.id == target_id)
-    if current_user.role not in ["super_admin", "admin"]:
+    
+    user_id_for_service = current_user.id
+    if current_user.role in ["super_admin", "admin"]:
+        # 管理員不加 user_id 過濾，以便透過 ID 查看全站專案
+        user_id_for_service = None
+    else:
         query = query.filter(KalpaMatrix.user_id == current_user.id)
         
     matrix = query.first()
     if not matrix:
         raise HTTPException(status_code=404, detail="找不到該矩陣或存取受限")
         
-    return kalpa_service.get_matrix(db, target_id, current_user.id)
+    return kalpa_service.get_matrix(db, target_id, user_id_for_service)
 
 KalpaGenerateRequest.model_rebuild()
 KalpaSaveRequest.model_rebuild()
