@@ -109,8 +109,19 @@ async def get_settings(db: Session = Depends(get_db)):
             else:
                 settings[key] = value
 
-        # 檢查是否真理由環境變數提供（而非僅是程式碼中的預設值）
-        if key.upper() in os.environ:
+        # 檢查是否真理由環境變數提供（支援多種可能的環境變數名稱）
+        env_map = {
+            "ai_api_key": ["AI_API_KEY", "ZEABUR_AI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY"],
+            "ai_provider": ["AI_PROVIDER"],
+            "ai_model": ["AI_MODEL"],
+            "dataforseo_login": ["DATAFORSEO_LOGIN"],
+            "dataforseo_password": ["DATAFORSEO_PASSWORD"],
+            "pexels_api_key": ["PEXELS_API_KEY"],
+            "pixabay_api_key": ["PIXABAY_API_KEY"]
+        }
+        
+        possible_envs = env_map.get(key, [key.upper()])
+        if any(env_key in os.environ for env_key in possible_envs):
             system_provided.append(key)
     
     return SettingsResponse(
