@@ -3,6 +3,7 @@ import os
 
 import sys
 import traceback
+import secrets
 
 # 立即刷新輸出以防止在崩潰時日誌丟失
 sys.stdout.reconfigure(line_buffering=True)
@@ -179,18 +180,19 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """捕捉所有未處理的異常並記錄日誌"""
-    logger.error(f"捕捉到全域異常: {exc}")
+    """捕捉所有未處理的異常並記錄日誌，避免洩漏敏感資訊"""
+    error_id = secrets.token_hex(4)
+    logger.error(f"[{error_id}] 捕捉到全域異常: {exc}")
     logger.error(f"請求路徑: {request.url.path}")
     traceback.print_exc()
     
-    # 手動建立回應
+    # 手動建立回應，不將詳細內容 (exc) 直接傳給前端
     response = JSONResponse(
         status_code=500,
         content={
             "success": False,
-            "message": "伺服器內部錯誤",
-            "detail": str(exc)
+            "message": "伺服器內部錯誤，請聯繫管理員",
+            "error_id": error_id
         },
     )
     
