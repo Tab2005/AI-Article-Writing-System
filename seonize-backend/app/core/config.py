@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     # AI Provider
     AI_PROVIDER: str = "zeabur"
     ZEABUR_AI_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
     AI_MODEL: str = "gpt-4o-mini"
 
     # Stock Photo APIs

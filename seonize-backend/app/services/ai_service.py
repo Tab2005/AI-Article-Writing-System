@@ -98,7 +98,9 @@ class AIService:
             # 從環境變數載入預設設定
             cls._config = AIConfig(
                 provider=AIProvider(os.getenv("AI_PROVIDER", settings.AI_PROVIDER)),
-                api_key=os.getenv("ZEABUR_AI_API_KEY", settings.ZEABUR_AI_API_KEY) or os.getenv("GEMINI_API_KEY", ""),
+                api_key=os.getenv("ZEABUR_AI_API_KEY", settings.ZEABUR_AI_API_KEY) or \
+                        os.getenv("OPENROUTER_API_KEY", settings.OPENROUTER_API_KEY) or \
+                        os.getenv("GEMINI_API_KEY", ""),
                 model=os.getenv("AI_MODEL", settings.AI_MODEL),
             )
         return cls._config
