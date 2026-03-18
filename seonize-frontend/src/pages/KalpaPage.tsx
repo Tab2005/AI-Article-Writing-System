@@ -118,12 +118,17 @@ export const KalpaPage: React.FC = () => {
         fetchConfigs();
         const id = searchParams.get('id');
         if (id) {
-            loadMatrix(id);
+            // 只有當 URL ID 與當前 ID 不同時才重新載入 (避免 navigate 後重複請求)
+            if (id !== matrixId) {
+                loadMatrix(id);
+            }
         } else {
-            // Reset for new matrix
-            setResults([]);
-            setMatrixId(null);
-            setCmsConfigId('');
+            // Reset for new matrix if current matrixId is not null
+            if (matrixId !== null) {
+                setResults([]);
+                setMatrixId(null);
+                setCmsConfigId('');
+            }
         }
     }, [searchParams]);
 
@@ -238,9 +243,34 @@ export const KalpaPage: React.FC = () => {
             });
             setResults(data);
             setMatrixId(null);
+            const finalProjectName = projectName || brainstormTopic || 'New Project';
             if (!projectName && brainstormTopic) setProjectName(brainstormTopic);
+
+            // ⚠️ 重要：自動儲存以獲取 ID，否則無法選取
+            uiBus.notify('正在自動儲存矩陣以啟用編織功能...', 'info');
+            const saveRes = await kalpaApi.save({
+                project_name: finalProjectName,
+                industry: industry,
+                money_page_url: moneyPageUrl,
+                entities: newEntities,
+                actions: newActions,
+                pain_points: newPains,
+                nodes: data,
+                cms_config_id: cmsConfigId
+            });
+
+            if (saveRes.success) {
+                setMatrixId(saveRes.matrix_id);
+                if (saveRes.matrix?.nodes) {
+                    setResults(saveRes.matrix.nodes);
+                }
+                // 同步 URL 避免重新整理遺失
+                navigate(`/kalpa-eye/matrix?id=${saveRes.matrix_id}`, { replace: true });
+                uiBus.notify('矩陣生成並儲存完畢，現在可以開始編織！', 'success');
+            }
         } catch (error) {
-            console.error('One-click generate failed:', error);
+            console.error('One-click generate and save failed:', error);
+            uiBus.notify('自動儲存失敗，請手動點擊「儲存專案」', 'error');
         } finally {
             setLoading(false);
         }
@@ -301,6 +331,7 @@ export const KalpaPage: React.FC = () => {
             });
             setResults(data);
             setMatrixId(null); // Reset saved ID on new generation
+            uiBus.notify('矩陣推演完成！生成後請點擊「儲存專案」以解鎖選取與編織功能。', 'info');
         } catch (error) {
             console.error('Failed to generate Kalpa matrix:', error);
         } finally {
@@ -331,6 +362,8 @@ export const KalpaPage: React.FC = () => {
                 if (res.matrix?.nodes) {
                     setResults(res.matrix.nodes);
                 }
+                // 同步 URL
+                navigate(`/kalpa-eye/matrix?id=${res.matrix_id}`, { replace: true });
                 uiBus.notify('專案儲存成功', 'success');
             }
         } catch (err) {
