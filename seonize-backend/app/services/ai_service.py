@@ -458,13 +458,11 @@ SERP 標題：
             ]
             
         # 1. 優先從新模板系統讀取啟用的模板
-        # custom_prompt = None # This line is redundant as custom_prompt is already a parameter or will be set below
         try:
-            from app.core.database import SessionLocal
+            from app.core.database import get_db_context
             from app.models.db_models import PromptTemplate
             from sqlalchemy import or_
-            db = SessionLocal()
-            try:
+            with get_db_context() as db:
                 # 優先順序：使用者的活躍模板 > 系統預設活躍模板
                 active_template = db.query(PromptTemplate).filter(
                     PromptTemplate.category == "title_generation",
@@ -474,7 +472,6 @@ SERP 標題：
                 
                 if active_template:
                     custom_prompt = active_template.content
-            finally:
         except Exception as e:
             import logging
             logging.warning(f"Failed to load active prompt template: {e}")
