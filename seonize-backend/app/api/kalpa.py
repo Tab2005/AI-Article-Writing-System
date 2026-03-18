@@ -142,7 +142,11 @@ async def save_kalpa_matrix(
             cms_config_id=request.cms_config_id,
             user_id=current_user.id
         )
-        return {"success": True, "matrix_id": matrix.id}
+        return {
+            "success": True, 
+            "matrix_id": matrix.id,
+            "matrix": kalpa_service.get_matrix(db, matrix.id)
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"儲存失敗: {str(e)}")
 

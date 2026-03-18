@@ -328,6 +328,9 @@ export const KalpaPage: React.FC = () => {
             });
             if (res.success) {
                 setMatrixId(res.matrix_id);
+                if (res.matrix?.nodes) {
+                    setResults(res.matrix.nodes);
+                }
                 uiBus.notify('專案儲存成功', 'success');
             }
         } catch (err) {

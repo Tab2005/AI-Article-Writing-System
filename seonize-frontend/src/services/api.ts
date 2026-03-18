@@ -402,7 +402,7 @@ export const kalpaApi = {
     pain_points: string[];
     nodes: any[];
     cms_config_id?: string;
-  }) => request<{ success: boolean; matrix_id: string }>('/api/kalpa/save', { method: 'POST', body: data }),
+  }) => request<{ success: boolean; matrix_id: string; matrix: KalpaMatrix }>('/api/kalpa/save', { method: 'POST', body: data }),
 
   list: () => request<KalpaMatrix[]>('/api/kalpa/list'),
 
