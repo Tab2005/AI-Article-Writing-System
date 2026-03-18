@@ -111,6 +111,7 @@ export const KalpaPage: React.FC = () => {
     // 天道解析狀態
     const [brainstormTopic, setBrainstormTopic] = useState('');
     const [isBrainstorming, setIsBrainstorming] = useState(false);
+    const [brainstormStage, setBrainstormStage] = useState('');
     const [tiandaoSuggestions, setTiandaoSuggestions] = useState<any | null>(null);
 
     useEffect(() => {
@@ -145,6 +146,23 @@ export const KalpaPage: React.FC = () => {
             cost: 3,
             onConfirm: async () => {
                 setIsBrainstorming(true);
+                const stages = [
+                    "正在感應冥冥天機...",
+                    "正在撥動因果弦線...",
+                    "正在推演萬物聯繫...",
+                    "正在凝聚天道智慧..."
+                ];
+                setBrainstormStage(stages[0]);
+                
+                // 動態更新進度文字
+                let stageIdx = 0;
+                const stageTimer = setInterval(() => {
+                    if (stageIdx < stages.length - 1) {
+                        stageIdx++;
+                        setBrainstormStage(stages[stageIdx]);
+                    }
+                }, 4000);
+
                 try {
                     const data = await kalpaApi.brainstorm(brainstormTopic);
                     setTiandaoSuggestions(data);
@@ -153,7 +171,9 @@ export const KalpaPage: React.FC = () => {
                     uiBus.notify('天道解析完成', 'success');
                 } catch (error) {
                     console.error('Brainstorm failed:', error);
+                    uiBus.notify('天道解析失敗，請稍後再試', 'error');
                 } finally {
+                    clearInterval(stageTimer);
                     setIsBrainstorming(false);
                 }
             }
@@ -1173,6 +1193,25 @@ export const KalpaPage: React.FC = () => {
                     sectionContent={previewNode.woven_content}
                 />
             )}
-        </div >
+            {/* 天道解析進度視窗 */}
+            {isBrainstorming && (
+                <div className="tiandao-loading-overlay">
+                    <div className="tiandao-loading-modal">
+                        <div className="tiandao-loading-content">
+                            <div className="tiandao-spinner-container">
+                                <div className="taiji-spinner">☯️</div>
+                                <div className="spinner-glow"></div>
+                            </div>
+                            <h3 className="loading-title">天道推演中</h3>
+                            <p className="loading-stage">{brainstormStage}</p>
+                            <div className="loading-progress-bar">
+                                <div className="loading-progress-fill"></div>
+                            </div>
+                            <p className="loading-hint">萬物皆有因果，AI 正在為您排演最佳陣勢...</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };

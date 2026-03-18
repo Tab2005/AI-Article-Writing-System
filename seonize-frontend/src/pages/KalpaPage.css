@@ -722,3 +722,131 @@
   line-height: var(--leading-relaxed);
   font-style: italic;
 }
+/* ============================================================
+   天道解析 Loading 體驗優化
+   ============================================================ */
+
+.tiandao-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: modal-fade-in 0.3s ease-out;
+}
+
+.tiandao-loading-modal {
+  background: rgba(25, 26, 30, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-10);
+  width: 90%;
+  max-width: 450px;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.tiandao-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.tiandao-spinner-container {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-2);
+}
+
+.taiji-spinner {
+  font-size: 80px;
+  line-height: 1;
+  animation: taiji-rotate 4s linear infinite;
+  filter: drop-shadow(0 0 15px rgba(var(--color-primary-rgb), 0.4));
+  z-index: 2;
+}
+
+.spinner-glow {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.15) 0%, transparent 70%);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.loading-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  margin: 0;
+  letter-spacing: 0.1em;
+}
+
+.loading-stage {
+  font-size: var(--text-lg);
+  color: var(--color-text);
+  margin: 0;
+  min-height: 1.5em;
+}
+
+.loading-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.loading-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+  border-radius: var(--radius-full);
+  animation: progress-stream 15s linear infinite;
+}
+
+.loading-hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+@keyframes taiji-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+@keyframes progress-stream {
+  0% { width: 0%; }
+  10% { width: 20%; }
+  30% { width: 45%; }
+  60% { width: 75%; }
+  90% { width: 95%; }
+  100% { width: 98%; }
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
