@@ -23,6 +23,9 @@ import type {
   User,
 } from '../types';
 
+// Re-export core types for backward compatibility across the codebase
+export type { KalpaNode, KalpaMatrix } from '../types';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // API 請求配置

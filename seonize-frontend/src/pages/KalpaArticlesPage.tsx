@@ -65,7 +65,7 @@ export const KalpaArticlesPage: React.FC = () => {
         const imageMarkdown = `\n\n![${image.alt}](${image.url})\n*${image.caption}*\n\n`;
         const updatedNode = { 
             ...previewNode, 
-            woven_content: (previewNode.woven_content || '') + imageMarkdown
+            content: (previewNode.content || '') + imageMarkdown
         };
         
         setPreviewNode(updatedNode);
@@ -84,7 +84,7 @@ export const KalpaArticlesPage: React.FC = () => {
         try {
             await kalpaApi.updateNode(node.id, {
                 images: node.images,
-                woven_content: node.woven_content,
+                content: node.content,
                 anchor_used: node.anchor_used
             });
             console.log("Successfully saved node changes");
@@ -288,7 +288,7 @@ export const KalpaArticlesPage: React.FC = () => {
                         </div>
                         <div className="modal-body" style={{ overflowY: 'auto', flex: 1, paddingRight: 'var(--space-4)' }}>
                             <div className="markdown-body">
-                                {previewNode.woven_content ? (
+                                {previewNode.content ? (
                                     <>
                                         {/* Kalpa 圖片展示 */}
                                         {previewNode.images && previewNode.images.length > 0 && (
@@ -312,8 +312,8 @@ export const KalpaArticlesPage: React.FC = () => {
                                                 </div>
                                             </div>
                                         )}
-                                        <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.woven_content) }} />
-                                        <MermaidRenderer content={previewNode.woven_content} />
+                                        <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.content) }} />
+                                        <MermaidRenderer content={previewNode.content} />
                                     </>
                                 ) : (
                                     <div style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
@@ -355,7 +355,7 @@ export const KalpaArticlesPage: React.FC = () => {
                     onClose={() => setShowImagePicker(false)}
                     suggestedKeywords={previewNode.target_title}
                     suggestedTopic={previewNode.target_title}
-                    sectionContent={previewNode.woven_content}
+                    sectionContent={previewNode.content}
                 />
             )}
         </div>

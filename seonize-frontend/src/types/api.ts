@@ -214,6 +214,11 @@ export interface KalpaNode {
         caption: string;
         source: string;
     }>;
+    anchor_used?: string;
+    publish_status?: 'draft' | 'published' | 'scheduled' | 'failed';
+    cms_publish_url?: string;
+    scheduled_at?: string;
+    woven_at?: string;
     created_at?: string;
 }
 
