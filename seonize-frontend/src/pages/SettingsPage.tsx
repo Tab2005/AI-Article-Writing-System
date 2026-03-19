@@ -359,7 +359,11 @@ export const SettingsPage: React.FC = () => {
                 setSettings({
                   ...settings,
                   ai_provider: e.target.value,
-                  ai_model: providers.find((p) => p.id === e.target.value)?.models[0] || '',
+                  ai_model: (() => {
+                    const firstM = providers.find((p) => p.id === e.target.value)?.models[0];
+                    if (!firstM) return '';
+                    return typeof firstM === 'string' ? firstM : firstM.id;
+                  })(),
                 })
               }
               fullWidth
