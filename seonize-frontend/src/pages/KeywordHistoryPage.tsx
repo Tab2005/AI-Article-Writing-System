@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataTable, Button } from '../components/ui';
 import { researchApi } from '../services/api';
+import { formatDate } from '../utils/date-utils';
 import type { ResearchHistoryItem } from '../types';
 import './KeywordHistoryPage.css';
 
@@ -91,14 +92,7 @@ export const KeywordHistoryPage: React.FC = () => {
     {
       key: 'created_at' as const,
       header: '搜尋日期',
-      render: (val: any) =>
-        new Date(val).toLocaleDateString('zh-TW', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
+      render: (val: any) => formatDate(val, true),
     },
     {
       key: 'actions' as any,

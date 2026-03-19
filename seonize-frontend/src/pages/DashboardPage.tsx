@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KPICard, DataTable, Button } from '../components/ui';
 import { projectsApi } from '../services/api';
+import { formatDate } from '../utils/date-utils';
 import type { ProjectState } from '../types';
 import './DashboardPage.css';
 
@@ -104,7 +105,7 @@ export const DashboardPage: React.FC = () => {
     {
       key: 'updated_at',
       header: '更新時間',
-      render: (value: unknown) => new Date(String(value)).toLocaleDateString('zh-TW'),
+      render: (value: unknown) => formatDate(String(value)),
     },
   ];
 

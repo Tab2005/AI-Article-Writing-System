@@ -3,6 +3,7 @@
  * 在任何呼叫 API 的組件中使用此 hook 來取得 apiFetch 函數
  */
 import { useState, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export interface InsufficientCreditsError {
     code: 'INSUFFICIENT_CREDITS';
@@ -22,6 +23,7 @@ const TOKEN_KEY = 'seonize_token';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 export function useApiWithCredits() {
+    const { refreshUser } = useAuth();
     const [creditsModal, setCreditsModal] = useState<CreditsModalState>({ isOpen: false });
 
     const apiFetch = useCallback(async (
@@ -55,13 +57,11 @@ export function useApiWithCredits() {
 
         // 如果是成功且為非 GET 請求，主動觸發點數重新整理
         if (res.ok && options.method && options.method !== 'GET') {
-            if ((window as any).refreshAuthUser) {
-                (window as any).refreshAuthUser();
-            }
+            refreshUser();
         }
 
         return res;
-    }, []);
+    }, [refreshUser]);
 
     const closeCreditsModal = useCallback(() => {
         setCreditsModal(prev => ({ ...prev, isOpen: false }));

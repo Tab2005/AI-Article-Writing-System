@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { adminApi, authApi } from '../services/api';
+import { formatDate } from '../utils/date-utils';
 import { Button, Input, Select } from '../components/ui';
 import './UserManagementPage.css';
 
@@ -32,7 +33,7 @@ const ROLE_LABELS: Record<string, { label: string; className: string }> = {
 const LEVEL_LABELS_DEFAULT: Record<number, string> = { 1: 'Basic', 2: 'Pro', 3: 'Business' };
 
 const UserManagementPage: React.FC = () => {
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, refreshUser } = useAuth();
     const [users, setUsers] = useState<UserRecord[]>([]);
     const [stats, setStats] = useState<UserStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -117,8 +118,8 @@ const UserManagementPage: React.FC = () => {
             showMessage('success', `已更新 ${editingUser.email} 的資料`);
 
             // 如果更新的是自己，重新整理側邊欄狀態
-            if (editingUser.id === currentUser?.id && (window as any).refreshAuthUser) {
-                (window as any).refreshAuthUser();
+            if (editingUser.id === currentUser?.id) {
+                refreshUser();
             }
 
             setEditingUser(null);
@@ -250,7 +251,7 @@ const UserManagementPage: React.FC = () => {
                                     <td><span className="um-level">Lv.{u.membership_level} {membershipLevels[u.membership_level] || `Level ${u.membership_level}`}</span></td>
                                     <td><span className="um-credits">💎 {u.credits}</span></td>
                                     <td>{u.project_count}</td>
-                                    <td className="um-date">{new Date(u.created_at).toLocaleDateString('zh-TW')}</td>
+                                    <td className="um-date">{formatDate(u.created_at)}</td>
                                     <td>
                                         <div className="um-actions">
                                             <button className="um-btn-edit" onClick={() => openEdit(u)}>編輯</button>

@@ -200,3 +200,76 @@ export interface ProjectUpdate {
     word_count?: number;
     cms_config_id?: string;
 }
+export interface KalpaNode {
+    id?: string;
+    entity: string;
+    action: string;
+    pain_point: string;
+    target_title: string;
+    status: 'pending' | 'weaving' | 'done' | 'failed';
+    content?: string;
+    images?: Array<{
+        url: string;
+        alt: string;
+        caption: string;
+        source: string;
+    }>;
+    created_at?: string;
+}
+
+export interface KalpaMatrix {
+    id: string;
+    project_name: string;
+    industry?: string;
+    money_page_url?: string;
+    entities: string[];
+    actions: string[];
+    pain_points: string[];
+    nodes?: KalpaNode[];
+    cms_config_id?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface User {
+    id: string;
+    email: string;
+    username: string;
+    role: string;
+    credits: number;
+    membership_level?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface UserRecord {
+    id: string;
+    email: string;
+    username: string;
+    role: string;
+    credits: number;
+    membership_level: number;
+    project_count: number;
+    created_at: string;
+}
+
+export interface AdminStats {
+    total_users: number;
+    super_admins: number;
+    vip_users: number;
+    regular_users: number;
+}
+
+export interface ImageSearchResult {
+    url: string;
+    alt: string;
+    caption: string;
+    source: string;
+}
+
+export interface CMSPublishResponse {
+    success: boolean;
+    message?: string;
+    post_id?: string;
+    publish_url?: string;
+}

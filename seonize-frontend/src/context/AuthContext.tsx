@@ -1,16 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../services/api';
-
-interface User {
-    id: string;
-    email: string;
-    username: string;
-    role: string;
-    credits: number;
-    membership_level?: number;
-    created_at?: string;
-    updated_at?: string;
-}
+import type { User } from '../types';
 
 interface AuthContextType {
     user: User | null;
@@ -81,12 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userData);
     };
 
-    useEffect(() => {
-        (window as any).refreshAuthUser = refreshUser;
-        return () => {
-            delete (window as any).refreshAuthUser;
-        };
-    }, [refreshUser]);
+    // Removed window.refreshAuthUser global mount to follow React best practices
 
     return (
         <AuthContext.Provider value={{

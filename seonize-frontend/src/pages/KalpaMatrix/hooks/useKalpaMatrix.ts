@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { kalpaApi, cmsApi } from '../../../services/api';
 import type { KalpaNode, CMSConfig } from '../../../services/api';
 import { uiBus } from '../../../utils/ui-bus';
 
 export const useKalpaMatrix = (user: any) => {
+    const { refreshUser } = useAuth();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
@@ -128,7 +130,7 @@ export const useKalpaMatrix = (user: any) => {
                 try {
                     const data = await kalpaApi.brainstorm(brainstormTopic);
                     setTiandaoSuggestions(data);
-                    if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
+                    refreshUser();
                     uiBus.notify('天道解析完成', 'success');
                 } catch (error) {
                     console.error('Brainstorm failed:', error);
@@ -332,7 +334,7 @@ export const useKalpaMatrix = (user: any) => {
                     if (res.success) {
                         setResults(prev => prev.map(n => n.id === node.id ? res.node : n));
                         setPreviewNode(res.node);
-                        if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
+                        refreshUser();
                     }
                 } catch (error: any) {
                     setResults(prev => prev.map(n => n.id === node.id ? { ...n, status: 'failed' } : n));
@@ -393,7 +395,7 @@ export const useKalpaMatrix = (user: any) => {
                     uiBus.notify(res.message || `已啟動 ${ids.length} 個任務...`, 'info');
                     setResults(prev => prev.map(nd => ids.includes(nd.id || '') ? { ...nd, status: 'weaving' } : nd));
                     setSelectedNodeIds([]);
-                    if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
+                    refreshUser();
                 } catch (error: any) {
                     if (!error?.isCreditsError) uiBus.notify('批量編織啟動失敗。', 'error');
                 }

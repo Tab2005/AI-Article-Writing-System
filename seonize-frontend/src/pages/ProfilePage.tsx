@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
+import { formatDate } from '../utils/date-utils';
 import './ProfilePage.css';
 
 const ProfilePage: React.FC = () => {
@@ -240,7 +241,7 @@ const ProfilePage: React.FC = () => {
                         </div>
                         <div className="stat-item">
                             <span className="stat-label">註冊日期</span>
-                            <span className="stat-value">{user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}</span>
+                            <span className="stat-value">{formatDate(user.created_at)}</span>
                         </div>
                     </div>
 
@@ -324,10 +325,7 @@ const ProfilePage: React.FC = () => {
                                         {creditLogs.map((log) => (
                                             <tr key={log.id}>
                                                 <td className="log-date">
-                                                    {new Date(log.created_at).toLocaleString('zh-TW', {
-                                                        month: '2-digit', day: '2-digit',
-                                                        hour: '2-digit', minute: '2-digit'
-                                                    })}
+                                                    {formatDate(log.created_at, true)}
                                                 </td>
                                                 <td className="log-op">{log.operation}</td>
                                                 <td className={`log-delta text-center ${log.delta > 0 ? 'plus' : log.delta < 0 ? 'minus' : 'neutral'}`}>

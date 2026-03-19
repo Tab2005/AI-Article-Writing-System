@@ -13,6 +13,14 @@ import type {
   SEOCheckResponse,
   WritingSection,
   CompetitionResponse,
+  CrawlResult,
+  KalpaNode,
+  KalpaMatrix,
+  UserRecord,
+  AdminStats,
+  ImageSearchResult,
+  CMSPublishResponse,
+  User,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -201,14 +209,14 @@ export const authApi = {
       method: 'POST',
       body: data,
     }),
-  validate: () => request<{ status: string; user: any }>('/api/auth/validate'),
+  validate: () => request<{ status: string; user: User }>('/api/auth/validate'),
   getMembershipLevels: () => request<Record<string, string>>('/api/auth/membership/levels'),
   getCreditHistory: (page: number = 1, perPage: number = 20) => 
     request<{ logs: any[]; total: number; page: number; per_page: number; total_pages: number }>(
       `/api/auth/credits/history?page=${page}&per_page=${perPage}`
     ),
   updateProfile: (data: { username?: string; old_password?: string; new_password?: string }) =>
-    request<{ message: string; user: any }>('/api/auth/profile', { method: 'PATCH', body: data }),
+    request<{ message: string; user: User }>('/api/auth/profile', { method: 'PATCH', body: data }),
 };
 
 // Projects API
@@ -232,7 +240,7 @@ export const researchApi = {
     request<ResearchResponse>('/api/research/serp', { method: 'POST', body: data }),
 
   crawl: (urls: string[]) =>
-    request<{ results: any[] }>('/api/research/crawl', { method: 'POST', body: { urls } }),
+    request<{ results: CrawlResult[] }>('/api/research/crawl', { method: 'POST', body: { urls } }),
 
   keywordIdeas: (data: {
     keyword: string;
@@ -348,39 +356,7 @@ export const writingApi = {
 };
 
 // Kalpa API
-export interface KalpaNode {
-  id?: string;
-  matrix_id?: string;
-  entity: string;
-  action: string;
-  pain_point: string;
-  target_title: string;
-  status: 'pending' | 'weaving' | 'completed' | 'failed';
-  woven_content?: string;
-  anchor_used?: string;
-  images?: any[];
-  woven_at?: string;
-  // CMS 發布資訊
-  cms_config_id?: string;
-  cms_post_id?: string;
-  publish_status?: 'draft' | 'scheduled' | 'published' | 'failed';
-  cms_publish_url?: string;
-  scheduled_at?: string;
-  published_at?: string;
-}
-
-export interface KalpaMatrix {
-  id: string;
-  project_name: string;
-  industry: string;
-  money_page_url: string;
-  entities: string[];
-  actions: string[];
-  pain_points: string[];
-  created_at: string;
-  cms_config_id?: string;
-  nodes?: KalpaNode[];
-}
+// kalpaApi moved below
 
 export const kalpaApi = {
   generate: (data: {
@@ -400,7 +376,7 @@ export const kalpaApi = {
     entities: string[];
     actions: string[];
     pain_points: string[];
-    nodes: any[];
+    nodes: KalpaNode[];
     cms_config_id?: string;
   }) => request<{ success: boolean; matrix_id: string; matrix: KalpaMatrix }>('/api/kalpa/save', { method: 'POST', body: data }),
 
@@ -475,7 +451,7 @@ export const promptsApi = {
 export interface AIProvider {
   id: 'zeabur' | 'openrouter' | string;
   name: string;
-  models: any[]; // 支援原始字串陣列或詳細模型物件陣列
+  models: (string | { id: string; name: string })[]; // 支援原始字串陣列或詳細模型物件陣列
   description: string;
 }
 
@@ -520,7 +496,7 @@ export const adminApi = {
     if (params.search) searchParams.set('search', params.search);
 
     return request<{
-      users: any[];
+      users: UserRecord[];
       total: number;
       page: number;
       per_page: number;
@@ -528,17 +504,17 @@ export const adminApi = {
     }>(`/api/admin/users?${searchParams.toString()}`);
   },
 
-  getStats: () => request<any>('/api/admin/users/stats/summary'),
+  getStats: () => request<AdminStats>('/api/admin/users/stats/summary'),
 
-  updateUser: (userId: string, data: any) =>
-    request<any>(`/api/admin/users/${userId}`, { method: 'PATCH', body: data }),
+  updateUser: (userId: string, data: Partial<UserRecord> & { new_password?: string; credits_delta?: number }) =>
+    request<{ success: boolean; message: string }>(`/api/admin/users/${userId}`, { method: 'PATCH', body: data }),
 
   deleteUser: (userId: string) =>
-    request<any>(`/api/admin/users/${userId}`, { method: 'DELETE' }),
+    request<{ success: boolean; message: string }>(`/api/admin/users/${userId}`, { method: 'DELETE' }),
 
-  getCreditConfig: () => request<any>('/api/admin/credits/config'),
-  updateCreditConfig: (data: any) =>
-    request<any>('/api/admin/credits/config', { method: 'PUT', body: data }),
+  getCreditConfig: () => request<Record<string, number>>('/api/admin/credits/config'),
+  updateCreditConfig: (data: Record<string, number>) =>
+    request<{ success: boolean; message: string }>('/api/admin/credits/config', { method: 'PUT', body: data }),
 };
 
 // CMS API
@@ -558,10 +534,10 @@ export interface CMSConfig {
 export const cmsApi = {
   listConfigs: () => request<CMSConfig[]>('/api/cms/configs'),
 
-  createConfig: (data: any) =>
+  createConfig: (data: Partial<CMSConfig>) =>
     request<CMSConfig>('/api/cms/configs', { method: 'POST', body: data }),
 
-  updateConfig: (id: string, data: any) =>
+  updateConfig: (id: string, data: Partial<CMSConfig>) =>
     request<CMSConfig>(`/api/cms/configs/${id}`, { method: 'PUT', body: data }),
 
   deleteConfig: (id: string) =>
@@ -576,7 +552,7 @@ export const cmsApi = {
     config_id: string;
     status: string;
     scheduled_at?: string | null;
-  }) => request<any>('/api/cms/publish', { method: 'POST', body: data }),
+  }) => request<CMSPublishResponse>('/api/cms/publish', { method: 'POST', body: data }),
 };
 
 // Images API
@@ -604,7 +580,7 @@ export const imagesApi = {
   },
 
   search: (q: string, limit: number = 10) =>
-    request<{ success: boolean; data: any[] }>(`/api/images/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+    request<{ success: boolean; data: ImageSearchResult[] }>(`/api/images/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 
   metadataSuggestion: (content: string, topic: string) =>
     request<{ success: boolean; data: { alt: string; caption: string } }>(`/api/images/metadata-suggestion?content=${encodeURIComponent(content)}&topic=${encodeURIComponent(topic)}`),

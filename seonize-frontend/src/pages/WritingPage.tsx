@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, KPICard, MermaidRenderer } from '../components/ui';
+import { useAuth } from '../context/AuthContext';
 import PublishModal from '../components/PublishModal';
 import ImagePicker from '../components/common/ImagePicker';
 import { projectsApi, writingApi } from '../services/api';
@@ -19,6 +20,7 @@ interface WritingSectionState {
 }
 
 export const WritingPage: React.FC = () => {
+  const { refreshUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const projectId = location.state?.projectId || sessionStorage.getItem('lastProjectId');
@@ -143,7 +145,7 @@ export const WritingPage: React.FC = () => {
       setTimeout(() => saveToProject(), 500);
 
       // 重新整理使用者點數
-      if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
+      refreshUser();
     } catch (err) {
       console.error('生成失敗:', err);
       setSections((prev) => {
@@ -206,7 +208,7 @@ export const WritingPage: React.FC = () => {
       setProject(prev => prev ? { ...prev, quality_report: res, last_audit_at: new Date().toISOString() } : null);
 
       // 重新整理使用者點數 (因為扣點了)
-      if ((window as any).refreshAuthUser) (window as any).refreshAuthUser();
+      refreshUser();
     } catch (err: any) {
       console.error('分析失敗:', err);
       setAuditState('error');
