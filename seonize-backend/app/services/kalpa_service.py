@@ -432,11 +432,12 @@ class KalpaService:
         return node
 
     @staticmethod
-    async def batch_weave_nodes(db: Session, node_ids: List[str], user_id: str) -> Dict[str, Any]:
+    async def batch_weave_nodes(node_ids: List[str], user_id: str) -> Dict[str, Any]:
         """
-        批量執行「神諭編織」 (User 隔離)
+        批量執行「神諭編織」 (User 隔離) - 併發安全版本
         """
         import asyncio
+        from app.core.database import get_db_context
         semaphore = asyncio.Semaphore(3)
         
         results = {"success": 0, "failed": 0, "total": len(node_ids)}
@@ -444,7 +445,9 @@ class KalpaService:
         async def Task(node_id):
             async with semaphore:
                 try:
-                    await KalpaService.weave_node(db, node_id, user_id) 
+                    # 為每個併發任務開啟獨立 Session，避免 Session 共享競爭
+                    with get_db_context() as session_db:
+                        await KalpaService.weave_node(session_db, node_id, user_id) 
                     results["success"] += 1
                 except Exception as e:
                     logger.error(f"Batch weaving failed for node {node_id}: {e}")
@@ -468,7 +471,7 @@ class KalpaService:
                 if not user:
                     return
 
-                results = await KalpaService.batch_weave_nodes(db, node_ids, user_id)
+                results = await KalpaService.batch_weave_nodes(node_ids, user_id)
                 
                 # 部分退款邏輯
                 if results["failed"] > 0 and total_cost > 0:

@@ -4,11 +4,13 @@ Seonize Backend - AI Service
 """
 
 import os
-from typing import Optional, Generator, AsyncGenerator, List, Dict, Any
-from enum import Enum
-from pydantic import BaseModel
-from app.core.config import settings
 from datetime import datetime
+import json
+import re
+import logging
+from app.utils.ai_utils import parse_ai_json
+
+logger = logging.getLogger(__name__)
 
 
 class AIProvider(str, Enum):
@@ -231,30 +233,43 @@ SERP 標題：
         
         try:
             result = await cls.generate_content(prompt)
-            import json, re
-            json_match = re.search(r'\{[\s\S]*\}', result)
-            if json_match:
-                return json.loads(json_match.group())
+            data = parse_ai_json(result)
+            if data:
+                return data
             return {"intent": "informational", "confidence": 0.5, "signals": [], "suggested_style": "專業教育風", "quick_content_gaps": []}
         except Exception as e:
+            logger.error(f"Search intent analysis failed: {e}")
             return {"intent": "informational", "confidence": 0.5, "signals": [str(e)], "suggested_style": "專業教育風", "quick_content_gaps": []}
     
     @classmethod
     async def generate_outline(cls, keyword: str, intent: str, keywords: list[str], research_data: dict = None, custom_prompt: str = None, content_gap_report: dict = None, selected_title: str = None) -> dict:
-        """基於語義數據生成 AI 驅動的文章大綱（支援自訂 Prompt 與內容缺口建議）"""
+        """基於語義數據生成 AI 驅動的文章大綱"""
+        prompt = cls._build_outline_prompt(keyword, intent, keywords, research_data, custom_prompt, content_gap_report, selected_title)
         
-        gap_info = ""
+        try:
+            result = await cls.generate_content(prompt, temperature=0.7)
+            data = parse_ai_json(result)
+            if data:
+                return data
+            
+            logger.error(f"Failed to parse AI outline result: {result[:500]}...")
+            raise ValueError("無法解析 AI 產出的 JSON 大綱格式")
+        except Exception as e:
+            logger.error(f"Failed to generate AI outline: {e}")
+            raise e
+
+    @staticmethod
+    def _build_outline_prompt(keyword: str, intent: str, keywords: list[str], research_data: dict, custom_prompt: str, content_gap_report: dict, selected_title: str) -> str:
+        """建構大綱解析提示詞"""
         is_dict = isinstance(research_data, dict)
         paa = research_data.get("paa", []) if is_dict else []
         related = research_data.get("related_searches", []) if is_dict else []
         ai_overview = research_data.get("ai_overview", {}) if is_dict else {}
         
         gap_info = ""
-        
         if selected_title:
             gap_info += f"\n- **使用者指定標題**：{selected_title}\n"
 
-        # 內容缺口資訊注入
         if content_gap_report and isinstance(content_gap_report, dict):
             gap_info += f"""
 # 內容缺口與 E-E-A-T 策略建議 (參考)
@@ -265,7 +280,6 @@ SERP 標題：
 請務必在標題或章節中，針對上述「對手忽略的缺口」進行補強。
 """
 
-        # 如果有提供自訂 Prompt，使用它；否則使用預設
         if custom_prompt:
             prompt = custom_prompt.replace("{keyword}", keyword)\
                                  .replace("{intent}", intent)\
@@ -275,15 +289,13 @@ SERP 標題：
                                  .replace("{ai_overview}", ai_overview.get('description') or ai_overview.get('snippet') or '無' if isinstance(ai_overview, dict) else '無')\
                                  .replace("{current_year}", str(datetime.now().year))
             
-            # 支援手動標籤 {content_gap}
             if "{content_gap}" in prompt:
                 prompt = prompt.replace("{content_gap}", gap_info)
             else:
-                # 若無標籤則附在背景資訊後，保持向下相容
                 prompt = prompt.replace("# 背景資訊", f"{gap_info}\n# 背景資訊")
-        else:
-            # 預設提示詞（保持向後兼容）
-            prompt = f"""你是一位資深的 SEO 內容建築師，擅長運用知識圖譜與語義搜尋技術。
+            return prompt
+
+        return f"""你是一位資深的 SEO 內容建築師，擅長運用知識圖譜與語義搜尋技術。
 請為核心關鍵字「{keyword}」生成一篇內容深度領先競爭對手、具備極高 GEO (生成式引擎優化) 潛力的文章大綱。
 
 {gap_info}
@@ -325,43 +337,7 @@ SERP 標題：
         }}
     ]
 }}"""
-        
-        try:
-            result = await cls.generate_content(prompt, temperature=0.7)
-            import json
-            cleaned_result = cls._clean_json_string(result)
-            try:
-                return json.loads(cleaned_result)
-            except json.JSONDecodeError as je:
-                # 如果還是失敗，嘗試更激進的清理 (處理字串內未轉義的換行)
-                import re
-                
-                # 尋找所有在引號內的內容 (不含已轉義的引號)，並將內部的換行替換掉
-                # 使用能辨識已轉義引號的 Regex 
-                def fix_newlines(match):
-                    content = match.group(1)
-                    if '\n' in content:
-                        # 處理換行，將其轉為轉義字元 \n
-                        return f'"{content.replace("\n", "\\n").replace("\r", "")}"'
-                    return f'"{content}"'
-                
-                # Regex: 匹配雙引號括起來的內容，支援內部的 \" 轉義
-                radical_clean = re.sub(r'"((?:[^"\\]|\\.)*)"', fix_newlines, cleaned_result)
-                
-                try:
-                    return json.loads(radical_clean)
-                except Exception as e2:
-                    # 如果仍然失敗，記錄原始回覆以便除錯 (如果有權限寫入的話)
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"JSON Parse still failed after radical clean. Error: {e2}")
-                    logger.error(f"Original Result: {result[:500]}...") # 只錄一小段
-                    # 丟出原始錯誤，讓上層捕捉
-                    raise je
-        except Exception as e:
-            import logging
-            logging.error(f"Failed to generate AI outline: {e}")
-            raise e
+    
     
     @classmethod
     async def generate_section_content(
@@ -438,8 +414,7 @@ SERP 標題：
                 "summary": f"介紹了{heading}的核心概念",
             }
         except Exception as e:
-            import logging
-            logging.error(f"Failed to generate section content: {e}")
+            logger.error(f"Failed to generate section content: {e}")
             return {
                 "heading": heading,
                 "content": f"## {heading}\n\n生成內容時發生錯誤：{str(e)}",
@@ -457,13 +432,33 @@ SERP 標題：
                 {"title": f"{keyword}怎麼辦？{current_yr} 最新解決教學與修復步驟", "strategy": "教學型", "reason": "預設生成"}
             ]
             
+        prompt = await cls._build_titles_prompt(keyword, titles, intent, user_id, custom_prompt)
+        
+        try:
+            result = await cls.generate_content(prompt, temperature=0.8)
+            parsed = parse_ai_json(result)
+            if parsed:
+                return parsed
+            
+            # 備用方案：如果 JSON 解析失敗
+            current_yr = datetime.now().year
+            return [
+                {"title": f"什麼是 {keyword}？{current_yr} 最完整定義與基礎指南", "strategy": "定義型", "reason": "觸發 AI 定義摘要"},
+                {"title": f"如何優化 {keyword}？從入門到精通的 5 個教學步驟", "strategy": "教學型", "reason": "符合操作流程意圖"},
+                {"title": f"{current_yr} 年必看 7 大 {keyword} 推薦清單與實測評比", "strategy": "清單型", "reason": "清單格式極易被 AI 抓取"},
+            ]
+        except Exception as e:
+            return [{"title": f"生成失敗: {str(e)}", "strategy": "錯誤", "reason": "系統發生異常"}]
+
+    @classmethod
+    async def _build_titles_prompt(cls, keyword: str, titles: List[str], intent: str, user_id: Optional[int], custom_prompt: Optional[str]) -> str:
+        """建構標題生成提示詞"""
         # 1. 優先從新模板系統讀取啟用的模板
         try:
             from app.core.database import get_db_context
             from app.models.db_models import PromptTemplate
             from sqlalchemy import or_
             with get_db_context() as db:
-                # 優先順序：使用者的活躍模板 > 系統預設活躍模板
                 active_template = db.query(PromptTemplate).filter(
                     PromptTemplate.category == "title_generation",
                     PromptTemplate.is_active == True,
@@ -473,31 +468,27 @@ SERP 標題：
                 if active_template:
                     custom_prompt = active_template.content
         except Exception as e:
-            import logging
-            logging.warning(f"Failed to load active prompt template: {e}")
+            logger.warning(f"Failed to load active prompt template: {e}")
 
-        # 2. 備用：從舊設定讀取 (保持相容性)
+        # 2. 備用：從舊設定讀取
         if not custom_prompt:
             try:
                 from app.core.database import get_db_context
                 from app.models.db_models import Settings
                 with get_db_context() as db:
                     custom_prompt = Settings.get_value(db, "ai_title_prompt", None)
-            except Exception as e:
-                import logging
-                logging.warning(f"Failed to load legacy ai_title_prompt: {e}")
+            except Exception:
+                pass
 
         if custom_prompt:
-            # 使用者自定義指令 (支援變數替換)
             prompt = custom_prompt.replace("{keyword}", keyword)\
                                  .replace("{intent}", intent)\
                                  .replace("{current_year}", str(datetime.now().year))
-            # 注入競爭對手標題
             competitor_list = chr(10).join(f'- {t}' for t in titles[:10])
             prompt = prompt.replace("{titles}", competitor_list)
-            # 如果使用者沒放變數，則貼在後面 (保險做法)
             if "{titles}" not in custom_prompt:
                 prompt += f"\n\n# 競爭對手標題 (SERP Top 10)：\n{competitor_list}"
+            return prompt
         else:
             # 系統預設指令
             current_yr = datetime.now().year
@@ -534,7 +525,6 @@ SERP 標題：
         
         try:
             result = await cls.generate_content(prompt, temperature=0.8)
-            from app.utils.ai_utils import parse_ai_json
             parsed = parse_ai_json(result)
             if parsed:
                 return parsed
@@ -591,7 +581,6 @@ SERP 標題：
 """
         try:
             result = await cls.generate_content(prompt, temperature=0.5)
-            from app.utils.ai_utils import parse_ai_json
             parsed = parse_ai_json(result)
             if parsed:
                 return parsed
@@ -622,7 +611,6 @@ SERP 標題：
 """
         try:
             result = await cls.generate_content(prompt, temperature=0.6)
-            from app.utils.ai_utils import parse_ai_json
             data = parse_ai_json(result)
             if data:
                 # 相容性轉換：如果 AI 回傳的是舊的單數欄位或字串，轉換為複數列表
@@ -659,7 +647,6 @@ SERP 標題：
 """
         try:
             result = await cls.generate_content(prompt, temperature=0.3)
-            from app.utils.ai_utils import parse_ai_json
             parsed = parse_ai_json(result)
             if parsed:
                 return parsed

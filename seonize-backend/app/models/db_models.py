@@ -71,7 +71,7 @@ class Project(Base):
     __tablename__ = "projects"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True) # 歸屬使用者
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者
     primary_keyword = Column(String(255), nullable=False, index=True)
     country = Column(String(10), default="TW")
     language = Column(String(10), default="zh-TW")
@@ -109,7 +109,7 @@ class Project(Base):
     last_audit_at = Column(DateTime, nullable=True)
     
     # CMS 發布資訊
-    cms_config_id = Column(String(36), ForeignKey("cms_configs.id"), nullable=True) # 關聯至 CMSConfig.id
+    cms_config_id = Column(String(36), ForeignKey("cms_configs.id", ondelete="SET NULL"), nullable=True) # 關聯至 CMSConfig.id
     cms_post_id = Column(String(100), nullable=True)
     publish_status = Column(String(20), default="draft")  # draft, scheduled, published, failed
     cms_publish_url = Column(Text, nullable=True)
@@ -244,7 +244,7 @@ class KeywordCache(Base):
     __tablename__ = "keyword_cache"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True) # 歸屬使用者
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者
     keyword = Column(String(255), nullable=False, index=True)
     location_code = Column(Integer, nullable=False)
     language_code = Column(String(10), nullable=False)
@@ -301,7 +301,7 @@ class PromptTemplate(Base):
     __tablename__ = "prompt_templates"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True) # 歸屬使用者 (NULL 代表系統預設)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者 (NULL 代表系統預設)
     category = Column(String(50), nullable=False, index=True) # title_generation, outline_generation, etc.
     name = Column(String(100), nullable=False)
     content = Column(Text, nullable=False)
@@ -330,7 +330,7 @@ class CMSConfig(Base):
     __tablename__ = "cms_configs"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True) # 歸屬使用者
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者
     name = Column(String(100), nullable=False)
     platform = Column(String(20), nullable=False)  # ghost, wordpress
     api_url = Column(Text, nullable=False)
@@ -388,7 +388,7 @@ class KalpaMatrix(Base):
     anchor_variants = Column(JSON, default=list)  # 法寶袋：動態生成的錨點文字清單
     
     # CMS 發布資訊
-    cms_config_id = Column(String(36), ForeignKey("cms_configs.id"), nullable=True) # 預設發布站點
+    cms_config_id = Column(String(36), ForeignKey("cms_configs.id", ondelete="SET NULL"), nullable=True) # 預設發布站點
     
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -420,8 +420,8 @@ class KalpaNode(Base):
     __tablename__ = "kalpa_nodes"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True) # 歸屬使用者
-    matrix_id = Column(String(36), ForeignKey("kalpa_matrices.id"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者
+    matrix_id = Column(String(36), ForeignKey("kalpa_matrices.id", ondelete="CASCADE"), nullable=False, index=True)
     
     entity = Column(String(100))
     action = Column(String(100))
@@ -436,7 +436,7 @@ class KalpaNode(Base):
     images = Column(JSON, default=list) # [{url, alt, caption, source}]
     
     # CMS 發布資訊
-    cms_config_id = Column(String(36), ForeignKey("cms_configs.id"), nullable=True)
+    cms_config_id = Column(String(36), ForeignKey("cms_configs.id", ondelete="SET NULL"), nullable=True)
     cms_post_id = Column(String(100), nullable=True)
     publish_status = Column(String(20), default="draft")  # draft, scheduled, published, failed
     cms_publish_url = Column(Text, nullable=True)
