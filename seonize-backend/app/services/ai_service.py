@@ -3,11 +3,15 @@ Seonize Backend - AI Service
 統一 AI 服務介面，支援 Gemini 和 Zeabur AI Hub
 """
 
+from enum import Enum
+from typing import List, Dict, Any, Optional, AsyncGenerator
+from pydantic import BaseModel
 import os
 from datetime import datetime
 import json
 import re
 import logging
+from app.core.config import settings
 from app.utils.ai_utils import parse_ai_json
 
 logger = logging.getLogger(__name__)
