@@ -134,7 +134,7 @@ export const KalpaHistoryPage: React.FC = () => {
                         </div>
                         <div className="modal-body">
                             <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-body)' }}>
-                                {previewNode.woven_content}
+                                {previewNode.content}
                             </div>
                         </div>
                         <div className="modal-footer">
