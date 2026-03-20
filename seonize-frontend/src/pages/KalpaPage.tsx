@@ -103,10 +103,10 @@ export const KalpaPage: React.FC = () => {
             width: '240px',
             render: (val: any, row: KalpaNode) => {
                 const statusStr = String(val);
-                if (statusStr === 'done') {
+                if (statusStr === 'completed') {
                     return (
                         <div className="status-cell">
-                            <span className="status-badge status-done">已編織</span>
+                            <span className="status-badge status-completed">已編織</span>
                             <button className="weave-btn preview" onClick={() => setPreviewNode(row)}>預覽</button>
                         </div>
                     );

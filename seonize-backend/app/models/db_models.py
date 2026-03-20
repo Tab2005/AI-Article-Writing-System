@@ -141,6 +141,7 @@ class Project(Base):
             "research_data": self.research_data or {"paa": [], "related_searches": [], "ai_overview": None},
             "content_gap_report": self.content_gap_report,
             "outline": self.outline,
+            "content": self.full_content or "", # 統一為 content
             "full_content": self.full_content or "",
             "meta_title": self.meta_title,
             "meta_description": self.meta_description,

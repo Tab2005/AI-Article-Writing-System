@@ -14,7 +14,7 @@ interface WritingSectionState {
   heading: string;
   level: number;
   content: string;
-  status: 'pending' | 'generating' | 'done' | 'error';
+  status: 'pending' | 'generating' | 'completed' | 'error';
   keywords: string[];
   image_suggestion?: any;
 }
@@ -68,7 +68,7 @@ export const WritingPage: React.FC = () => {
               heading: item.heading,
               level: item.level,
               content: item.content || '',
-              status: item.content ? 'done' : 'pending',
+              status: item.content ? 'completed' : 'pending',
               keywords: item.keywords || [],
               image_suggestion: item.image_suggestion,
             });
@@ -136,7 +136,7 @@ export const WritingPage: React.FC = () => {
         updated[sectionIndex] = {
           ...updated[sectionIndex],
           content: res.content,
-          status: 'done',
+          status: 'completed',
         };
         return updated;
       });
@@ -342,8 +342,8 @@ export const WritingPage: React.FC = () => {
 
   const getStatusIcon = (status: WritingSectionState['status']) => {
     switch (status) {
-      case 'done':
-        return <span className="status-icon status-icon--done">✓</span>;
+      case 'completed':
+        return <span className="status-icon status-icon--completed">✓</span>;
       case 'generating':
         return <span className="status-icon status-icon--generating">⟳</span>;
       case 'error':
@@ -464,7 +464,7 @@ export const WritingPage: React.FC = () => {
       <div className="writing-stats">
         <KPICard
           title="完成進度"
-          value={`${sections.filter((s) => s.status === 'done').length}/${sections.length}`}
+          value={`${sections.filter((s) => s.status === 'completed').length}/${sections.length}`}
           icon={<span style={{ fontSize: '20px' }}>📊</span>}
         />
         <KPICard
@@ -652,7 +652,7 @@ export const WritingPage: React.FC = () => {
           <div className="seo-check__item seo-check__item--pass">
             <span className="seo-check__icon">✓</span>
             <span>
-              關鍵字嵌入：已覆蓋 {sections.filter((s) => s.status === 'done').length} 個章節
+              關鍵字嵌入：已覆蓋 {sections.filter((s) => s.status === 'completed').length} 個章節
             </span>
           </div>
           <div className="seo-check__item seo-check__item--warn">

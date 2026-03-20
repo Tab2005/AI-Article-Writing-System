@@ -157,7 +157,7 @@
   flex-shrink: 0;
 }
 
-.status-icon--done {
+.status-icon--completed {
   background: var(--color-success);
   color: white;
 }

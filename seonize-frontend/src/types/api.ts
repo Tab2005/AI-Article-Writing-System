@@ -196,6 +196,7 @@ export interface ProjectUpdate {
     candidate_titles?: string[];
     research_data?: Record<string, any>;
     content_gap_report?: any;
+    content?: string;
     full_content?: string;
     word_count?: number;
     cms_config_id?: string;
@@ -206,7 +207,7 @@ export interface KalpaNode {
     action: string;
     pain_point: string;
     target_title: string;
-    status: 'pending' | 'weaving' | 'done' | 'failed';
+    status: 'pending' | 'weaving' | 'completed' | 'failed';
     content?: string;
     images?: Array<{
         url: string;

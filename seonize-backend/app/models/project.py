@@ -98,6 +98,7 @@ class ProjectState(BaseModel):
     outline: Optional[OutlineData] = None
     
     # Generated Content
+    content: str = ""
     full_content: str = ""
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
@@ -125,5 +126,6 @@ class ProjectUpdate(BaseModel):
     optimization_mode: Optional[OptimizationMode] = None
     candidate_titles: Optional[List[str]] = None
     research_data: Optional[Dict[str, Any]] = None
+    content: Optional[str] = None
     full_content: Optional[str] = None
     word_count: Optional[int] = None

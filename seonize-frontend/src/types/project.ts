@@ -43,6 +43,7 @@ export interface ProjectState {
     candidate_titles: string[];
     selected_title?: string;
     outline?: OutlineData;
+    content: string;
     full_content: string;
     meta_title?: string;
     meta_description?: string;

@@ -34,6 +34,7 @@ def db_to_project_state(db_project: Project) -> ProjectState:
         candidate_titles=db_project.candidate_titles or [],
         selected_title=db_project.selected_title,
         outline=db_project.outline,
+        content=db_project.full_content, # 統一為 content
         full_content=db_project.full_content,
         meta_title=db_project.meta_title,
         meta_description=db_project.meta_description,
@@ -125,8 +126,13 @@ async def update_project(
     
     update_data = project_update.model_dump(exclude_unset=True)
     
+    # 統一欄位名稱處理
+    if "content" in update_data:
+        update_data["full_content"] = update_data.pop("content")
+
     for field, value in update_data.items():
-        setattr(db_project, field, value)
+        if hasattr(db_project, field):
+            setattr(db_project, field, value)
     
     db_project.updated_at = datetime.now(timezone.utc)
     db.commit()
