@@ -258,7 +258,7 @@ export const KalpaPage: React.FC = () => {
                     onClose={() => setShowImagePicker(false)}
                     suggestedKeywords={previewNode.target_title}
                     suggestedTopic={previewNode.target_title}
-                    sectionContent={previewNode.content}
+                    sectionContent={previewNode.woven_content}
                 />
             )}
             {/* 天道解析進度視窗 */}
