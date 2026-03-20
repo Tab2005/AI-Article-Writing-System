@@ -64,7 +64,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                     flex: 1
                 }}>
                     <div className="markdown-body">
-                        {previewNode.woven_content ? (
+                        {previewNode.content ? (
                             <>
                                 {/* Kalpa 圖片展示 */}
                                 {previewNode.images && previewNode.images.length > 0 && (
@@ -88,8 +88,8 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                                         </div>
                                     </div>
                                 )}
-                                <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.woven_content) }} />
-                                <MermaidRenderer content={previewNode.woven_content} />
+                                <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.content) }} />
+                                <MermaidRenderer content={previewNode.content} />
                             </>
                         ) : (
                             <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 'var(--space-10)' }}>
