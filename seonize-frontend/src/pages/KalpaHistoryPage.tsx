@@ -3,7 +3,7 @@ import { kalpaApi, type KalpaMatrix, type KalpaNode } from '../services/api';
 import { PreviewModal } from './KalpaMatrix/components/PreviewModal';
 import './KalpaHistoryPage.css';
 
-const KalpaHistoryPage: React.FC = () => {
+export const KalpaHistoryPage: React.FC = () => {
     const [matrices, setMatrices] = useState<KalpaMatrix[]>([]);
     const [loading, setLoading] = useState(true);
     const [previewNode, setPreviewNode] = useState<KalpaNode | null>(null);
@@ -14,7 +14,8 @@ const KalpaHistoryPage: React.FC = () => {
 
     const loadHistory = async () => {
         try {
-            const data = await kalpaApi.getHistory();
+            // Use list() which is available in kalpaApi
+            const data = await kalpaApi.list();
             setMatrices(data);
         } catch (error) {
             console.error('Failed to load history:', error);
@@ -75,12 +76,12 @@ const KalpaHistoryPage: React.FC = () => {
                                                 <td>{node.target_title}</td>
                                                 <td>
                                                     <span className={`status-badge status-${node.status}`}>
-                                                        {node.status === 'completed' ? '已編織' : 
+                                                        {node.status === 'done' ? '已編織' : 
                                                          node.status === 'pending' ? '待處理' : node.status}
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    {node.status === 'completed' && (
+                                                    {node.status === 'done' && (
                                                         <button 
                                                             className="view-btn"
                                                             onClick={() => setPreviewNode(node)}
@@ -99,34 +100,15 @@ const KalpaHistoryPage: React.FC = () => {
                 )}
             </div>
 
-            {/* 預覽視窗 */}
+            {/* 預覽視窗 使用導入的組件 */}
             {previewNode && (
-                <div className="history-preview-overlay" onClick={() => setPreviewNode(null)}>
-                    <div className="history-preview-modal" onClick={e => e.stopPropagation()}>
-                        <div className="history-preview-header">
-                            <h3>文章內容預覽</h3>
-                            <button className="close-btn" onClick={() => setPreviewNode(null)}>&times;</button>
-                        </div>
-                        <div className="history-preview-body">
-                            <div className="preview-meta-grid">
-                                <div className="meta-item">
-                                    <label>意圖標題</label>
-                                    <span>{previewNode.target_title}</span>
-                                </div>
-                                <div className="meta-item">
-                                    <label>關鍵字組合</label>
-                                    <span>{previewNode.entity} + {previewNode.action}</span>
-                                </div>
-                            </div>
-                            <div className="preview-content-area">
-                                {previewNode.content}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <PreviewModal 
+                    previewNode={previewNode}
+                    setPreviewNode={setPreviewNode}
+                    setShowImagePicker={() => {}} // 歷史紀錄僅用於預覽
+                    setShowPublishModal={() => {}}
+                />
             )}
         </div>
     );
 };
-
-export default KalpaHistoryPage;

@@ -1,8 +1,7 @@
 import React from 'react';
-import { Modal } from '../../../../components/ui/Modal';
-import { MermaidRenderer } from '../../../../components/common/MermaidRenderer';
-import { Button } from '../../../../components/ui/Button';
-import type { KalpaNode } from '../../../../services/api';
+import { MermaidRenderer } from '../../../components/ui/MermaidRenderer';
+import { Button } from '../../../components/ui/Button';
+import type { KalpaNode } from '../../../services/api';
 
 interface PreviewModalProps {
     previewNode: KalpaNode | null;
@@ -35,13 +34,38 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
     if (!previewNode) return null;
 
     return (
-        <Modal
-            isOpen={!!previewNode}
-            onClose={() => setPreviewNode(null)}
-            title="神諭編織預覽"
-            size="xl"
-            footer={
-                <div className="preview-footer-actions">
+        <div className="preview-modal-overlay" onClick={() => setPreviewNode(null)}>
+            <div className="preview-modal-container" onClick={e => e.stopPropagation()}>
+                <div className="preview-modal-header">
+                    <h3>神諭編織預覽</h3>
+                    <button className="close-btn" onClick={() => setPreviewNode(null)}>&times;</button>
+                </div>
+                
+                <div className="preview-modal-body">
+                    <div className="preview-meta">
+                        <div className="preview-meta-item">
+                            <span className="label">題目</span>
+                            <span className="value">{previewNode.target_title}</span>
+                        </div>
+                        <div className="preview-meta-item">
+                            <span className="label">組合</span>
+                            <span className="value">{previewNode.entity} + {previewNode.action}</span>
+                        </div>
+                    </div>
+
+                    <div className="preview-content">
+                        {previewNode.content ? (
+                            <div className="preview-markdown">
+                                <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.content) }} />
+                                <MermaidRenderer content={previewNode.content} />
+                            </div>
+                        ) : (
+                            <div className="preview-empty">尚未生成編織內容</div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="preview-modal-footer">
                     <Button
                         variant="secondary"
                         onClick={() => setShowImagePicker(true)}
@@ -55,31 +79,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                         🚀 立即發佈
                     </Button>
                 </div>
-            }
-        >
-            <div className="preview-scroll-container">
-                <div className="preview-meta">
-                    <div className="preview-meta-item">
-                        <span className="label">題目</span>
-                        <span className="value">{previewNode.target_title}</span>
-                    </div>
-                    <div className="preview-meta-item">
-                        <span className="label">組合</span>
-                        <span className="value">{previewNode.entity} + {previewNode.action}</span>
-                    </div>
-                </div>
-
-                <div className="preview-content">
-                    {previewNode.content ? (
-                        <div className="preview-markdown">
-                            <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.content) }} />
-                            <MermaidRenderer content={previewNode.content} />
-                        </div>
-                    ) : (
-                        <div className="preview-empty">尚未生成編織內容</div>
-                    )}
-                </div>
             </div>
-        </Modal>
+        </div>
     );
 };
