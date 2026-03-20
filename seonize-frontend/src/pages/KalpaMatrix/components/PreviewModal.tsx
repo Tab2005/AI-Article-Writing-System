@@ -1,5 +1,5 @@
 import React from 'react';
-import { MermaidRenderer } from '../../../components/ui/MermaidRenderer';
+import MermaidRenderer from '../../../components/ui/MermaidRenderer';
 import { Button } from '../../../components/ui/Button';
 import type { KalpaNode } from '../../../services/api';
 

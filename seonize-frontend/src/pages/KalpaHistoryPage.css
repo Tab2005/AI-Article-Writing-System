@@ -1,0 +1,190 @@
+/* KalpaHistoryPage.css */
+.history-page {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.history-header {
+    margin-bottom: 32px;
+}
+
+.history-header h2 {
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: var(--color-text);
+}
+
+.history-header p {
+    color: var(--color-text-muted);
+}
+
+.matrix-record {
+    background: var(--color-surface);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.matrix-record-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.matrix-info h3 {
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.matrix-date {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.industry-tag {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.matrix-results-table-wrapper {
+    overflow-x: auto;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.history-table th,
+.history-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.history-table th {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.history-table td {
+    font-size: 14px;
+}
+
+.view-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.view-btn:hover {
+    background: var(--color-primary-dark);
+}
+
+/* Modal Overlay (Shared by logic in PreviewModal and HistoryPage) */
+.preview-modal-overlay,
+.history-preview-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.preview-modal-container,
+.history-preview-modal {
+    background: var(--color-surface);
+    width: 90%;
+    max-width: 800px;
+    max-height: 85vh;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+.preview-modal-header,
+.history-preview-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.preview-modal-header h3,
+.history-preview-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--color-text-muted);
+}
+
+.preview-modal-body,
+.history-preview-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.preview-meta,
+.preview-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+    background: var(--color-bg-alt);
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.preview-meta-item label,
+.meta-item label {
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+}
+
+.preview-meta-item .value,
+.meta-item span {
+    font-weight: 500;
+}
+
+.preview-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: var(--color-bg-alt);
+}
