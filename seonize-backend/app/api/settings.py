@@ -215,10 +215,25 @@ async def get_ai_providers(db: Session = Depends(get_db)):
 
 
 @router.post("/test-ai", response_model=TestConnectionResponse)
-async def test_ai_connection(request: TestConnectionRequest):
+async def test_ai_connection(request: TestConnectionRequest, db: Session = Depends(get_db)):
     """測試 AI API 連線"""
+    api_key = request.api_key
+    
+    # 如果是遮蔽碼，從資料庫或環境變數讀取真實內容
+    if api_key and "****" in api_key:
+        real_key = Settings.get_value(db, "ai_api_key", None)
+        if not real_key:
+            # 嘗試從環境變數讀取 (比照 AIService.get_config 邏輯)
+            real_key = os.getenv("ZEABUR_AI_API_KEY") or \
+                       os.getenv("OPENROUTER_API_KEY") or \
+                       os.getenv("GEMINI_API_KEY") or \
+                       os.getenv("AI_API_KEY")
+        
+        if real_key:
+            api_key = real_key
+        
     result = await AIService.test_connection(
-        api_key=request.api_key,
+        api_key=api_key,
         provider=request.provider,
         model=request.model,
     )

@@ -64,7 +64,7 @@ async def list_cms_configs(
     if not configs and current_user.role == "super_admin":
         return [{
             "id": "debug",
-            "name": f"角角色={current_user.role}, UID={current_user.id[:8]}",
+            "name": f"角色={current_user.role}, UID={current_user.id[:8]}",
             "platform": "system",
             "api_url": "debug",
             "username": "debug_user",
