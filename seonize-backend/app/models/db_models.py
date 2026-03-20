@@ -461,7 +461,8 @@ class KalpaNode(Base):
             "pain_point": self.pain_point,
             "target_title": self.target_title,
             "status": self.status,
-            "woven_content": self.woven_content,
+            "content": self.woven_content, # 統一為 content
+            "woven_content": self.woven_content, # 保留舊欄位以防止其他潛在點崩潰
             "anchor_used": self.anchor_used,
             "images": self.images or [],
             "woven_at": self.woven_at.replace(tzinfo=timezone.utc).isoformat() if self.woven_at else None,

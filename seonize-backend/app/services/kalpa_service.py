@@ -156,7 +156,7 @@ class KalpaService:
                     pain_point=node_data.get("pain_point"),
                     target_title=node_data.get("target_title"),
                     status=node_data.get("status", "pending"),
-                    woven_content=node_data.get("woven_content"),
+                    woven_content=node_data.get("content") or node_data.get("woven_content"), # 支援 content
                     anchor_used=node_data.get("anchor_used"),
                     woven_at=woven_at,
                     cms_config_id=node_data.get("cms_config_id"),
