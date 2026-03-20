@@ -153,7 +153,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
                             <option value="">全部狀態</option>
                             <option value="pending">待編織</option>
                             <option value="weaving">神諭編織中</option>
-                            <option value="completed">已編織</option>
+                            <option value="done">已編織</option>
                             <option value="failed">失敗</option>
                         </select>
                     </div>
