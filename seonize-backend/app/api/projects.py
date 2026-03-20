@@ -74,10 +74,8 @@ async def list_projects(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
-    """列出專案清單 (管理員可看全部)"""
-    query = db.query(Project)
-    if current_user.role not in ["super_admin", "admin"]:
-        query = query.filter(Project.user_id == current_user.id)
+    """列出專案清單 (預設僅看本人，以保持清單整潔)碼"""
+    query = db.query(Project).filter(Project.user_id == current_user.id)
     
     db_projects = query.order_by(Project.created_at.desc()).all()
     return [db_to_project_state(db_project) for db_project in db_projects]
@@ -89,12 +87,11 @@ async def get_project(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
-    """取得專案詳情 (管理員或擁有者)"""
-    query = db.query(Project).filter(Project.id == project_id)
-    if current_user.role not in ["super_admin", "admin"]:
-        query = query.filter(Project.user_id == current_user.id)
-        
-    db_project = query.first()
+    """取得專案詳情 (僅限擁有者)"""
+    db_project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id
+    ).first()
     
     if not db_project:
         raise HTTPException(
@@ -111,12 +108,11 @@ async def update_project(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
-    """更新專案 (管理員或擁有者)"""
-    query = db.query(Project).filter(Project.id == project_id)
-    if current_user.role not in ["super_admin", "admin"]:
-        query = query.filter(Project.user_id == current_user.id)
-        
-    db_project = query.first()
+    """更新專案 (僅限擁有者)"""
+    db_project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id
+    ).first()
     
     if not db_project:
         raise HTTPException(
@@ -147,12 +143,11 @@ async def delete_project(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
-    """刪除專案 (管理員或擁有者)"""
-    query = db.query(Project).filter(Project.id == project_id)
-    if current_user.role != "super_admin":
-        query = query.filter(Project.user_id == current_user.id)
-        
-    db_project = query.first()
+    """刪除專案 (僅限擁有者)"""
+    db_project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id
+    ).first()
     
     if not db_project:
         raise HTTPException(
