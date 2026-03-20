@@ -72,15 +72,16 @@ class AIService:
                 import logging
                 logging.warning(f"Failed to load AI config from database: {e}")
             
-            # 只有在初次載入或過期時才重新從環境變數載入 (如果 DB 沒設定)
-            if cls._config is None:
-                cls._config = AIConfig(
-                    provider=AIProvider(os.getenv("AI_PROVIDER", settings.AI_PROVIDER)),
+        # 只有在初次載入、過期且 DB 沒設定時，才重新從環境變數載入
+        if cls._config is None or (now - cls._config_timestamp > cls._config_ttl):
+            cls._config = AIConfig(
+                provider=AIProvider(os.getenv("AI_PROVIDER", settings.AI_PROVIDER)),
                 api_key=os.getenv("ZEABUR_AI_API_KEY", settings.ZEABUR_AI_API_KEY) or \
                         os.getenv("OPENROUTER_API_KEY", settings.OPENROUTER_API_KEY) or \
                         os.getenv("GEMINI_API_KEY", ""),
                 model=os.getenv("AI_MODEL", settings.AI_MODEL),
             )
+            cls._config_timestamp = now
         return cls._config
     
     @classmethod
