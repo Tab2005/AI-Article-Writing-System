@@ -198,23 +198,6 @@ async def get_ai_providers(db: Session = Depends(get_db)):
     # 取得提供者列表 (現在會使用正確的金鑰去 OpenRouter 抓取)
     providers = await AIService.get_available_providers()
     
-    # 嘗試向 Zeabur API 動態查詢最新模型 (現在已在 AIService.set_config 中處理好金鑰取得)
-    try:
-        current_config = AIService.get_config()
-        if current_config.provider == AIProvider.ZEABUR and current_config.api_key:
-            client = ZeaburClient(current_config.api_key)
-            dynamic_models = await client.get_models()
-            if dynamic_models:
-                for p in providers:
-                    if p["id"] == "zeabur":
-                        # 合併動態取得的模型與靜態備用列表，去除重複
-                        from app.services.zeabur_client import ZEABUR_FALLBACK_MODELS
-                        all_models = list(dict.fromkeys(dynamic_models + ZEABUR_FALLBACK_MODELS))
-                        p["models"] = all_models
-                        break
-    except Exception as e:
-        logger.warning(f"Failed to fetch dynamic models: {e}")
-    
     return [AIProviderInfo(**p) for p in providers]
 
 

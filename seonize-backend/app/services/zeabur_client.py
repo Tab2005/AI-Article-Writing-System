@@ -11,11 +11,13 @@ logger = logging.getLogger(__name__)
 # 已知的 Zeabur AI Hub 可用模型 (作為 API 無法取得時的備用列表)
 ZEABUR_FALLBACK_MODELS = [
     "gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3-mini",
-    "claude-3-7-sonnet", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet", "claude-3-5-haiku", 
+    "claude-3-7-sonnet", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet", "claude-3-5-haiku",
+    "claude-haiku-4-5", "claude-sonnet-4-5", # 使用者提供的最新模型
     "gemini-2.0-flash", "gemini-2.0-flash-lite-preview", "gemini-1.5-pro", "gemini-1.5-flash",
     "deepseek-v3", "deepseek-r1", "deepseek-chat", "deepseek-reasoner",
     "llama-3.3-70b-instruct", "llama-3.1-405b", "llama-3.1-70b",
-    "mistral-large-latest", "pixtral-large-latest"
+    "mistral-large-latest", "pixtral-large-latest",
+    "gpt-5", "gpt-5-mini", "gpt-4.1", "gemini-2.5-pro" # 範例中提及的其他模型
 ]
 
 

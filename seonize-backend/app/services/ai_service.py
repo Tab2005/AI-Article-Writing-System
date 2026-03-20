@@ -125,6 +125,23 @@ class AIService:
             import logging
             logging.warning(f"Failed to fetch models from OpenRouter: {e}")
                 
+        # 嘗試抓取 Zeabur 最新列表 (如果有金鑰)
+        try:
+            # 只要有 Key 且目前 provider 是 Zeabur (或者是 OpenRouter 時也順便試試，因為共用同一個 Key 欄位)
+            # 實際上，我們應該總是嘗試，如果失敗就用 fallback
+            if config.api_key:
+                from app.services.zeabur_client import ZeaburClient
+                client = ZeaburClient(config.api_key)
+                dynamic_zeabur_models = await client.get_models()
+                if dynamic_zeabur_models:
+                    for p in providers:
+                        if p["id"] == AIProvider.ZEABUR:
+                            # 合併並去重
+                            p["models"] = list(dict.fromkeys(dynamic_zeabur_models + ZEABUR_FALLBACK_MODELS))
+                            break
+        except Exception as e:
+            logging.warning(f"Failed to fetch models from Zeabur: {e}")
+
         providers.append({
             "id": AIProvider.OPENROUTER,
             "name": "OpenRouter",
