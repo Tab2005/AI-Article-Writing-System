@@ -128,11 +128,17 @@ async def list_projects(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user)
 ):
-    """列出專案清單 (預設僅看本人，以保持清單整潔)"""
-    query = db.query(Project).filter(Project.user_id == current_user.id)
-    
-    db_projects = query.order_by(Project.created_at.desc()).all()
-    return [db_to_project_state(db_project) for db_project in db_projects]
+    """取得所有專案清單"""
+    try:
+        # 管理員權限不需要看到所有用戶的專案，僅看到自己的
+        projects = db.query(Project).filter(Project.user_id == current_user.id).order_by(Project.created_at.desc()).all()
+        return [db_to_project_state(p) for p in projects]
+    except Exception as e:
+        logger.exception(f"Failed to list projects for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"獲取專案清單失敗: {str(e)}"
+        )
 
 
 @router.get("/{project_id}", response_model=ProjectState)
