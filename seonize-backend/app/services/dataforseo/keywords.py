@@ -35,6 +35,7 @@ class DataForSEOKeywordService(DataForSEOBase):
             ).first()
             if cache:
                 return {
+                    "id": cache.id,
                     "seed_keyword_data": cls._flatten_keyword_data(cache.seed_data),
                     "suggestions": [cls._flatten_keyword_data(s) for s in cache.suggestions] if cache.suggestions else [],
                     "ai_suggestions": cache.ai_suggestions or [], 
@@ -58,18 +59,21 @@ class DataForSEOKeywordService(DataForSEOBase):
                 seed_data = cls._flatten_keyword_data(result_list[0]) if result_list else None
                 suggestions = [cls._flatten_keyword_data(s) for s in result_list[1:] if s]
                 
+                record_id = None
                 if db:
                     cache = db.query(KeywordCache).filter(
                         KeywordCache.keyword == keyword, 
                         KeywordCache.location_code == location_code, 
                         KeywordCache.language_code == language_code,
                         KeywordCache.user_id == user_id
-                    ).first()
+                    ).order_by(KeywordCache.created_at.desc()).first()
+                    
                     if cache:
                         cache.seed_data, cache.suggestions = seed_data, suggestions
                         cache.created_at, cache.expires_at = datetime.now(timezone.utc), datetime.now(timezone.utc) + timedelta(days=30)
+                        record_id = cache.id
                     else:
-                        db.add(KeywordCache(
+                        new_cache = KeywordCache(
                             user_id=user_id,
                             keyword=keyword, 
                             location_code=location_code, 
@@ -77,10 +81,14 @@ class DataForSEOKeywordService(DataForSEOBase):
                             seed_data=seed_data, 
                             suggestions=suggestions, 
                             expires_at=datetime.now(timezone.utc) + timedelta(days=30)
-                        ))
-                    db.commit()
-                
+                        )
+                        db.add(new_cache)
+                        db.commit()
+                        db.refresh(new_cache)
+                        record_id = new_cache.id
+
                 return {
+                    "id": record_id,
                     "seed_keyword_data": seed_data,
                     "suggestions": suggestions,
                     "from_cache": False,

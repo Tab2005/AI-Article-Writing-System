@@ -83,6 +83,7 @@ export interface KeywordIdea {
 }
 
 export interface KeywordIdeasResponse {
+    id?: number | null;
     seed_keyword_data: KeywordIdea | null;
     suggestions: KeywordIdea[];
     ai_suggestions?: AITitleSuggestion[];

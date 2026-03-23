@@ -31,6 +31,7 @@ export const KeywordPage: React.FC = () => {
   const [gapReport, setGapReport] = useState<any | null>(null);
   const [isGeneratingGap, setIsGeneratingGap] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
 
   // 自動觸研：如果 URL 有搜尋參數則自動執行 (預設使用快取)
   React.useEffect(() => {
@@ -62,6 +63,7 @@ export const KeywordPage: React.FC = () => {
       setLastCreatedAt(serpRes.created_at || null);
       setGapReport(serpRes.content_gap_report || null);
       setKeywordIdeas(ideasRes);
+      setSelectedTitles([]); // 重置選取的標題
 
       // 如果快取中有已生成的 AI 標題，自動填入
       if (ideasRes?.ai_suggestions && ideasRes.ai_suggestions.length > 0) {
@@ -182,6 +184,42 @@ export const KeywordPage: React.FC = () => {
     } finally {
       setIsCreatingProject(false);
     }
+  };
+
+  const handleBatchCreate = async () => {
+    if (!keyword.trim() || selectedTitles.length === 0) return;
+
+    setIsCreatingProject(true);
+    try {
+      const results = await projectsApi.batchCreate({
+        primary_keyword: keyword,
+        selected_titles: selectedTitles,
+        keyword_cache_id: keywordIdeas?.id || undefined,
+        optimization_mode: 'geo' as any,
+        country: 'TW',
+        language: 'zh-TW',
+      });
+
+      if (results && results.length > 0) {
+        if (results.length === 1) {
+          navigate(`/projects/${results[0].project_id}`);
+        } else {
+          alert(`成功建立 ${results.length} 個專案！`);
+          navigate('/projects');
+        }
+      }
+    } catch (error) {
+      console.error('Batch creation failed:', error);
+      alert('批量建立專案失敗，請稍後再試');
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
+  const toggleTitleSelection = (title: string) => {
+    setSelectedTitles((prev) =>
+      prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]
+    );
   };
 
   const serpColumns = [
@@ -643,39 +681,73 @@ export const KeywordPage: React.FC = () => {
               )}
             </div>
 
+            {aiSuggestions.length > 0 && (
+              <div className="batch-actions-row" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  variant="cta"
+                  size="sm"
+                  disabled={selectedTitles.length === 0}
+                  loading={isCreatingProject}
+                  onClick={handleBatchCreate}
+                  icon={<span>🚀</span>}
+                >
+                  為所選標題建立專案 ({selectedTitles.length})
+                </Button>
+              </div>
+            )}
+
             {aiSuggestions.length > 0 ? (
               <div className="ai-title-grid">
-                {aiSuggestions.map((item: AITitleSuggestion, i: number) => (
-                  <div key={i} className="ai-title-card">
-                    <div className="ai-title-card__badge">
-                      {strategyLabels[item.strategy.toUpperCase()] ||
-                        strategyLabels[item.strategy] ||
-                        item.strategy}
+                {aiSuggestions.map((item: AITitleSuggestion, i: number) => {
+                  const isSelected = selectedTitles.includes(item.title);
+                  return (
+                    <div 
+                      key={i} 
+                      className={`ai-title-card ${isSelected ? 'ai-title-card--selected' : ''}`}
+                      onClick={() => toggleTitleSelection(item.title)}
+                      style={{ cursor: 'pointer', position: 'relative' }}
+                    >
+                      <div className="ai-title-card__checkbox">
+                        <input 
+                          type="checkbox" 
+                          checked={isSelected} 
+                          readOnly
+                        />
+                      </div>
+                      <div className="ai-title-card__badge">
+                        {strategyLabels[item.strategy.toUpperCase()] ||
+                          strategyLabels[item.strategy] ||
+                          item.strategy}
+                      </div>
+                      <div className="ai-title-card__text">{item.title}</div>
+                      <div className="ai-title-card__reason">{item.reason}</div>
+                      <div className="ai-title-card__actions">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(item.title);
+                            alert('標題已複製！');
+                          }}
+                        >
+                          複製
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          loading={isCreatingProject}
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            handleUseTitle(item.title)
+                          }}
+                        >
+                          選用
+                        </Button>
+                      </div>
                     </div>
-                    <div className="ai-title-card__text">{item.title}</div>
-                    <div className="ai-title-card__reason">{item.reason}</div>
-                    <div className="ai-title-card__actions">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(item.title);
-                          alert('標題已複製！');
-                        }}
-                      >
-                        複製
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        loading={isCreatingProject}
-                        onClick={() => handleUseTitle(item.title)}
-                      >
-                        選用
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="ai-title-empty">

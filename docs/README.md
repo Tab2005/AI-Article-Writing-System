@@ -22,6 +22,7 @@
 *   [會籍與點數系統實作](./features/phase3_credits_membership_plan.md)
 *   [SERP 智能分析計劃](./features/serp_intelligence_plan.md)
 *   [多角色權限 (RBAC) 規劃](./features/multi_user_rbac_plan.md)
+*   [**一詞多標應用工作流**](./features/multi_article_workflow.md) - **實作計劃中**
 
 ## 📁 封存與歷史 (Archive)
 *   [歷史封存目錄](./archive/README.md) - 包含過期的優化計劃、審查報告與恢復文件。

@@ -6,8 +6,8 @@ Seonize Backend - Projects API Router
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Any
 from sqlalchemy.orm import Session
-from app.models.project import ProjectState, ProjectCreate, ProjectUpdate
-from app.models.db_models import Project
+from app.models.project import ProjectState, ProjectCreate, ProjectUpdate, ProjectBatchCreate
+from app.models.db_models import Project, KeywordCache
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from datetime import datetime, timezone
@@ -67,6 +67,55 @@ async def create_project(
     db.refresh(db_project)
     
     return db_to_project_state(db_project)
+
+
+@router.post("/batch", response_model=List[ProjectState], status_code=status.HTTP_201_CREATED)
+async def batch_create_projects(
+    request: ProjectBatchCreate,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """批量建立多個專案 (針對同一關鍵字不同標題)"""
+    # 1. 如果有提供 KeywordCache ID，嘗試從中提取研究數據
+    research_data = None
+    candidate_titles = []
+    if request.keyword_cache_id:
+        cache = db.query(KeywordCache).filter(
+            KeywordCache.id == request.keyword_cache_id,
+            KeywordCache.user_id == current_user.id
+        ).first()
+        if cache:
+            # 整合 PAA 等研究報告數據
+            research_data = cache.seed_data.copy() if cache.seed_data else {}
+            # 確保 PAA, 相關搜尋等有被納入 (比照 research_serp 回傳結構)
+            # 在目前的 KeywordCache 中，seed_data 儲存的是研究的核心數值
+            # 詳細的研究內容可能需要合併其他欄位
+            candidate_titles = cache.ai_suggestions or []
+    
+    created_projects = []
+    
+    # 2. 為每個選定的標題建立專案
+    for title in request.selected_titles:
+        db_project = Project(
+            primary_keyword=request.primary_keyword,
+            country=request.country,
+            language=request.language,
+            optimization_mode=request.optimization_mode,
+            selected_title=title,
+            user_id=current_user.id,
+            research_data=research_data,
+            candidate_titles=candidate_titles
+        )
+        db.add(db_project)
+        created_projects.append(db_project)
+    
+    db.commit()
+    
+    # 3. 重新整理對象並回傳清單
+    for p in created_projects:
+        db.refresh(p)
+    
+    return [db_to_project_state(p) for p in created_projects]
 
 
 @router.get("/", response_model=List[ProjectState])

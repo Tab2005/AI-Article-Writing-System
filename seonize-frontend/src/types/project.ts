@@ -61,3 +61,32 @@ export interface ProjectState {
     scheduled_at?: string;
     published_at?: string;
 }
+
+export interface ProjectCreate {
+    primary_keyword: string;
+    country: string;
+    language: string;
+    optimization_mode: OptimizationMode;
+}
+
+export interface ProjectBatchCreate {
+    primary_keyword: string;
+    country: string;
+    language: string;
+    optimization_mode: OptimizationMode;
+    selected_titles: string[];
+    keyword_cache_id?: number;
+}
+
+export interface ProjectUpdate {
+    selected_title?: string;
+    intent?: SearchIntent;
+    style?: WritingStyle;
+    outline?: OutlineData;
+    optimization_mode?: OptimizationMode;
+    candidate_titles?: string[];
+    research_data?: Record<string, any>;
+    content?: string;
+    full_content?: string;
+    word_count?: number;
+}

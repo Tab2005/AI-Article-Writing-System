@@ -1,6 +1,7 @@
 import { uiBus } from '../utils/ui-bus';
 import type {
   ProjectCreate,
+  ProjectBatchCreate,
   ProjectUpdate,
   ProjectState,
   ResearchRequest,
@@ -226,6 +227,9 @@ export const authApi = {
 export const projectsApi = {
   create: (data: ProjectCreate) =>
     request<ProjectState>('/api/projects/', { method: 'POST', body: data }),
+
+  batchCreate: (data: ProjectBatchCreate) =>
+    request<ProjectState[]>('/api/projects/batch', { method: 'POST', body: data }),
 
   list: () => request<ProjectState[]>('/api/projects/'),
 

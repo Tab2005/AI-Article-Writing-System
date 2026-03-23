@@ -118,6 +118,15 @@ class ProjectCreate(BaseModel):
     optimization_mode: OptimizationMode = OptimizationMode.SEO
 
 
+class ProjectBatchCreate(BaseModel):
+    primary_keyword: str
+    country: str = "TW"
+    language: str = "zh-TW"
+    optimization_mode: OptimizationMode = OptimizationMode.SEO
+    selected_titles: List[str]
+    keyword_cache_id: Optional[int] = None
+
+
 class ProjectUpdate(BaseModel):
     selected_title: Optional[str] = None
     intent: Optional[SearchIntent] = None
