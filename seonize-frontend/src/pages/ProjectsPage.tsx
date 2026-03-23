@@ -63,6 +63,24 @@ export const ProjectsPage: React.FC = () => {
       render: (value: unknown) => <span className="keyword-cell">{String(value)}</span>,
     },
     {
+      key: 'selected_title',
+      header: '文章標題',
+      width: '250px',
+      render: (value: unknown) => (
+        <span className="title-cell" style={{ 
+          fontSize: 'var(--text-sm)', 
+          color: 'var(--color-text-secondary)',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          lineHeight: '1.4'
+        }}>
+          {String(value || '--')}
+        </span>
+      ),
+    },
+    {
       key: 'intent',
       header: '搜尋意圖',
       render: (value: unknown) => {
@@ -271,7 +289,7 @@ export const ProjectsPage: React.FC = () => {
           >
             <h3 style={{ margin: '0 0 16px 0', color: 'var(--color-text)' }}>確認刪除專案</h3>
             <p style={{ margin: '0 0 24px 0', color: 'var(--color-text-secondary)' }}>
-              您確定要刪除專案「{deleteConfirm.project.primary_keyword}」嗎？此操作無法撤銷。
+              您確定要刪除專案「{deleteConfirm.project.selected_title || deleteConfirm.project.primary_keyword}」嗎？此操作無法撤銷。
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <Button
