@@ -86,7 +86,8 @@ async def batch_create_projects(
             if cache:
                 # 整合 PAA 等研究報告數據
                 research_data = cache.seed_data.copy() if cache.seed_data else {}
-                candidate_titles = cache.ai_suggestions or []
+                # 整合建議標題，僅提取標題字串以符合 ProjectState 驗證要求
+                candidate_titles = [s.get('title', '') for s in cache.ai_suggestions] if cache.ai_suggestions else []
         
         created_projects = []
         
