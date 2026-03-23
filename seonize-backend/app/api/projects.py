@@ -76,46 +76,52 @@ async def batch_create_projects(
     current_user: Any = Depends(get_current_user)
 ):
     """批量建立多個專案 (針對同一關鍵字不同標題)"""
-    # 1. 如果有提供 KeywordCache ID，嘗試從中提取研究數據
-    research_data = None
-    candidate_titles = []
-    if request.keyword_cache_id:
-        cache = db.query(KeywordCache).filter(
-            KeywordCache.id == request.keyword_cache_id,
-            KeywordCache.user_id == current_user.id
-        ).first()
-        if cache:
-            # 整合 PAA 等研究報告數據
-            research_data = cache.seed_data.copy() if cache.seed_data else {}
-            # 確保 PAA, 相關搜尋等有被納入 (比照 research_serp 回傳結構)
-            # 在目前的 KeywordCache 中，seed_data 儲存的是研究的核心數值
-            # 詳細的研究內容可能需要合併其他欄位
-            candidate_titles = cache.ai_suggestions or []
-    
-    created_projects = []
-    
-    # 2. 為每個選定的標題建立專案
-    for title in request.selected_titles:
-        db_project = Project(
-            primary_keyword=request.primary_keyword,
-            country=request.country,
-            language=request.language,
-            optimization_mode=request.optimization_mode,
-            selected_title=title,
-            user_id=current_user.id,
-            research_data=research_data,
-            candidate_titles=candidate_titles
+    try:
+        # 1. 如果有提供 KeywordCache ID，嘗試從中提取研究數據
+        research_data = None
+        candidate_titles = []
+        if request.keyword_cache_id:
+            cache = db.query(KeywordCache).filter(
+                KeywordCache.id == request.keyword_cache_id,
+                KeywordCache.user_id == current_user.id
+            ).first()
+            if cache:
+                # 整合 PAA 等研究報告數據
+                research_data = cache.seed_data.copy() if cache.seed_data else {}
+                candidate_titles = cache.ai_suggestions or []
+        
+        created_projects = []
+        
+        # 2. 為每個選定的標題建立專案
+        for title in request.selected_titles:
+            db_project = Project(
+                primary_keyword=request.primary_keyword,
+                country=request.country,
+                language=request.language,
+                optimization_mode=request.optimization_mode,
+                selected_title=title,
+                user_id=current_user.id,
+                research_data=research_data,
+                candidate_titles=candidate_titles
+            )
+            db.add(db_project)
+            created_projects.append(db_project)
+        
+        db.commit()
+        
+        # 3. 重新整理對象並回傳清單
+        results = []
+        for p in created_projects:
+            db.refresh(p)
+            results.append(db_to_project_state(p))
+        
+        return results
+    except Exception as e:
+        logger.exception(f"Batch project creation failed for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"批次建立專案失敗: {str(e)}"
         )
-        db.add(db_project)
-        created_projects.append(db_project)
-    
-    db.commit()
-    
-    # 3. 重新整理對象並回傳清單
-    for p in created_projects:
-        db.refresh(p)
-    
-    return [db_to_project_state(p) for p in created_projects]
 
 
 @router.get("/", response_model=List[ProjectState])
