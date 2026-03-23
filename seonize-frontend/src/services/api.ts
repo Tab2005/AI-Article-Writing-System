@@ -153,6 +153,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
         }
 
         // 成功，返回結果
+        if (response.status === 204) {
+          return null as any;
+        }
         return await response.json();
       } catch (err: any) {
         lastError = err;
