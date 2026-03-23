@@ -16,6 +16,15 @@ router = APIRouter(dependencies=[Depends(get_current_user)])
 
 def db_to_project_state(db_project: Project) -> ProjectState:
     """將資料庫模型轉換為 ProjectState"""
+    # 確保 candidate_titles 始終為字串列表 (相容舊版物件格式)
+    raw_titles = db_project.candidate_titles or []
+    candidate_titles = []
+    for t in raw_titles:
+        if isinstance(t, dict):
+            candidate_titles.append(t.get('title', ''))
+        else:
+            candidate_titles.append(str(t))
+
     return ProjectState(
         project_id=db_project.id,
         created_at=db_project.created_at,
@@ -29,7 +38,7 @@ def db_to_project_state(db_project: Project) -> ProjectState:
         serp_results=[],
         keywords=db_project.keywords or {"secondary": [], "lsi": []},
         research_data=db_project.research_data or {"paa": [], "related_searches": [], "ai_overview": None},
-        candidate_titles=db_project.candidate_titles or [],
+        candidate_titles=candidate_titles,
         selected_title=db_project.selected_title,
         outline=db_project.outline,
         content=db_project.full_content, # 統一為 content
@@ -74,53 +83,40 @@ async def batch_create_projects(
     current_user: Any = Depends(get_current_user)
 ):
     """批量建立多個專案 (針對同一關鍵字不同標題)"""
-    try:
-        # 1. 如果有提供 KeywordCache ID，嘗試從中提取研究數據
-        research_data = None
-        candidate_titles = []
-        if request.keyword_cache_id:
-            cache = db.query(KeywordCache).filter(
-                KeywordCache.id == request.keyword_cache_id,
-                KeywordCache.user_id == current_user.id
-            ).first()
-            if cache:
-                # 整合 PAA 等研究報告數據
-                research_data = cache.seed_data.copy() if cache.seed_data else {}
-                # 整合建議標題，僅提取標題字串以符合 ProjectState 驗證要求
-                candidate_titles = [s.get('title', '') for s in cache.ai_suggestions] if cache.ai_suggestions else []
-        
-        created_projects = []
-        
-        # 2. 為每個選定的標題建立專案
-        for title in request.selected_titles:
-            db_project = Project(
-                primary_keyword=request.primary_keyword,
-                country=request.country,
-                language=request.language,
-                optimization_mode=request.optimization_mode,
-                selected_title=title,
-                user_id=current_user.id,
-                research_data=research_data,
-                candidate_titles=candidate_titles
-            )
-            db.add(db_project)
-            created_projects.append(db_project)
-        
-        db.commit()
-        
-        # 3. 重新整理對象並回傳清單
-        results = []
-        for p in created_projects:
-            db.refresh(p)
-            results.append(db_to_project_state(p))
-        
-        return results
-    except Exception as e:
-        logger.exception(f"Batch project creation failed for user {current_user.id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"批次建立專案失敗: {str(e)}"
+    # 1. 如果有提供 KeywordCache ID，嘗試從中提取研究數據
+    research_data = None
+    candidate_titles_raw = []
+    if request.keyword_cache_id:
+        cache = db.query(KeywordCache).filter(
+            KeywordCache.id == request.keyword_cache_id,
+            KeywordCache.user_id == current_user.id
+        ).first()
+        if cache:
+            # 整合 PAA 等研究報告數據
+            research_data = cache.seed_data.copy() if cache.seed_data else {}
+            candidate_titles_raw = cache.ai_suggestions or []
+    
+    created_projects = []
+    
+    # 2. 為每個選定的標題建立專案
+    for title in request.selected_titles:
+        db_project = Project(
+            primary_keyword=request.primary_keyword,
+            country=request.country,
+            language=request.language,
+            optimization_mode=request.optimization_mode,
+            selected_title=title,
+            user_id=current_user.id,
+            research_data=research_data,
+            candidate_titles=candidate_titles_raw # 儲存原始物件列表，交由 db_to_project_state 處理顯示
         )
+        db.add(db_project)
+        created_projects.append(db_project)
+    
+    db.commit()
+    
+    # 3. 重新整理對象並回傳清單
+    return [db_to_project_state(p) for p in created_projects]
 
 
 @router.get("/", response_model=List[ProjectState])
@@ -129,16 +125,9 @@ async def list_projects(
     current_user: Any = Depends(get_current_user)
 ):
     """取得所有專案清單"""
-    try:
-        # 管理員權限不需要看到所有用戶的專案，僅看到自己的
-        projects = db.query(Project).filter(Project.user_id == current_user.id).order_by(Project.created_at.desc()).all()
-        return [db_to_project_state(p) for p in projects]
-    except Exception as e:
-        logger.exception(f"Failed to list projects for user {current_user.id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"獲取專案清單失敗: {str(e)}"
-        )
+    # 管理員權限不需要看到所有用戶的專案，僅看到自己的
+    projects = db.query(Project).filter(Project.user_id == current_user.id).order_by(Project.created_at.desc()).all()
+    return [db_to_project_state(p) for p in projects]
 
 
 @router.get("/{project_id}", response_model=ProjectState)
