@@ -269,27 +269,31 @@ export const ProjectsPage: React.FC = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
+            animation: 'fadeIn 0.2s ease-out'
           }}
         >
           <div
             className="modal-content"
             style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '24px',
-              maxWidth: '400px',
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              padding: '32px',
+              maxWidth: '440px',
               width: '90%',
-              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+              animation: 'scaleIn 0.2s ease-out'
             }}
           >
-            <h3 style={{ margin: '0 0 16px 0', color: 'var(--color-text)' }}>確認刪除專案</h3>
-            <p style={{ margin: '0 0 24px 0', color: 'var(--color-text-secondary)' }}>
-              您確定要刪除專案「{deleteConfirm.project.selected_title || deleteConfirm.project.primary_keyword}」嗎？此操作無法撤銷。
+            <h3 style={{ margin: '0 0 16px 0', color: 'var(--color-text)', fontSize: 'var(--text-xl)' }}>確認刪除專案</h3>
+            <p style={{ margin: '0 0 32px 0', color: 'var(--color-text-secondary)', lineHeight: '1.6' }}>
+              您確定要刪除專案「<span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{deleteConfirm.project.selected_title || deleteConfirm.project.primary_keyword}</span>」嗎？此操作無法撤銷。
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <Button
