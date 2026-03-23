@@ -1,8 +1,4 @@
-"""
-Seonize Backend - Projects API Router
-專案管理 API
-"""
-
+import logging
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Any
 from sqlalchemy.orm import Session
@@ -11,6 +7,8 @@ from app.models.db_models import Project, KeywordCache
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 # 修改為僅需登入，但在路由內部過濾數據
 router = APIRouter(dependencies=[Depends(get_current_user)])
