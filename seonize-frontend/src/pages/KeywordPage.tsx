@@ -198,6 +198,8 @@ export const KeywordPage: React.FC = () => {
         optimization_mode: 'geo' as any,
         country: 'TW',
         language: 'zh-TW',
+        intent: 'informational', // 預設意圖，後續可在分析頁面調整
+        style: '專業教育風',      // 預設風格
       });
 
       if (results && results.length > 0) {

@@ -84,16 +84,27 @@ async def batch_create_projects(
 ):
     """批量建立多個專案 (針對同一關鍵字不同標題)"""
     # 1. 如果有提供 KeywordCache ID，嘗試從中提取研究數據
-    research_data = None
+    research_data = {}
     candidate_titles_raw = []
+    
+    # 嘗試從共享 SERP 快取取得最新的競爭對手與 PAA 數據 (GEO 核心)
+    from app.models.db_models import SerpCache
+    serp_cache = db.query(SerpCache).filter(
+        SerpCache.keyword == request.primary_keyword.strip()
+    ).order_by(SerpCache.created_at.desc()).first()
+    
+    if serp_cache and serp_cache.results:
+        research_data = serp_cache.results.copy() if isinstance(serp_cache.results, dict) else {"results": serp_cache.results}
+    
     if request.keyword_cache_id:
         cache = db.query(KeywordCache).filter(
             KeywordCache.id == request.keyword_cache_id,
             KeywordCache.user_id == current_user.id
         ).first()
         if cache:
-            # 整合 PAA 等研究報告數據
-            research_data = cache.seed_data.copy() if cache.seed_data else {}
+            # 如果已有 SERP 數據則不覆蓋，否則可作為備位
+            if not research_data and cache.seed_data:
+                research_data = cache.seed_data.copy() if cache.seed_data else {}
             candidate_titles_raw = cache.ai_suggestions or []
     
     created_projects = []
@@ -107,6 +118,8 @@ async def batch_create_projects(
             optimization_mode=request.optimization_mode,
             selected_title=title,
             user_id=current_user.id,
+            intent=request.intent,
+            style=request.style,
             research_data=research_data,
             candidate_titles=candidate_titles_raw # 儲存原始物件列表，交由 db_to_project_state 處理顯示
         )

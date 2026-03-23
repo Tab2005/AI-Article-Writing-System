@@ -68,5 +68,7 @@ export interface ProjectBatchCreate {
     language: string;
     optimization_mode: OptimizationMode;
     selected_titles: string[];
+    intent?: SearchIntent | string;
+    style?: WritingStyle | string;
     keyword_cache_id?: number;
 }

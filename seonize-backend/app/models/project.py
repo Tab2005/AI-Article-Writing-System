@@ -124,6 +124,8 @@ class ProjectBatchCreate(BaseModel):
     language: str = "zh-TW"
     optimization_mode: OptimizationMode = OptimizationMode.SEO
     selected_titles: List[str]
+    intent: Optional[SearchIntent] = SearchIntent.INFORMATIONAL
+    style: Optional[WritingStyle] = WritingStyle.EDUCATIONAL
     keyword_cache_id: Optional[int] = None
 
 
