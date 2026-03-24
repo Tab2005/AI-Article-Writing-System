@@ -272,6 +272,9 @@ export const WritingPage: React.FC = () => {
         lastSummary = sectionRes.summary;
       }
 
+      // 全部段落寫完後，先進行一次完整存檔
+      await saveToProject();
+
       // --- 階段 3: 全篇審核 ---
       setAutomationStage('3/3 正在進行全篇集成審核與最終優化...');
       const reviewRes = await writingApi.review({
@@ -283,10 +286,14 @@ export const WritingPage: React.FC = () => {
       if (reviewRes.optimized && reviewRes.content) {
         // 如果有優化後的全文，可以在這裡處理。目前我們先同步全體專案資料。
         console.log('文章已完成全篇優化審閱');
+        // TODO: 如果審閱優化了全文內容，應考慮如何回寫到各 sections
       }
 
       // 最終完成處理
       setAutomationStage('✅ 正在同步數據並完成最後潤飾...');
+      
+      // 確保最後狀態也存檔
+      await saveToProject();
       
       // 重新載入全體專案資料確保資料庫同步
       await loadProject();
