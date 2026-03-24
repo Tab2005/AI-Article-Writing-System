@@ -7,7 +7,9 @@ import './PromptPage.css';
 const CATEGORY_ORDER = [
   'title_generation',
   'outline_generation',
+  'article_blueprint',
   'content_writing',
+  'article_review',
   'kalpa_brainstorming',
   'kalpa_anchor_generation',
   'kalpa_weaving_system',
@@ -26,10 +28,20 @@ const CATEGORY_LABELS: Record<string, { title: string; desc: string; icon: strin
     desc: '根據關鍵字研究數據生成結構化大綱。',
     icon: '📋',
   },
+  article_blueprint: {
+    title: '專案主題：戰略藍圖 (總指揮)',
+    desc: '在動筆前，根據標題與大綱制定全篇寫作方針。',
+    icon: '🚩',
+  },
   content_writing: {
-    title: 'AI 內容寫作',
-    desc: '分段生成高品質、SEO 優化的文章內容集。',
+    title: '專案主題：AI 內容寫作',
+    desc: '參考藍圖進行高品質、SEO 優化的段落創作。',
     icon: '✍️',
+  },
+  article_review: {
+    title: '專案主題：集成審稿 (主編)',
+    desc: '全篇合成後進行語法、語氣與銜接度優化。',
+    icon: '🖋️',
   },
   kalpa_brainstorming: {
     title: '劫之眼：領域建模 (天道解析)',
@@ -72,16 +84,27 @@ const PROMPT_HINTS: Record<string, string[]> = {
     '{related_searches}: 相關搜尋詞',
     '{ai_overview}: AI 搜尋綜述'
   ],
+  article_blueprint: [
+    '{h1}: 文章總標題',
+    '{outline}: 完整大綱結構',
+    '{persona_role}: 人格角色',
+    '{persona_tone}: 語氣設定'
+  ],
   content_writing: [
     '{h1}: 文章總標題',
     '{heading}: 當前章節標題',
     '{keywords}: 章節必要關鍵字',
     '{previous_summary}: 前文銜接摘要',
-    '{research_context}: 競爭對手研究資料',
-    '{intent}: 搜尋意圖定向',
+    '{style_blueprint}: 生成的戰略藍圖',
+    '{full_outline}: 全景大綱路徑',
+    '{research_context}: 研究資料',
     '{target_word_count}: 目標字數',
-    '{keyword_density}: 關鍵字密度 (%)',
-    '[IMAGE_PLACEHOLDER_1]: 圖片位置 1 (自動配圖)'
+    '[IMAGE_PLACEHOLDER_1]: 自動配圖'
+  ],
+  article_review: [
+    '{style_blueprint}: 最初設定的藍圖',
+    '{full_article}: 待審核全文內容',
+    '{persona_role}: 設定的人格角色'
   ],
   kalpa_brainstorming: [
     '{topic}: 產業主題'
