@@ -108,6 +108,7 @@ class ProjectState(BaseModel):
     keyword_density: Dict[str, float] = Field(default_factory=dict)
     eeat_score: Optional[float] = None
     quality_report: Optional[Dict[str, Any]] = None
+    style_blueprint: Optional[str] = Field(default=None, description="寫作風格藍圖")
     last_audit_at: Optional[datetime] = None
 
 
@@ -139,4 +140,5 @@ class ProjectUpdate(BaseModel):
     research_data: Optional[Dict[str, Any]] = None
     content: Optional[str] = None
     full_content: Optional[str] = None
+    style_blueprint: Optional[str] = None
     word_count: Optional[int] = None

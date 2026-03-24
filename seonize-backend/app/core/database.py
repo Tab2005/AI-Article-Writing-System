@@ -160,6 +160,25 @@ def init_db():
                 conn.execute(text(alter_sql))
                 conn.commit()
                 logger.info("Direct patch successful.")
+
+            # 檢查 projects 表是否有 style_blueprint
+            check_proj_sql = "SELECT column_name FROM information_schema.columns WHERE table_name='projects' AND column_name='style_blueprint';"
+            if IS_SQLITE:
+                check_proj_sql = "PRAGMA table_info(projects);"
+            
+            proj_result = conn.execute(text(check_proj_sql)).fetchall()
+            proj_column_exists = False
+            if IS_SQLITE:
+                proj_column_exists = any(row[1] == 'style_blueprint' for row in proj_result)
+            else:
+                proj_column_exists = len(proj_result) > 0
+            
+            if not proj_column_exists:
+                logger.info("Direct patch: Adding 'style_blueprint' column to 'projects'...")
+                alter_proj_sql = "ALTER TABLE projects ADD COLUMN style_blueprint TEXT;"
+                conn.execute(text(alter_proj_sql))
+                conn.commit()
+                logger.info("Direct patch (style_blueprint) successful.")
     except Exception as patch_err:
         logger.warning(f"Direct patch fallback failed (likely fine): {patch_err}")
 

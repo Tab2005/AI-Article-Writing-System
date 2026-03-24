@@ -360,6 +360,87 @@ SERP 標題：
     ]
 }}"""
     
+    @classmethod
+    async def generate_article_blueprint(
+        cls,
+        h1: str,
+        outline: str,
+        persona_role: str = "資深策略顧問",
+        persona_tone: str = "專業、理性",
+        user_id: Optional[int] = None,
+        custom_prompt: Optional[str] = None
+    ) -> str:
+        """根據標題與大綱，產出該篇文章的寫作風格藍圖 (戰略藍圖)"""
+        from app.models.db_models import PromptTemplate
+        from app.core.database import get_db_context
+        from sqlalchemy import or_
+
+        # 1. 載入藍圖 Prompt
+        if not custom_prompt:
+            with get_db_context() as db:
+                template = db.query(PromptTemplate).filter(
+                    PromptTemplate.category == "article_blueprint",
+                    PromptTemplate.is_active == True,
+                    or_(PromptTemplate.user_id == user_id, PromptTemplate.user_id == None)
+                ).order_by(PromptTemplate.user_id.desc()).first()
+                if template:
+                    custom_prompt = template.content
+        
+        if not custom_prompt:
+            # 極簡備位 Prompt
+            custom_prompt = "請為標題 {h1} 與大綱 {outline} 制定一份以 {persona_role} 為核心的寫作藍圖。"
+
+        prompt = custom_prompt.replace("{h1}", h1)\
+                             .replace("{outline}", outline)\
+                             .replace("{persona_role}", persona_role)\
+                             .replace("{persona_tone}", persona_tone)\
+                             .replace("{current_year}", str(datetime.now().year))
+        
+        try:
+            return await cls.generate_content(prompt, temperature=0.6)
+        except Exception as e:
+            logger.error(f"Failed to generate article blueprint: {e}")
+            return f"使用{persona_role}的人格進行專業寫作，採用{persona_tone}的語氣。"
+
+    @classmethod
+    async def review_full_article(
+        cls,
+        full_article: str,
+        style_blueprint: str,
+        persona_role: str = "資深主編",
+        user_id: Optional[int] = None,
+        custom_prompt: Optional[str] = None
+    ) -> str:
+        """對完整文章進行最終的集成優化與審核"""
+        from app.models.db_models import PromptTemplate
+        from app.core.database import get_db_context
+        from sqlalchemy import or_
+
+        if not custom_prompt:
+            with get_db_context() as db:
+                template = db.query(PromptTemplate).filter(
+                    PromptTemplate.category == "article_review",
+                    PromptTemplate.is_active == True,
+                    or_(PromptTemplate.user_id == user_id, PromptTemplate.user_id == None)
+                ).order_by(PromptTemplate.user_id.desc()).first()
+                if template:
+                    custom_prompt = template.content
+        
+        if not custom_prompt:
+            custom_prompt = "請針對以下內容進行語氣優化，確保符合藍圖設定：{style_blueprint}\n內容：{full_article}"
+
+        prompt = custom_prompt.replace("{style_blueprint}", style_blueprint)\
+                             .replace("{full_article}", full_article)\
+                             .replace("{persona_role}", persona_role)\
+                             .replace("{current_year}", str(datetime.now().year))
+        
+        try:
+            # 審稿使用較低的 temperature 以維持穩定性
+            return await cls.generate_content(prompt, temperature=0.3)
+        except Exception as e:
+            logger.error(f"Failed to review full article: {e}")
+            return full_article # 失敗則回傳原內容
+    
     
     @classmethod
     async def generate_section_content(
@@ -373,7 +454,9 @@ SERP 標題：
         h1: str = "",
         custom_prompt: str = None,
         research_context: str = "",
-        quality_report: dict = None
+        quality_report: dict = None,
+        style_blueprint: str = "",
+        full_outline: str = ""
     ) -> dict:
         """生成單一章節內容"""
         
@@ -396,6 +479,8 @@ SERP 標題：
                                  .replace("{research_context}", research_context or '暫無可用研究數據')\
                                  .replace("{eeat_strategy}", strategy_info)\
                                  .replace("{content_gap}", strategy_info)\
+                                 .replace("{style_blueprint}", style_blueprint or '請維持專業一致風格')\
+                                 .replace("{full_outline}", full_outline or '暫無可用全景大綱')\
                                  .replace("{current_year}", str(datetime.now().year))
         else:
             mode_instructions = {
@@ -413,6 +498,8 @@ SERP 標題：
 章節標題：{heading}
 必須嵌入的關鍵字：{', '.join(keywords)}
 前文摘要：{previous_summary or '這是文章開頭'}
+全視角大綱：{full_outline or '暫無'}
+寫作藍圖 (Style Blueprint)：{style_blueprint or '專業寫作'}
 
 # 策略方針
 {strategy_info}

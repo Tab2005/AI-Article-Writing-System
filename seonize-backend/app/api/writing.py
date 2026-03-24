@@ -80,6 +80,7 @@ class WritingRequest(BaseModel):
     ai_model: str = "gemini"              # gemini or openai
     target_word_count: int = 400         # 新增：目標字數
     keyword_density: float = 2.0         # 新增：目標關鍵字密度
+    style_blueprint: Optional[str] = ""  # 新增：戰略藍圖 (選填)
 
 
 class WritingResponse(BaseModel):
@@ -88,6 +89,7 @@ class WritingResponse(BaseModel):
     word_count: int
     embedded_keywords: List[str]
     summary: str
+    style_blueprint: Optional[str] = ""  # 新增：回傳當前使用的藍圖
 
 
 @router.post("/generate-section", response_model=WritingResponse)
@@ -150,7 +152,9 @@ async def generate_section(
             h1=request.h1,
             custom_prompt=prompt_content,
             research_context=research_context,
-            quality_report=db_project.quality_report
+            quality_report=db_project.quality_report,
+            style_blueprint=request.style_blueprint or db_project.style_blueprint or "",
+            full_outline=db_project.outline.get("h1", "") + "\n" + "\n".join([f"- {s.get('heading')}" for s in db_project.outline.get("sections", [])]) if db_project.outline else ""
         )
 
         # 驗證 AI 回傳內容有效性
@@ -214,6 +218,7 @@ class FullArticleResponse(BaseModel):
     keyword_density: Dict[str, float]
     meta_title: str
     meta_description: str
+    style_blueprint: Optional[str] = ""  # 回傳產出的藍圖
 
 
 @router.post("/generate-full", response_model=FullArticleResponse)
@@ -223,19 +228,12 @@ async def generate_full_article(
     current_user: Any = Depends(get_current_user)
 ):
     """
-    生成完整文章 (僅限擁有者)
+    生成完整文章 (四階段全域一致性引擎)
     """
     from app.models.db_models import Project, PromptTemplate
-    # 0. 從指令倉庫載入 Prompt Template（優先取用使用者的，次之取用系統預設）
-    template = db.query(PromptTemplate).filter(
-        PromptTemplate.category == "content_writing",
-        PromptTemplate.is_active == True,
-        or_(PromptTemplate.user_id == current_user.id, PromptTemplate.user_id == None)
-    ).order_by(PromptTemplate.user_id.desc()).first()
+    from app.services.kalpa_service import KalpaService # 用於找尋匹配人格
     
-    prompt_content = template.content if template else None
-
-    # 驗證專案所有權
+    # 0. 驗證專案所有權
     db_project = db.query(Project).filter(
         Project.id == request.project_id,
         Project.user_id == current_user.id
@@ -244,23 +242,45 @@ async def generate_full_article(
     if not db_project:
         raise HTTPException(status_code=403, detail="找不到專案或權限不足")
 
-    # ── 點數檢查與扣減 ──────────────────────────
-    # 1. 權限檢查：全篇生成需一般會員以上
-    CreditService.check_feature_access(db, current_user, "writing_full")
+    # 1. 搜尋匹配人格 (Persona Matching)
+    # 取關鍵字前 20 字進行匹配
+    persona = KalpaService._get_weaving_persona(
+        db, current_user.id, db_project.primary_keyword[:50], db_project.style or ""
+    )
     
-    # 2. 扣減點數
+    # 2. 從指令倉庫載入寫作模板
+    template = db.query(PromptTemplate).filter(
+        PromptTemplate.category == "content_writing",
+        PromptTemplate.is_active == True,
+        or_(PromptTemplate.user_id == current_user.id, PromptTemplate.user_id == None)
+    ).order_by(PromptTemplate.user_id.desc()).first()
+    prompt_content = template.content if template else None
+
+    # 點數檢查與扣減
+    CreditService.check_feature_access(db, current_user, "writing_full")
     COST = CreditService.get_cost(db, "writing_full")
-    tx = CreditService.deduct(db, current_user, COST, "生成完整文章")
-    # ────────────────────────────────────────────
+    tx = CreditService.deduct(db, current_user, COST, "生成完整文章(四階段)")
 
     try:
-        full_content = f"# {request.h1}\n\n"
+        # --- 第一階段：生成戰略藍圖 (Blueprint) ---
+        outline_str = "\n".join([f"{s.level}. {s.heading}" for s in request.sections])
+        blueprint = await AIService.generate_article_blueprint(
+            h1=request.h1,
+            outline=outline_str,
+            persona_role=persona["role"],
+            persona_tone=persona["tone"],
+            user_id=current_user.id
+        )
+        db_project.style_blueprint = blueprint
+        db.commit()
+
+        # --- 第二階段與第三階段：脈絡化撰寫 (Writing with Chaining) ---
+        raw_full_content = f"# {request.h1}\n\n"
         summaries: List[str] = []
         all_keywords: List[str] = []
 
-        # 準備研究數據文本
         research_context = ""
-        if db_project and db_project.research_data:
+        if db_project.research_data:
             rd = db_project.research_data
             parts = []
             if rd.get('paa'): parts.append("PAA: " + "; ".join(rd['paa'][:5]))
@@ -271,22 +291,32 @@ async def generate_full_article(
             result = await AIService.generate_section_content(
                 heading=section.heading,
                 keywords=section.keywords,
-                previous_summary=summaries[-1] if summaries else "",
+                previous_summary=summaries[-1] if summaries else "這是文章開頭",
                 optimization_mode=request.optimization_mode.value,
                 h1=request.h1,
                 custom_prompt=prompt_content,
                 research_context=research_context,
-                quality_report=db_project.quality_report
+                quality_report=db_project.quality_report,
+                style_blueprint=blueprint,
+                full_outline=outline_str
             )
-            full_content += f"## {result['heading']}\n\n{result['content']}\n\n"
+            raw_full_content += f"## {result['heading']}\n\n{result['content']}\n\n"
             summaries.append(result["summary"])
             all_keywords.extend(section.keywords)
 
-        if not full_content.strip():
-            CreditService.refund(db, current_user, COST, "AI 完整文章內容為空")
+        # --- 第四階段：一體化審稿 (Global Review) ---
+        final_content = await AIService.review_full_article(
+            full_article=raw_full_content,
+            style_blueprint=blueprint,
+            persona_role=persona["role"],
+            user_id=current_user.id
+        )
+
+        if not final_content.strip():
+            CreditService.refund(db, current_user, COST, "AI 生成內容為空")
             raise HTTPException(status_code=500, detail="AI 生成內容為空，已退還點數。")
 
-        word_count = len(full_content.replace(" ", "").replace("\n", ""))
+        word_count = len(final_content.replace(" ", "").replace("\n", ""))
 
         def calc_density(content: str, keywords: List[str]) -> Dict[str, float]:
             density: Dict[str, float] = {}
@@ -297,19 +327,22 @@ async def generate_full_article(
                 density[kw] = round((count * len(kw)) / total_len * 100, 2)
             return density
 
-        keyword_density = calc_density(full_content, all_keywords)
+        keyword_density = calc_density(final_content, all_keywords)
 
         return FullArticleResponse(
             title=request.h1,
-            content=full_content,
+            content=final_content,
             word_count=word_count,
             keyword_density=keyword_density,
             meta_title=f"{request.h1} | Seonize SEO 優質內容",
             meta_description=f"深入了解{request.h1}，本文提供完整指南、實用技巧與專業建議。"
         )
+
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        logger.error(f"Generate full error: {str(e)}\n{traceback.format_exc()}")
         if not tx.get("skipped"):
             CreditService.refund(db, current_user, COST, f"generate_full 異常: {str(e)[:80]}")
         raise HTTPException(status_code=500, detail=f"文章生成失敗，已退還點數。原因：{str(e)}")

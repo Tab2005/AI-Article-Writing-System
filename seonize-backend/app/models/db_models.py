@@ -106,6 +106,7 @@ class Project(Base):
     
     # 品質審計
     quality_report = Column(JSON, nullable=True)
+    style_blueprint = Column(Text, nullable=True) # 四階段寫作引擎生成的方針藍圖
     last_audit_at = Column(DateTime, nullable=True)
     
     # CMS 發布資訊
@@ -150,6 +151,7 @@ class Project(Base):
             "eeat_score": self.eeat_score,
             "images": self.images or [],
             "quality_report": self.quality_report,
+            "style_blueprint": self.style_blueprint,
             "last_audit_at": self.last_audit_at.replace(tzinfo=timezone.utc).isoformat() if self.last_audit_at else None,
             "cms_config_id": self.cms_config_id,
             "cms_post_id": self.cms_post_id,
