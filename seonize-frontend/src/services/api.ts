@@ -436,6 +436,7 @@ export interface PromptTemplate {
   id: number;
   category: string;
   name: string;
+  description?: string;
   content: string;
   user_id: string | null;
   is_active: boolean;
@@ -447,10 +448,10 @@ export const promptsApi = {
   list: (category?: string) =>
     request<PromptTemplate[]>(`/api/prompts/templates${category ? `?category=${category}` : ''}`),
 
-  create: (data: { category: string; name: string; content: string }) =>
+  create: (data: { category: string; name: string; content: string; description?: string }) =>
     request<PromptTemplate>('/api/prompts/templates', { method: 'POST', body: data }),
 
-  update: (id: number, data: { name?: string; content?: string; is_active?: boolean }) =>
+  update: (id: number, data: { name?: string; content?: string; is_active?: boolean; description?: string }) =>
     request<PromptTemplate>(`/api/prompts/templates/${id}`, { method: 'PATCH', body: data }),
 
   delete: (id: number) =>

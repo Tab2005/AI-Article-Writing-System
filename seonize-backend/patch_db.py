@@ -11,7 +11,8 @@ def patch_db():
         "ALTER TABLE projects ADD COLUMN last_audit_at DATETIME;",
         "ALTER TABLE kalpa_nodes ADD COLUMN images JSON;",
         "ALTER TABLE keyword_cache ADD COLUMN user_id VARCHAR(36);",
-        "ALTER TABLE serp_cache ADD COLUMN content_gap_report JSON;"
+        "ALTER TABLE serp_cache ADD COLUMN content_gap_report JSON;",
+        "ALTER TABLE prompt_templates ADD COLUMN description TEXT;"
     ]
     
     for sql in patches:

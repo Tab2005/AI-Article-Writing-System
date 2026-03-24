@@ -11,7 +11,8 @@ const CATEGORY_ORDER = [
   'kalpa_brainstorming',
   'kalpa_anchor_generation',
   'kalpa_weaving_system',
-  'kalpa_weaving_user'
+  'kalpa_weaving_user',
+  'kalpa_persona'
 ];
 
 const CATEGORY_LABELS: Record<string, { title: string; desc: string; icon: string }> = {
@@ -49,6 +50,11 @@ const CATEGORY_LABELS: Record<string, { title: string; desc: string; icon: strin
     title: '劫之眼：神諭編織 (用戶指令)',
     desc: '定義如何將矩陣節點轉化為專業解答內容。',
     icon: '📝',
+  },
+  kalpa_persona: {
+    title: '劫之眼：神諭人格 (自訂寫作風格)',
+    desc: '根據痛點關鍵字定義不同的角色身份與寫作語氣。',
+    icon: '🎭',
   },
 };
 
@@ -102,6 +108,13 @@ const PROMPT_HINTS: Record<string, string[]> = {
     '[IMAGE_PLACEHOLDER_1]: 圖片位置 1 (自動配圖)',
     '[IMAGE_PLACEHOLDER_2]: 圖片位置 2 (自動配圖)'
   ],
+  kalpa_persona: [
+    '【內容格式建議】：使用 JSON 格式儲存以供系統解析。',
+    '欄位包含: role, tone, intro',
+    '變數替代: {ind} -> 產業, {pp} -> 痛點, {current_year} -> 今年',
+    '範例:',
+    '{"role": "資深 {ind} 專家", "tone": "專業", "intro": "..."}'
+  ],
 };
 
 export const PromptPage: React.FC = () => {
@@ -111,6 +124,7 @@ export const PromptPage: React.FC = () => {
 
   // 每個 category 的編輯狀態
   const [activePrompts, setActivePrompts] = useState<Record<string, string>>({});
+  const [activeDescriptions, setActiveDescriptions] = useState<Record<string, string>>({});
   const [newTemplateNames, setNewTemplateNames] = useState<Record<string, string>>({});
   const [loadedTemplates, setLoadedTemplates] = useState<Record<string, PromptTemplate | null>>({});
   const [savingCategory, setSavingCategory] = useState<string | null>(null);
@@ -126,6 +140,7 @@ export const PromptPage: React.FC = () => {
 
       // 為每個 category 初始化 activePrompts
       const prompts: Record<string, string> = {};
+      const descriptions: Record<string, string> = {};
       const loadedTemplatesMap: Record<string, PromptTemplate> = {};
       const namesMap: Record<string, string> = {};
       const categories = CATEGORY_ORDER;
@@ -139,16 +154,20 @@ export const PromptPage: React.FC = () => {
 
         if (active) {
           prompts[category] = active.content;
+          descriptions[category] = active.description || '';
           loadedTemplatesMap[category] = active;
           namesMap[category] = active.name;
         } else if (categoryTemplates.length > 0) {
           prompts[category] = categoryTemplates[0].content;
+          descriptions[category] = categoryTemplates[0].description || '';
         } else {
           prompts[category] = '';
+          descriptions[category] = '';
         }
       });
 
       setActivePrompts(prompts);
+      setActiveDescriptions(descriptions);
       setLoadedTemplates(loadedTemplatesMap);
       setNewTemplateNames(namesMap);
     } catch (error) {
@@ -172,6 +191,7 @@ export const PromptPage: React.FC = () => {
         category: category,
         name: templateName,
         content: activePrompts[category] || '',
+        description: activeDescriptions[category] || '',
       });
 
       setMessage({ type: 'success', text: `模板「${templateName}」儲存成功！` });
@@ -202,6 +222,7 @@ export const PromptPage: React.FC = () => {
       await promptsApi.update(template.id, {
         name: newName,
         content: newContent,
+        description: activeDescriptions[category] || '',
       });
 
       setMessage({ type: 'success', text: `模板「${newName}」已更新！` });
@@ -239,6 +260,7 @@ export const PromptPage: React.FC = () => {
 
   const handleLoadTemplate = (category: string, template: PromptTemplate) => {
     setActivePrompts({ ...activePrompts, [category]: template.content });
+    setActiveDescriptions({ ...activeDescriptions, [category]: template.description || '' });
     setNewTemplateNames({ ...newTemplateNames, [category]: template.name });
     setLoadedTemplates({ ...loadedTemplates, [category]: template });
     setMessage({ type: 'success', text: `已載入模板：${template.name}` });
@@ -364,9 +386,22 @@ export const PromptPage: React.FC = () => {
                   )}
                 </div>
 
+                {/* 描述/關鍵字編輯 (針對 Kalpa Persona 特別顯示) */}
+                <div style={{ marginBottom: '15px' }}>
+                  <Input
+                    placeholder={category === 'kalpa_persona' ? "觸發關鍵字 (用逗號分隔，例如：失敗,錯誤)" : "模板簡短描述"}
+                    value={activeDescriptions[category] || ''}
+                    onChange={(e) =>
+                      setActiveDescriptions({ ...activeDescriptions, [category]: e.target.value })
+                    }
+                    fullWidth
+                    label={category === 'kalpa_persona' ? "🔑 匹配關鍵字" : "說明描述"}
+                  />
+                </div>
+
                 {/* 編輯區域 */}
                 <Textarea
-                  placeholder="在這裡編輯指令..."
+                  placeholder={category === 'kalpa_persona' ? '請輸入 Persona JSON 指令...' : "在這裡編輯指令..."}
                   value={activePrompts[category] || ''}
                   onChange={(e) =>
                     setActivePrompts({ ...activePrompts, [category]: e.target.value })

@@ -270,8 +270,8 @@ class KalpaService:
             
         selected_anchor = random.choice(anchor_variants)
         
-        # 2. 【千人千面】動態人格設定 (Multi-Personality v4 - 產業適配)
-        persona = KalpaService._get_weaving_persona(node.pain_point, matrix.industry)
+        # 2. 【千人千面】動態人格設定 (Multi-Personality v5 - 資料庫驅動)
+        persona = KalpaService._get_weaving_persona(db, user_id, node.pain_point, matrix.industry)
 
         # 3. 構建 System Prompt (配合指令倉庫模板)
         default_system = """
@@ -605,56 +605,50 @@ class KalpaService:
         return True
 
     @staticmethod
-    def _get_weaving_persona(pain_point: str, industry: str) -> Dict[str, str]:
+    def _get_weaving_persona(db: Session, user_id: str, pain_point: str, industry: str) -> Dict[str, str]:
         """
-        【千人千面 v4】根據痛點內容與產業背景，動態生成 AI 寫作人格設定
+        【千人千面 v5】從資料庫動態加載符合痛點與產業的人格設定
         """
         pp = pain_point.lower()
         ind = industry if industry else "相關領域"
         
-        # 定義核心策略分類與動態角色模板
-        strategies = [
-            {
-                "keywords": ["失敗", "錯誤", "無法", "斷開", "崩潰", "fail", "error", "bug", "報錯", "異常"],
-                "role_suffix": "技術診斷專家",
-                "tone": "冷靜、精確、步驟導向，強調『系統連通性』與『配置校準』。",
-                "intro_template": "解析『{pp}』背後的技術邏輯至關重要。我們會從協議層面分析 {ind} 實體狀態，提供精確的修復路徑。"
-            },
-            {
-                "keywords": ["風控", "資金", "資金安全", "凍結", "申訴", "實名", "kyc", "安全", "危險", "詐騙", "風險", "監管"],
-                "role_suffix": "安全合規監理官",
-                "tone": "嚴謹、專業避險、極具公信力，專注於『合規路徑』與『資產/數據安全協議』。",
-                "intro_template": "在處理 {ind} 的『{pp}』問題時，資產安全永遠是第一優先。本指南將依據最新法規要求，助您安全渡過此次技術性受限。"
-            },
-            {
-                "keywords": ["等很久", "慢", "沒反應", "延遲", "堵塞", "slow", "wait", "delay", "卡頓", "效率"],
-                "role_suffix": "性能負載優化師",
-                "tone": "講求效率、對比強烈、富有穿透力，專注於『節點加速』與『吞吐量提升』。",
-                "intro_template": "我們深知在 {ind} 市場，每一秒的『{pp}』都代表機會成本。透過對 {ind} 實體鏈路的優化，我們可以顯著縮短等待時間。"
-            },
-            {
-                "keywords": ["一鍵", "懶人", "自動", "快速", "教學", "懶人包", "手把手", "新手", "簡單"],
-                "role_suffix": "實戰流程導師",
-                "tone": "親切、易懂、指令化，強調『零障礙入門』與『全自動化部署』。",
-                "intro_template": "想要快速搞定 {ind} 的『{pp}』嗎？這是一份專為新手與效率追求者設計的實戰包，我們將複雜邏輯轉化為可立即執行的步驟。"
-            }
-        ]
-
-        # 根據關鍵字權重進行動態匹配
-        matched = None
-        for strategy in strategies:
-            if any(w in pp for w in strategy["keywords"]):
-                matched = strategy
-                break
-
-        if matched:
+        # 1. 獲取所有啟用的 kalpa_persona 模板
+        # 優先順序：使用者自定義 > 系統預設
+        custom_personas = db.query(PromptTemplate).filter(
+            PromptTemplate.category == "kalpa_persona",
+            PromptTemplate.user_id == user_id,
+            PromptTemplate.is_active == True
+        ).all()
+        
+        system_personas = db.query(PromptTemplate).filter(
+            PromptTemplate.category == "kalpa_persona",
+            PromptTemplate.user_id == None,
+            PromptTemplate.is_active == True
+        ).all()
+        
+        # 整合，使用者自定義優先
+        all_personas = custom_personas + system_personas
+        
+        matched_content = None
+        for p in all_personas:
+            if not p.description: continue
+            keywords = [k.strip().lower() for k in p.description.split(",") if k.strip()]
+            if any(k in pp for k in keywords):
+                try:
+                    matched_content = json.loads(p.content)
+                    break
+                except Exception as e:
+                    logger.error(f"Failed to parse persona content for template {p.name}: {e}")
+                    continue
+        
+        if matched_content:
             return {
-                "role": f"資深 {ind} {matched['role_suffix']}",
-                "tone": matched["tone"],
-                "intro": matched["intro_template"].format(ind=ind, pp=pain_point, current_year=datetime.now().year)
+                "role": matched_content.get("role", f"資深 {ind} 專家").replace("{ind}", ind),
+                "tone": matched_content.get("tone", "專業且深入淺出"),
+                "intro": matched_content.get("intro", "").replace("{ind}", ind).replace("{pp}", pain_point).replace("{current_year}", str(datetime.now().year))
             }
 
-        # 預設：資深領域策略官
+        # 預設：資深領域策略諮詢顧問
         return {
             "role": f"資深 {ind} 策略諮詢顧問",
             "tone": f"全面、平衡、深入淺出，提供 {datetime.now().year} 年最新趨勢剖析與多元化優化視野。",

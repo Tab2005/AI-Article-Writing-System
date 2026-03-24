@@ -305,6 +305,7 @@ class PromptTemplate(Base):
     user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者 (NULL 代表系統預設)
     category = Column(String(50), nullable=False, index=True) # title_generation, outline_generation, etc.
     name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True) # 用於儲存觸發關鍵字或人格說明
     content = Column(Text, nullable=False)
     is_active = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -319,6 +320,7 @@ class PromptTemplate(Base):
             "user_id": self.user_id,
             "category": self.category,
             "name": self.name,
+            "description": self.description,
             "content": self.content,
             "is_active": self.is_active,
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
