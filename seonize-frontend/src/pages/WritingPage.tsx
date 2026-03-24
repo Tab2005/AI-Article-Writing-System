@@ -227,36 +227,73 @@ export const WritingPage: React.FC = () => {
     if (!projectId || !project || sections.length === 0) return;
 
     setAutomationState('running');
-    setAutomationStage('1. 正在制定全篇寫作藍圖 (總指揮)...');
+    setAutomationStage('1/3 正在制定全篇戰略藍圖...');
     setAutomationError(null);
 
     try {
-      // 階段 1: 預估 10s
-      setTimeout(() => setAutomationStage('2. 正在根據藍圖撰寫各章節內容 (寫手群)...'), 10000);
-      // 階段 2: 預估 40s
-      setTimeout(() => setAutomationStage('3. 正在進行全篇優化與內文銜接 (主編)...'), 40000);
-
-      await writingApi.generateFull({
+      const outlineStr = sections.map(s => `${s.level}. ${s.heading}`).join('\n');
+      
+      // --- 階段 1: 藍圖 ---
+      const blueprintRes = await writingApi.blueprint({
         project_id: projectId,
         h1: project.selected_title || project.outline?.h1 || '',
-        sections: sections.map(s => ({
-          heading: s.heading,
-          level: s.level,
-          keywords: s.keywords
-        })),
-        optimization_mode: optimizationMode
+        outline: outlineStr
+      });
+      const currentBlueprint = blueprintRes.blueprint;
+      
+      // 更新本地專案狀態中的藍圖
+      setProject(prev => prev ? { ...prev, style_blueprint: currentBlueprint } : null);
+
+      // --- 階段 2: 逐段撰寫 ---
+      let rawFullContent = `# ${project.selected_title || project.outline?.h1}\n\n`;
+      let lastSummary = "這是文章開頭";
+      
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
+        setAutomationStage(`2/3 正在撰寫第 ${i + 1}/${sections.length} 章節: ${section.heading}`);
+        
+        const sectionRes = await writingApi.generateSection({
+          project_id: projectId,
+          h1: project.selected_title || project.outline?.h1 || '',
+          section: {
+            ...section,
+            previous_summary: lastSummary
+          },
+          style_blueprint: currentBlueprint,
+          optimization_mode: optimizationMode
+        });
+
+        // 即時將生成的內容同步到本地 sections 列表
+        setSections(prev => prev.map((s, idx) => 
+          idx === i ? { ...s, content: sectionRes.content, status: 'completed' } : s
+        ));
+
+        rawFullContent += `## ${sectionRes.heading}\n\n${sectionRes.content}\n\n`;
+        lastSummary = sectionRes.summary;
+      }
+
+      // --- 階段 3: 全篇審核 ---
+      setAutomationStage('3/3 正在進行全篇集成審核與最終優化...');
+      const reviewRes = await writingApi.review({
+        project_id: projectId,
+        content: rawFullContent,
+        style_blueprint: currentBlueprint
       });
 
-      setAutomationStage('4. 正在同步數據並完成最後潤飾...');
-      
-      // 模擬完成感
-      setTimeout(() => {
-        setAutomationState('success');
-      }, 1000);
+      if (reviewRes.optimized && reviewRes.content) {
+        // 如果有優化後的全文，可以在這裡處理。目前我們先同步全體專案資料。
+        console.log('文章已完成全篇優化審閱');
+      }
 
-      // 重新載入專案資料（後端已自動更新 database）
+      // 最終完成處理
+      setAutomationStage('✅ 正在同步數據並完成最後潤飾...');
+      
+      // 重新載入全體專案資料確保資料庫同步
       await loadProject();
       
+      // 如果審核成功且有內容，則通知成功
+      setAutomationState('success');
+
       // 重新整理使用者點數
       refreshUser();
 

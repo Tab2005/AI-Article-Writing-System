@@ -221,6 +221,93 @@ class FullArticleResponse(BaseModel):
     style_blueprint: Optional[str] = ""  # 回傳產出的藍圖
 
 
+class BlueprintRequest(BaseModel):
+    project_id: str
+    h1: str
+    outline: str
+
+class ReviewRequest(BaseModel):
+    project_id: str
+    content: str
+    style_blueprint: str
+
+
+@router.post("/blueprint")
+async def generate_blueprint_endpoint(
+    request: BlueprintRequest,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """
+    第一階段：生成文章戰略藍圖
+    """
+    from app.models.db_models import Project
+    from app.services.kalpa_service import KalpaService
+    
+    db_project = db.query(Project).filter(
+        Project.id == request.project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
+    if not db_project:
+        raise HTTPException(status_code=403, detail="找不到專案")
+
+    persona = KalpaService._get_weaving_persona(
+        db, current_user.id, db_project.primary_keyword[:50], db_project.style or ""
+    )
+
+    blueprint = await AIService.generate_article_blueprint(
+        h1=request.h1,
+        outline=request.outline,
+        persona_role=persona["role"],
+        persona_tone=persona["tone"],
+        user_id=current_user.id
+    )
+    
+    db_project.style_blueprint = blueprint
+    db.commit()
+    
+    return {"blueprint": blueprint, "persona": persona}
+
+
+@router.post("/review")
+async def review_article_endpoint(
+    request: ReviewRequest,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """
+    第四階段：全篇集成審核與優化
+    """
+    from app.models.db_models import Project
+    from app.services.kalpa_service import KalpaService
+    
+    db_project = db.query(Project).filter(
+        Project.id == request.project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
+    if not db_project:
+        raise HTTPException(status_code=403, detail="找不到專案")
+
+    # 取得執行審核的人格
+    persona = KalpaService._get_weaving_persona(
+        db, current_user.id, db_project.primary_keyword[:50], db_project.style or ""
+    )
+
+    final_content = await AIService.review_full_article(
+        full_article=request.content,
+        style_blueprint=request.style_blueprint,
+        persona_role=persona["role"],
+        user_id=current_user.id
+    )
+    
+    if not final_content.strip():
+        return {"content": request.content, "optimized": False}
+
+    return {"content": final_content, "optimized": True}
+
+
 @router.post("/generate-full", response_model=FullArticleResponse)
 async def generate_full_article(
     request: FullArticleRequest,

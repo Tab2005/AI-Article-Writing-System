@@ -324,6 +324,7 @@ export const writingApi = {
     ai_model?: string;
     target_word_count?: number;
     keyword_density?: number;
+    style_blueprint?: string;
   }) => request<WritingResponse>('/api/writing/generate-section', {
     method: 'POST',
     body: data,
@@ -363,6 +364,12 @@ export const writingApi = {
 
   analyzeQuality: (data: { project_id: string; content: string }) =>
     request<any>('/api/writing/analyze-quality', { method: 'POST', body: data }),
+
+  blueprint: (data: { project_id: string; h1: string; outline: string }) =>
+    request<{ blueprint: string; persona: any }>('/api/writing/blueprint', { method: 'POST', body: data }),
+
+  review: (data: { project_id: string; content: string; style_blueprint: string }) =>
+    request<{ content: string; optimized: boolean }>('/api/writing/review', { method: 'POST', body: data }),
 };
 
 // Kalpa API
