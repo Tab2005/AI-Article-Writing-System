@@ -778,7 +778,7 @@ export const WritingPage: React.FC = () => {
                     <div className={`step-item ${automationStage.includes('2.') ? 'active' : ''}`}>✍️ 內容編織</div>
                     <div className={`step-item ${automationStage.includes('3.') || automationStage.includes('4.') ? 'active' : ''}`}>🖋️ 全篇校審</div>
                   </div>
-                  <p className="audit-hint">這是全自動化流程，預計耗時 60-90 秒，請勿關閉視窗。</p>
+                  <p className="audit-hint">這是全自動化流程，預計耗時 3-5 分鐘，請勿關閉視窗。</p>
                 </div>
               )}
 

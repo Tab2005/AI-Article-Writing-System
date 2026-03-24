@@ -348,7 +348,7 @@ export const writingApi = {
     }>('/api/writing/generate-full', {
       method: 'POST',
       body: data,
-      timeout: 120000,
+      timeout: 300000, // 增加到 300 秒 (5 分鐘)
       retries: 0,
       showLoading: false
     }),
