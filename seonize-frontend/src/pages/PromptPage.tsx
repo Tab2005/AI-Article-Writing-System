@@ -5,6 +5,7 @@ import './PromptPage.css';
 
 // Category 中文標籤 - 按照流程順序排列
 const CATEGORY_ORDER = [
+  'kalpa_persona',
   'title_generation',
   'outline_generation',
   'article_blueprint',
@@ -13,60 +14,59 @@ const CATEGORY_ORDER = [
   'kalpa_brainstorming',
   'kalpa_anchor_generation',
   'kalpa_weaving_system',
-  'kalpa_weaving_user',
-  'kalpa_persona'
+  'kalpa_weaving_user'
 ];
 
 const CATEGORY_LABELS: Record<string, { title: string; desc: string; icon: string }> = {
+  kalpa_persona: {
+    title: '全域：AI 寫作人格設定 (神諭人格)',
+    desc: '定義核心角色身份與寫作語氣，全系統共用（包含戰略藍圖與內容編織）。',
+    icon: '🎭',
+  },
   title_generation: {
-    title: 'AI 標題生成規劃',
-    desc: '可在下方撰寫指令，或從模板庫載入現有指令。',
+    title: '專案主題：1. AI 標題生成規劃',
+    desc: '設定標題生成的創意權重與關鍵字配置。',
     icon: '📰',
   },
   outline_generation: {
-    title: 'SEO 大綱生成 (GEO 優化)',
-    desc: '根據關鍵字研究數據生成結構化大綱。',
+    title: '專案主題：2. SEO 大綱生成 (GEO 優化)',
+    desc: '根據 PAA 與研究數據，自動生成結構化的大綱框架。',
     icon: '📋',
   },
   article_blueprint: {
-    title: '專案主題：戰略藍圖 (總指揮)',
-    desc: '在動筆前，根據標題與大綱制定全篇寫作方針。',
+    title: '專案主題：3. 寫作戰略藍圖 (總指揮)',
+    desc: '動筆前由 AI 自動制定全篇的人稱、語氣與核心觀點。',
     icon: '🚩',
   },
   content_writing: {
-    title: '專案主題：AI 內容寫作',
-    desc: '參考藍圖進行高品質、SEO 優化的段落創作。',
+    title: '專案主題：4. AI 脈絡化內文寫作',
+    desc: '參考藍圖進行高品質、具備前文銜接感的段落創作。',
     icon: '✍️',
   },
   article_review: {
-    title: '專案主題：集成審稿 (主編)',
-    desc: '全篇合成後進行語法、語氣與銜接度優化。',
+    title: '專案主題：5. 集成編校審閱 (主編)',
+    desc: '全篇合成後進行語路校準、轉折語優化與重複性檢查。',
     icon: '🖋️',
   },
   kalpa_brainstorming: {
-    title: '劫之眼：領域建模 (天道解析)',
+    title: '劫之眼：1. 領域建模 (天道解析)',
     desc: '定義特定產業的實體、動作與痛點矩陣。',
     icon: '🔮',
   },
   kalpa_anchor_generation: {
-    title: '劫之眼：法寶袋生成',
-    desc: '生成與產業高度相關的導引性錨點文字。',
+    title: '劫之眼：2. 法寶袋生成 (錨點建議)',
+    desc: '生成與產業高度相關的引流性錨點文字。',
     icon: '🔗',
   },
   kalpa_weaving_system: {
-    title: '劫之眼：神諭編織 (系統指令)',
-    desc: '定義 AI 寫作人格、語氣與內容架構規範。',
+    title: '劫之眼：3. 神諭編織 (系統指令)',
+    desc: '定義劫之眼寫作時的核心架構與輸出規範。',
     icon: '🧠',
   },
   kalpa_weaving_user: {
-    title: '劫之眼：神諭編織 (用戶指令)',
-    desc: '定義如何將矩陣節點轉化為專業解答內容。',
+    title: '劫之眼：4. 神諭編織 (用戶指令)',
+    desc: '定義如何將矩陣節點轉化為最適合閱讀的專業解答。',
     icon: '📝',
-  },
-  kalpa_persona: {
-    title: '劫之眼：神諭人格 (自訂寫作風格)',
-    desc: '根據痛點關鍵字定義不同的角色身份與寫作語氣。',
-    icon: '🎭',
   },
 };
 
