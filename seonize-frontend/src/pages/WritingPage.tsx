@@ -43,6 +43,11 @@ export const WritingPage: React.FC = () => {
   const [auditStage, setAuditStage] = useState('');
   const [auditError, setAuditError] = useState<string | null>(null);
   const [showImagePicker, setShowImagePicker] = useState(false);
+  
+  // Automation State
+  const [automationState, setAutomationState] = useState<'idle' | 'running' | 'error' | 'success'>('idle');
+  const [automationStage, setAutomationStage] = useState('');
+  const [automationError, setAutomationError] = useState<string | null>(null);
 
   // 載入專案資料
   const loadProject = useCallback(async () => {
@@ -218,6 +223,55 @@ export const WritingPage: React.FC = () => {
     }
   };
 
+  const generateFullContent = async () => {
+    if (!projectId || !project || sections.length === 0) return;
+
+    setAutomationState('running');
+    setAutomationStage('1. 正在制定全篇寫作藍圖 (總指揮)...');
+    setAutomationError(null);
+
+    try {
+      // 階段 1: 預估 10s
+      setTimeout(() => setAutomationStage('2. 正在根據藍圖撰寫各章節內容 (寫手群)...'), 10000);
+      // 階段 2: 預估 40s
+      setTimeout(() => setAutomationStage('3. 正在進行全篇優化與內文銜接 (主編)...'), 40000);
+
+      await writingApi.generateFull({
+        project_id: projectId,
+        h1: project.selected_title || project.outline?.h1 || '',
+        sections: sections.map(s => ({
+          heading: s.heading,
+          level: s.level,
+          keywords: s.keywords
+        })),
+        optimization_mode: optimizationMode
+      });
+
+      setAutomationStage('4. 正在同步數據並完成最後潤飾...');
+      
+      // 模擬完成感
+      setTimeout(() => {
+        setAutomationState('success');
+      }, 1000);
+
+      // 重新載入專案資料（後端已自動更新 database）
+      await loadProject();
+      
+      // 重新整理使用者點數
+      refreshUser();
+
+      // 3 秒後自動關閉成功視窗
+      setTimeout(() => {
+        setAutomationState('idle');
+      }, 4000);
+
+    } catch (err: any) {
+      console.error('全篇生成失敗:', err);
+      setAutomationState('error');
+      setAutomationError(err.message || '自動化寫作過程中發生錯誤，請稍後再試。');
+    }
+  };
+
   const saveToProject = async () => {
     if (!projectId || !project || sections.length === 0) return;
 
@@ -386,6 +440,9 @@ export const WritingPage: React.FC = () => {
           </Button>
           <Button variant="cta" onClick={() => analyzeQuality()} disabled={analyzing || sections.every(s => !s.content)}>
             {analyzing ? '⌛ 分析中...' : '🔍 品質健檢'}
+          </Button>
+          <Button variant="primary" onClick={() => generateFullContent()} disabled={automationState === 'running'}>
+            {automationState === 'running' ? '🤖 自動撰寫中...' : '✨ 一鍵全篇生成'}
           </Button>
           <Button variant="cta" onClick={() => saveToProject()}>
             💾 儲存全文
@@ -661,18 +718,19 @@ export const WritingPage: React.FC = () => {
           </div>
         </div>
       </div>
-      {/* 品質健檢進度視窗 */}
-      {auditState !== 'idle' && (
+      {/* 品質健檢與自動化寫作進度視窗 */}
+      {(auditState !== 'idle' || automationState !== 'idle') && (
         <div className="audit-modal-overlay">
-          <div className="audit-modal">
+          <div className={`audit-modal ${automationState !== 'idle' ? 'automation-modal' : ''}`}>
             <div className="audit-modal__header">
-              <h3>品質審計中</h3>
-              {auditState === 'error' && (
-                <button className="audit-modal__close-top" onClick={() => setAuditState('idle')}>×</button>
+              <h3>{automationState !== 'idle' ? '🤖 AI 四階段全自動寫作引擎' : '🔍 品質審計中'}</h3>
+              {(auditState === 'error' || automationState === 'error') && (
+                <button className="audit-modal__close-top" onClick={() => { setAuditState('idle'); setAutomationState('idle'); }}>×</button>
               )}
             </div>
 
             <div className="audit-modal__body">
+              {/* 品質健檢模式 */}
               {auditState === 'analyzing' && (
                 <div className="audit-progress-view">
                   <div className="audit-spinner">
@@ -698,10 +756,49 @@ export const WritingPage: React.FC = () => {
                 <div className="audit-error-view">
                   <div className="audit-error-icon">!</div>
                   <p className="audit-error-title">審計失敗</p>
-                  <div className="audit-error-details">
-                    {auditError}
-                  </div>
+                  <div className="audit-error-details">{auditError}</div>
                   <Button variant="secondary" onClick={() => setAuditState('idle')}>關閉視窗</Button>
+                </div>
+              )}
+
+              {/* 自動化寫作模式 */}
+              {automationState === 'running' && (
+                <div className="audit-progress-view">
+                  <div className="automation-spinner">
+                    <div className="spinner-inner"></div>
+                    <div className="spinner-center">AI</div>
+                    <div className="spinner-glow"></div>
+                  </div>
+                  <p className="audit-stage-text">{automationStage}</p>
+                  <div className="audit-progress-bar">
+                    <div className="automation-progress-fill"></div>
+                  </div>
+                  <div className="automation-steps">
+                    <div className={`step-item ${automationStage.includes('1.') ? 'active' : ''}`}>🚩 制定藍圖</div>
+                    <div className={`step-item ${automationStage.includes('2.') ? 'active' : ''}`}>✍️ 內容編織</div>
+                    <div className={`step-item ${automationStage.includes('3.') || automationStage.includes('4.') ? 'active' : ''}`}>🖋️ 全篇校審</div>
+                  </div>
+                  <p className="audit-hint">這是全自動化流程，預計耗時 60-90 秒，請勿關閉視窗。</p>
+                </div>
+              )}
+
+              {automationState === 'success' && (
+                <div className="audit-success-view">
+                  <div className="audit-success-icon">✨</div>
+                  <p className="audit-stage-text">文章已全篇自動生成完成！</p>
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>正在為您呈現最終內容...</p>
+                </div>
+              )}
+
+              {automationState === 'error' && (
+                <div className="audit-error-view">
+                  <div className="audit-error-icon">!</div>
+                  <p className="audit-error-title">自動化生成失敗</p>
+                  <div className="audit-error-details">{automationError}</div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <Button variant="secondary" onClick={() => setAutomationState('idle')}>關閉視窗</Button>
+                    <Button variant="primary" onClick={() => generateFullContent()}>重試</Button>
+                  </div>
                 </div>
               )}
             </div>
