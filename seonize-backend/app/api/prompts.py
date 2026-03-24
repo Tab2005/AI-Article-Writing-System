@@ -16,6 +16,7 @@ class PromptTemplateBase(BaseModel):
     category: str
     name: str
     content: str
+    description: Optional[str] = None
 
 class PromptTemplateCreate(PromptTemplateBase):
     pass
@@ -23,11 +24,13 @@ class PromptTemplateCreate(PromptTemplateBase):
 class PromptTemplateUpdate(BaseModel):
     name: Optional[str] = None
     content: Optional[str] = None
+    description: Optional[str] = None
     is_active: Optional[bool] = None
 
 class PromptTemplateResponse(PromptTemplateBase):
     id: int
     user_id: Optional[str]
+    description: Optional[str] = None
     is_active: bool
     created_at: Optional[datetime]
     updated_at: Optional[datetime]

@@ -328,3 +328,25 @@ async def get_cache_info():
     return await get_cache().get_stats()
 
 
+@router.post("/database/patch")
+async def force_patch_db():
+    """強制執行資料庫補丁 (用於修復欄位缺失)"""
+    from patch_db import patch_db
+    try:
+        patch_db()
+        return {"success": True, "message": "資料庫補丁執行完畢"}
+    except Exception as e:
+        logger.error(f"Force patch failed: {e}")
+        raise HTTPException(status_code=500, detail=f"補丁執行失敗: {str(e)}")
+
+
+@router.post("/database/init-prompts")
+async def force_init_prompts(db: Session = Depends(get_db)):
+    """強制重新初始化/更新系統預設指令模板"""
+    from app.core.initial_data import initialize_default_prompts
+    try:
+        initialize_default_prompts(db)
+        return {"success": True, "message": "系統指令模板已更新至最新版本"}
+    except Exception as e:
+        logger.error(f"Force init prompts failed: {e}")
+        raise HTTPException(status_code=500, detail=f"初始化失敗: {str(e)}")
