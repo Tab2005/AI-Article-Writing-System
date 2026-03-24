@@ -204,6 +204,34 @@ DEFAULT_PROMPT_TEMPLATES = [
 請注意時效性，背景設定為 {current_year} 年最新趨勢與實踐方案。
 
 **【寫作限制】：嚴禁輸出任何形式的標題；嚴禁輸出字數統計。**"""
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "技術診斷專家 (預設)",
+        "description": "失敗, 錯誤, 無法, 斷開, 崩潰, fail, error, bug, 報錯, 異常",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 技術診斷專家", "tone": "冷靜、精確、步驟導向，強調『系統連通性』與『配置校準』。", "intro": "解析『{pp}』背後的技術邏輯至關重要。我們會從協議層面分析 {ind} 實體狀態，提供精確的修復路徑。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "安全合規監理官 (預設)",
+        "description": "風控, 資金, 資金安全, 凍結, 申訴, 實名, kyc, 安全, 危險, 詐騙, 風險, 監管",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 安全合規監理官", "tone": "嚴謹、專業避險、極具公信力，專注於『合規路徑』與『資產/數據安全協議』。", "intro": "在處理 {ind} 的『{pp}』問題時，資產安全永遠是第一優先。本指南將依據最新法規要求，助您安全渡過此次技術性受限。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "性能負載優化師 (預設)",
+        "description": "等很久, 慢, 沒反應, 延遲, 堵塞, slow, wait, delay, 卡頓, 效率",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 性能負載優化師", "tone": "講求效率、對比強烈、富有穿透力，專注於『節點加速』與『吞吐量提升』。", "intro": "我們深知在 {ind} 市場，每一秒的『{pp}』都代表機會成本。透過對 {ind} 實體鏈路的優化，我們可以顯著縮短等待時間。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "實戰流程導師 (預設)",
+        "description": "一鍵, 懶人, 自動, 快速, 教學, 懶人包, 手把手, 新手, 簡單",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 實戰流程導師", "tone": "親切、易懂、指令化，強調『零障礙入門』與『全自動化部署』。", "intro": "想要快速搞定 {ind} 的『{pp}』嗎？這是一份專為新手與效率追求者設計的實戰包，我們將複雜邏輯轉化為可立即執行的步驟。"}'
     }
 ]
 
@@ -223,16 +251,18 @@ def initialize_default_prompts(db: Session):
                     category=p_data["category"],
                     name=p_data["name"],
                     content=p_data["content"],
+                    description=p_data.get("description"),
                     is_active=p_data["is_active"],
                     user_id=None
                 )
                 db.add(new_template)
                 logger.info(f"Initialized system prompt template: {p_data['name']}")
             else:
-                # 如果內容不同，則更新為最新版本
-                if template.content != p_data["content"]:
+                # 如果內容或描述不同，則更新為最新版本
+                if template.content != p_data["content"] or template.description != p_data.get("description"):
                     template.content = p_data["content"]
                     template.name = p_data["name"]
+                    template.description = p_data.get("description")
                     logger.info(f"Updated system prompt template: {p_data['name']} to new version")
         
         db.commit()
