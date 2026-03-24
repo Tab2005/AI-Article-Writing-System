@@ -136,8 +136,32 @@ def init_db():
             
     except Exception as e:
         logger.error(f"Migration error (non-fatal): {e}")
-        logger.error(traceback.format_exc())
-        # 不讓遷移錯誤阻斷進程啟動，以便進入 /api/health 診斷
+
+    # 3. 最後防線：手動檢查關鍵欄位 (防止 Alembic 在部分雲端環境下失效)
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            # 檢查 description 欄位是否存在
+            check_sql = "SELECT column_name FROM information_schema.columns WHERE table_name='prompt_templates' AND column_name='description';"
+            if IS_SQLITE:
+                check_sql = "PRAGMA table_info(prompt_templates);"
+
+            result = conn.execute(text(check_sql)).fetchall()
+
+            column_exists = False
+            if IS_SQLITE:
+                column_exists = any(row[1] == 'description' for row in result)
+            else:
+                column_exists = len(result) > 0
+
+            if not column_exists:
+                logger.info("Direct patch: Adding 'description' column to 'prompt_templates'...")
+                alter_sql = "ALTER TABLE prompt_templates ADD COLUMN description TEXT;"
+                conn.execute(text(alter_sql))
+                conn.commit()
+                logger.info("Direct patch successful.")
+    except Exception as patch_err:
+        logger.warning(f"Direct patch fallback failed (likely fine): {patch_err}")
 
     logger.info("Initialization sequence finished.")
 
