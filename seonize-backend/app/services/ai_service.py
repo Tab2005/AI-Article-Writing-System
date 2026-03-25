@@ -293,11 +293,14 @@ SERP 標題：
             gap_info += f"\n- **使用者指定標題**：{selected_title}\n"
 
         if content_gap_report and isinstance(content_gap_report, dict):
+            gaps = [str(g)[:200] for g in content_gap_report.get('content_gaps', [])]
+            eeat = [str(e)[:200] for g in [content_gap_report.get('eeat_strategies', []) or content_gap_report.get('eeat_strategy', [])] for e in (g if isinstance(g, list) else [g])]
+            
             gap_info += f"""
 # 內容缺口與 E-E-A-T 策略建議 (參考)
-- **對手忽略的缺口**：{', '.join(content_gap_report.get('content_gaps', [])) or '無'}
-- **獨特切入視角**：{content_gap_report.get('unique_angle', '無')}
-- **E-E-A-T 執行策略**：{', '.join(content_gap_report.get('eeat_strategies', [])) or content_gap_report.get('eeat_strategy', '無')}
+- **對手忽略的缺口**：{', '.join(gaps[:5]) or '無'}
+- **獨特切入視角**：{str(content_gap_report.get('unique_angle', '無'))[:500]}
+- **E-E-A-T 執行策略**：{', '.join(eeat[:5]) or '無'}
 
 請務必在標題或章節中，針對上述「對手忽略的缺口」進行補強。
 """
@@ -306,9 +309,9 @@ SERP 標題：
             prompt = custom_prompt.replace("{keyword}", keyword)\
                                  .replace("{intent}", intent)\
                                  .replace("{keywords}", ', '.join(keywords))\
-                                 .replace("{paa}", chr(10).join(f'  - {p}' for p in paa[:5]) if paa else '無')\
+                                 .replace("{paa}", chr(10).join(f'  - {str(p)[:300]}' for p in paa[:5]) if paa else '無')\
                                  .replace("{related_searches}", ', '.join(related[:8]) if related else '無')\
-                                 .replace("{ai_overview}", ai_overview.get('description') or ai_overview.get('snippet') or '無' if isinstance(ai_overview, dict) else '無')\
+                                 .replace("{ai_overview}", (str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:2000] if isinstance(ai_overview, dict) else '無')\
                                  .replace("{current_year}", str(datetime.now().year))
             
             if "{content_gap}" in prompt:
@@ -329,9 +332,9 @@ SERP 標題：
 
 # 實時搜尋數據 (極重要)
 我們從 Google 實時搜尋中獲取了以下關鍵數據，請將這些內容織入大綱結構：
-- **使用者常問問題 (PAA)**：{chr(10).join(f'  - {p}' for p in paa[:5]) if paa else '無'}
+- **使用者常問問題 (PAA)**：{chr(10).join(f'  - {str(p)[:300]}' for p in paa[:5]) if paa else '無'}
 - **相關搜尋詞**：{', '.join(related[:8]) if related else '無'}
-- **AI 總結特徵**：{ai_overview.get('description') or ai_overview.get('snippet') or '無' if isinstance(ai_overview, dict) else '無'}
+- **AI 總結特徵**：{(str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:2000] if isinstance(ai_overview, dict) else '無'}
 
 # 大綱生成規則
 1. **問題驅動**：請優先將上述 PAA 問題轉化為適當的 H2 或 H3 標題，這對於獲得 AI 搜尋引擎的引用至關重要。
