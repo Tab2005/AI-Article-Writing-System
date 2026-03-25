@@ -25,6 +25,9 @@
 *   [多角色權限 (RBAC) 規劃](./features/multi_user_rbac_plan.md)
 *   [**一詞多標應用工作流**](./features/multi_article_workflow.md) - **實作計劃中**
 
+## 📊 數據統計與分析 (Analysis)
+*   [**點數消耗配置審計報告**](./analysis/credit_consumption_audit.md) - **最新審計資料**
+
 ## 📁 封存與歷史 (Archive)
 *   [歷史封存目錄](./archive/README.md) - 包含過期的優化計劃、審查報告與恢復文件。
 
