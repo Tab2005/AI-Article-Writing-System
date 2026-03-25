@@ -48,6 +48,10 @@ export const WritingPage: React.FC = () => {
   const [automationState, setAutomationState] = useState<'idle' | 'running' | 'error' | 'success'>('idle');
   const [automationStage, setAutomationStage] = useState('');
   const [automationError, setAutomationError] = useState<string | null>(null);
+  
+  // Full Content Sidebar State
+  const [fullContent, setFullContent] = useState('');
+  const [isAutoSyncing, setIsAutoSyncing] = useState(true);
 
   // 載入專案資料
   const loadProject = useCallback(async () => {
@@ -91,6 +95,18 @@ export const WritingPage: React.FC = () => {
         // 載入已有的品質分析報告
         if (data.quality_report) {
           setQualityAnalysis(data.quality_report);
+        }
+
+        // 初始化全文內容
+        if (data.full_content) {
+          setFullContent(data.full_content);
+          setIsAutoSyncing(false); // 已有內容則關閉自動同步，避免覆蓋
+        } else {
+          const initialFull = flatSections
+            .filter((s) => s.content)
+            .map((s) => `${'#'.repeat(s.level)} ${s.heading}\n\n${s.content}`)
+            .join('\n\n');
+          setFullContent(initialFull);
         }
       }
     } catch (err: any) {
@@ -143,6 +159,16 @@ export const WritingPage: React.FC = () => {
           content: res.content,
           status: 'completed',
         };
+        
+        // 如果開啟自動同步，則更新全文
+        if (isAutoSyncing) {
+          const newFull = updated
+            .filter((s) => s.content)
+            .map((s) => `${'#'.repeat(s.level)} ${s.heading}\n\n${s.content}`)
+            .join('\n\n');
+          setFullContent(newFull);
+        }
+        
         return updated;
       });
 
@@ -279,7 +305,16 @@ export const WritingPage: React.FC = () => {
       }
 
       // 全部段落寫完後，先進行一次完整存檔 (直接傳入最新數據)
-      await saveToProject(currentSections);
+      const finalFullContent = currentSections
+        .filter((s) => s.content)
+        .map((s) => `${'#'.repeat(s.level)} ${s.heading}\n\n${s.content}`)
+        .join('\n\n');
+      
+      if (isAutoSyncing) {
+        setFullContent(finalFullContent);
+      }
+
+      await saveToProject(currentSections, isAutoSyncing ? finalFullContent : undefined);
 
       // --- 階段 3: 全篇審核 ---
       setAutomationStage('3/3 正在進行全篇集成審核與最終優化...');
@@ -320,8 +355,8 @@ export const WritingPage: React.FC = () => {
     }
   };
 
-  const saveToProject = async (latestSections?: WritingSectionState[]) => {
-    if (!projectId || !project || sections.length === 0) return;
+  const saveToProject = async (latestSections?: WritingSectionState[], manualFullContent?: string) => {
+    if (!projectId || !project || (sections.length === 0 && !latestSections)) return;
 
     const sectionsToSave = latestSections || sections;
 
@@ -343,8 +378,8 @@ export const WritingPage: React.FC = () => {
         sections: updateOutlineContent(project.outline!.sections),
       };
 
-      // 2. 構建全文 Markdown
-      const fullContent = sections
+      // 2. 構建全文 Markdown (如果沒有傳入手動編輯的全文，則自動重組)
+      const fullContentToSave = manualFullContent || fullContent || sectionsToSave
         .filter((s) => s.content)
         .map((s) => {
           const prefix = '#'.repeat(s.level);
@@ -355,14 +390,19 @@ export const WritingPage: React.FC = () => {
       // 3. 呼叫 API 更新資料庫
       await projectsApi.update(projectId, {
         outline: updatedOutline,
-        full_content: fullContent,
-        word_count: fullContent.length,
+        full_content: fullContentToSave,
+        word_count: fullContentToSave.length,
       });
 
       // 更新本地 project 狀態，防止被舊狀態覆蓋
       setProject((prev) =>
-        prev ? { ...prev, outline: updatedOutline, full_content: fullContent } : null
+        prev ? { ...prev, outline: updatedOutline, full_content: fullContentToSave } : null
       );
+      
+      // 如果是外部觸發的儲存且傳入了內容，同步到 local state
+      if (manualFullContent) {
+        setFullContent(manualFullContent);
+      }
     } catch (err) {
       console.error('儲存失敗:', err);
     }
@@ -412,17 +452,14 @@ export const WritingPage: React.FC = () => {
   }, [project]);
 
   const keywordCoverageCount = useMemo(() => {
-    if (allTargetKeywords.length === 0 || sections.length === 0) return 0;
-    const fullText = sections
-      .map((s) => s.content)
-      .join(' ')
-      .toLowerCase();
-    return allTargetKeywords.filter((kw) => fullText.includes(kw.toLowerCase())).length;
-  }, [allTargetKeywords, sections]);
+    if (allTargetKeywords.length === 0 || !fullContent) return 0;
+    const text = fullContent.toLowerCase();
+    return allTargetKeywords.filter((kw) => text.includes(kw.toLowerCase())).length;
+  }, [allTargetKeywords, fullContent]);
 
   const totalWordCount = useMemo(
-    () => sections.reduce((acc, s) => acc + (s.content?.length || 0), 0),
-    [sections]
+    () => fullContent?.length || 0,
+    [fullContent]
   );
 
   const highlightKeywords = (content: string) => {
@@ -659,6 +696,43 @@ export const WritingPage: React.FC = () => {
                 <span className="section-item__heading">{section.heading}</span>
               </button>
             ))}
+          </div>
+
+          <div className="full-article-section">
+            <div className="full-article-header">
+              <h4 style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', fontWeight: 'bold' }}>
+                文章全文預覽 (可編輯)
+              </h4>
+              <div className="full-article-actions">
+                <div className={`sync-status ${!isAutoSyncing ? 'sync-status--manual' : ''}`}>
+                  {isAutoSyncing ? '⚡ 自動同步中' : '✋ 手動編輯模式'}
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="secondary" 
+                  style={{ padding: '2px 8px', fontSize: '10px' }}
+                  onClick={() => {
+                    const forcedFull = sections
+                      .filter((s) => s.content)
+                      .map((s) => `${'#'.repeat(s.level)} ${s.heading}\n\n${s.content}`)
+                      .join('\n\n');
+                    setFullContent(forcedFull);
+                    setIsAutoSyncing(true);
+                  }}
+                >
+                  🔄 重置同步
+                </Button>
+              </div>
+            </div>
+            <textarea
+              className="full-article-textarea"
+              placeholder="段落完成後，全文將在此彙整..."
+              value={fullContent}
+              onChange={(e) => {
+                setFullContent(e.target.value);
+                setIsAutoSyncing(false);
+              }}
+            />
           </div>
         </div>
 
