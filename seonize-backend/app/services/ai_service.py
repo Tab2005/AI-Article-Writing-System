@@ -293,13 +293,14 @@ SERP 標題：
             gap_info += f"\n- **使用者指定標題**：{selected_title}\n"
 
         if content_gap_report and isinstance(content_gap_report, dict):
-            gaps = [str(g)[:200] for g in content_gap_report.get('content_gaps', [])]
-            eeat = [str(e)[:200] for g in [content_gap_report.get('eeat_strategies', []) or content_gap_report.get('eeat_strategy', [])] for e in (g if isinstance(g, list) else [g])]
+            # 使用者需求：單點放寬到 3000 字
+            gaps = [str(g)[:3000] for g in content_gap_report.get('content_gaps', [])]
+            eeat = [str(e)[:3000] for g in [content_gap_report.get('eeat_strategies', []) or content_gap_report.get('eeat_strategy', [])] for e in (g if isinstance(g, list) else [g])]
             
             gap_info += f"""
 # 內容缺口與 E-E-A-T 策略建議 (參考)
 - **對手忽略的缺口**：{', '.join(gaps[:5]) or '無'}
-- **獨特切入視角**：{str(content_gap_report.get('unique_angle', '無'))[:500]}
+- **獨特切入視角**：{str(content_gap_report.get('unique_angle', '無'))[:3000]}
 - **E-E-A-T 執行策略**：{', '.join(eeat[:5]) or '無'}
 
 請務必在標題或章節中，針對上述「對手忽略的缺口」進行補強。
@@ -308,33 +309,33 @@ SERP 標題：
         if custom_prompt:
             prompt = custom_prompt.replace("{keyword}", keyword)\
                                  .replace("{intent}", intent)\
-                                 .replace("{keywords}", ', '.join(str(k)[:100] for k in keywords[:20]))\
-                                 .replace("{paa}", chr(10).join(f'  - {str(p)[:200]}' for p in paa[:5]) if paa else '無')\
-                                 .replace("{related_searches}", ', '.join(str(r)[:50] for r in related[:8]) if related else '無')\
-                                 .replace("{ai_overview}", (str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:1500] if isinstance(ai_overview, dict) else '無')\
+                                 .replace("{keywords}", ', '.join(str(k)[:100] for k in keywords[:40]))\
+                                 .replace("{paa}", chr(10).join(f'  - {str(p)[:500]}' for p in paa[:10]) if paa else '無')\
+                                 .replace("{related_searches}", ', '.join(str(r)[:50] for r in related[:12]) if related else '無')\
+                                 .replace("{ai_overview}", (str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:4000] if isinstance(ai_overview, dict) else '無')\
                                  .replace("{current_year}", str(datetime.now().year))
             
             if "{content_gap}" in prompt:
-                prompt = prompt.replace("{content_gap}", (gap_info)[:2000])
+                prompt = prompt.replace("{content_gap}", (gap_info)[:15000])
             else:
-                prompt = prompt.replace("# 背景資訊", f"{(gap_info)[:2000]}\n# 背景資訊")
+                prompt = prompt.replace("# 背景資訊", f"{(gap_info)[:15000]}\n# 背景資訊")
             return prompt
 
         return f"""你是一位資深的 SEO 內容建築師，擅長運用知識圖譜與語義搜尋技術。
 請為核心關鍵字「{keyword}」生成一篇內容深度領先競爭對手、具備極高 GEO (生成式引擎優化) 潛力的文章大綱。
 
-{(gap_info)[:2000]}
+{(gap_info)[:15000]}
 
 # 背景資訊
 - 核心關鍵字：{keyword}
 - 搜尋意圖：{intent}
-- 推薦延伸詞：{', '.join(str(k)[:100] for k in keywords[:20])}
+- 推薦延伸詞：{', '.join(str(k)[:100] for k in keywords[:40])}
 
 # 實時搜尋數據 (極重要)
 我們從 Google 實時搜尋中獲取了以下關鍵數據，請將這些內容織入大綱結構：
-- **使用者常問問題 (PAA)**：{chr(10).join(f'  - {str(p)[:200]}' for p in paa[:5]) if paa else '無'}
-- **相關搜尋詞**：{', '.join(str(r)[:50] for r in related[:8]) if related else '無'}
-- **AI 總結特徵**：{(str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:1500] if isinstance(ai_overview, dict) else '無'}
+- **使用者常問問題 (PAA)**：{chr(10).join(f'  - {str(p)[:500]}' for p in paa[:10]) if paa else '無'}
+- **相關搜尋詞**：{', '.join(str(r)[:50] for r in related[:12]) if related else '無'}
+- **AI 總結特徵**：{(str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:4000] if isinstance(ai_overview, dict) else '無'}
 
 # 大綱生成規則
 1. **問題驅動**：請優先將上述 PAA 問題轉化為適當的 H2 或 H3 標題，這對於獲得 AI 搜尋引擎的引用至關重要。
