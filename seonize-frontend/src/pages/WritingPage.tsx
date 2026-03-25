@@ -697,43 +697,6 @@ export const WritingPage: React.FC = () => {
               </button>
             ))}
           </div>
-
-          <div className="full-article-section">
-            <div className="full-article-header">
-              <h4 style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', fontWeight: 'bold' }}>
-                文章全文預覽 (可編輯)
-              </h4>
-              <div className="full-article-actions">
-                <div className={`sync-status ${!isAutoSyncing ? 'sync-status--manual' : ''}`}>
-                  {isAutoSyncing ? '⚡ 自動同步中' : '✋ 手動編輯模式'}
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="secondary" 
-                  style={{ padding: '2px 8px', fontSize: '10px' }}
-                  onClick={() => {
-                    const forcedFull = sections
-                      .filter((s) => s.content)
-                      .map((s) => `${'#'.repeat(s.level)} ${s.heading}\n\n${s.content}`)
-                      .join('\n\n');
-                    setFullContent(forcedFull);
-                    setIsAutoSyncing(true);
-                  }}
-                >
-                  🔄 重置同步
-                </Button>
-              </div>
-            </div>
-            <textarea
-              className="full-article-textarea"
-              placeholder="段落完成後，全文將在此彙整..."
-              value={fullContent}
-              onChange={(e) => {
-                setFullContent(e.target.value);
-                setIsAutoSyncing(false);
-              }}
-            />
-          </div>
         </div>
 
         {/* Content Preview */}
@@ -812,6 +775,44 @@ export const WritingPage: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 文章全文預覽 (獨立一欄) */}
+      <div className="full-article-section-standalone">
+        <div className="full-article-header">
+          <h3 className="section-title">✨ 文章全文統合與全域編輯</h3>
+          <div className="full-article-actions">
+            <div className={`sync-status ${!isAutoSyncing ? 'sync-status--manual' : ''}`}>
+              {isAutoSyncing ? '⚡ AI 自動同步撰寫中' : '✋ 手動編輯/優化模式'}
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                const forcedFull = sections
+                  .filter((s) => s.content)
+                  .map((s) => `${'#'.repeat(s.level)} ${s.heading}\n\n${s.content}`)
+                  .join('\n\n');
+                setFullContent(forcedFull);
+                setIsAutoSyncing(true);
+              }}
+            >
+              🔄 重置同步
+            </Button>
+          </div>
+        </div>
+        <textarea
+          className="full-article-textarea-standalone"
+          placeholder="當各個段落完成後，完整的文章內容將在此實時彙整，您可以隨時在此進行全域微調與潤色..."
+          value={fullContent}
+          onChange={(e) => {
+            setFullContent(e.target.value);
+            setIsAutoSyncing(false);
+          }}
+        />
+        <div className="full-article-footer">
+          <p className="hint-text">💡 編輯完成後，請點擊右上角的「💾 儲存全文」按鈕同步至專案預覽。</p>
         </div>
       </div>
 

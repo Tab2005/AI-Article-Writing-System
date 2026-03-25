@@ -146,60 +146,95 @@
   text-overflow: ellipsis;
 }
 
-/* Full Article Editor in Sidebar */
-.full-article-section {
-  margin-top: var(--space-6);
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  flex: 1; /* 讓它佔據剩餘空間 */
-  min-height: 300px;
-}
-
-.full-article-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.full-article-textarea {
-  width: 100%;
-  flex: 1;
-  background: rgba(var(--color-bg-secondary-rgb), 0.3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  color: var(--color-text);
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
-  padding: var(--space-3);
-  resize: none;
-  transition: border-color var(--transition-fast);
-}
-
-.full-article-textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  background: rgba(var(--color-bg-secondary-rgb), 0.5);
+.sync-status--manual {
+  color: var(--color-warning);
 }
 
 .full-article-actions {
   display: flex;
-  gap: var(--space-2);
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .sync-status {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--color-success);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
-.sync-status--manual {
-  color: var(--color-warning);
+/* Standalone Full Article Editor (New Layout) */
+.full-article-section-standalone {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-shadow: var(--shadow-md);
+  margin-top: var(--space-2);
+}
+
+.full-article-section-standalone .full-article-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: var(--space-3);
+}
+
+.full-article-section-standalone .section-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.full-article-textarea-standalone {
+  width: 100%;
+  min-height: 500px;
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  padding: var(--space-5);
+  resize: vertical;
+  transition: all var(--transition-fast);
+}
+
+.full-article-textarea-standalone:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.1);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.full-article-footer {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: var(--space-2);
+}
+
+.full-article-footer .hint-text {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Sidebar List cleanup */
+.section-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+  max-height: 60vh;
 }
 
 /* Status Icons */
