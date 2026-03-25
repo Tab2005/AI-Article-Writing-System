@@ -11,7 +11,7 @@ from app.core.database import get_db
 import logging
 from app.services.credit_service import CreditService
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +126,7 @@ async def analyze_intent(
         keyword_weights=keyword_scores,
     )
     
-    from datetime import datetime
-    current_year = datetime.now().year
+    current_year = datetime.now(timezone.utc).year
     title_templates = [
         f"{current_year} {request.keyword}完整指南：從入門到精通",
         f"{request.keyword}必看！專家教你 5 個關鍵技巧",
@@ -245,7 +244,7 @@ async def generate_outline(
         )
         
         # 4. 處理 AI 回傳結果
-        h1 = ai_result.get("h1", f"{datetime.now().year} {request.keyword}完整指南")
+        h1 = ai_result.get("h1", f"{datetime.now(timezone.utc).year} {request.keyword}完整指南")
         sections = []
         for idx, s in enumerate(ai_result.get("sections", [])):
             sections.append(OutlineSection(

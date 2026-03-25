@@ -71,7 +71,7 @@ class CreditService:
     @staticmethod
     def get_config(db: Session) -> Dict[str, Any]:
         """從資料庫獲取動態配置，含快取機制"""
-        now = datetime.now().timestamp()
+        now = datetime.now(timezone.utc).timestamp()
         if CreditService._config_cache and (now - CreditService._last_cache_time < CreditService.CACHE_TTL):
             return CreditService._config_cache
 

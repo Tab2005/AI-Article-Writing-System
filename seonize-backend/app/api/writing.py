@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.core.database import get_db
 import re
+from datetime import datetime, timezone
 
 # 配置路由依賴為全域登入
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -622,7 +623,7 @@ async def analyze_quality(
         
         # 5. 持久化至資料庫
         db_project.quality_report = analysis
-        db_project.last_audit_at = datetime.now()
+        db_project.last_audit_at = datetime.now(timezone.utc)
         db_project.eeat_score = analysis.get("score", db_project.eeat_score)
         db.commit()
         

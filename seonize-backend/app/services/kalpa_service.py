@@ -81,7 +81,7 @@ class KalpaService:
                     title = t
             else:
                 # 預設標題模板
-                current_yr = datetime.now().year
+                current_yr = datetime.now(timezone.utc).year
                 title = f"{e}{a}{p}怎麼辦？{current_yr} 最新解決教學與修復步驟"
             
             results.append({
@@ -215,7 +215,7 @@ class KalpaService:
         system_prompt_template = KalpaService._get_active_template(db, user_id, "kalpa_anchor_generation", default_system)
         system_prompt = system_prompt_template.replace("{industry}", industry)\
                                               .replace("{money_page_url}", money_page_url)\
-                                              .replace("{current_year}", str(datetime.now().year))
+                                              .replace("{current_year}", str(datetime.now(timezone.utc).year))
         
         user_prompt = f"請為產業「{industry}」以及目標網址「{money_page_url}」生成 5 個法寶袋錨點文字。"
         
@@ -238,7 +238,7 @@ class KalpaService:
         except Exception as e:
             logger.error(f"Failed to generate anchor variants: {str(e)}")
             # 基本回退
-            current_yr = datetime.now().year
+            current_yr = datetime.now(timezone.utc).year
             return ["查看更多專業指南", "點擊獲取專家建議", f"{current_yr} 產業佈局清單", "專業避坑與優化方案", "從入門到精通的實戰筆記"]
 
     @staticmethod
@@ -301,7 +301,7 @@ class KalpaService:
                                        .replace("{persona_tone}", persona['tone'])\
                                        .replace("{title}", node.target_title)\
                                        .replace("{pain_point}", node.pain_point)\
-                                       .replace("{current_year}", str(datetime.now().year))
+                                       .replace("{current_year}", str(datetime.now(timezone.utc).year))
 
         # 4. 構建 User Prompt (配合指令倉庫模板)
         default_user = """
@@ -348,7 +348,7 @@ class KalpaService:
                                    .replace("{selected_anchor}", selected_anchor)\
                                    .replace("{money_page_url}", matrix.money_page_url or "https://example.com")\
                                    .replace("{persona_role}", persona['role'])\
-                                   .replace("{current_year}", str(datetime.now().year))
+                                   .replace("{current_year}", str(datetime.now(timezone.utc).year))
 
         try:
             logger.info(f"Starting weaving for node {node_id} (title: {node.target_title})")
@@ -539,7 +539,7 @@ class KalpaService:
         
         system_template = KalpaService._get_active_template(db, user_id, "kalpa_brainstorming", default_system)
         system_prompt = system_template.replace("{topic}", topic)\
-                                       .replace("{current_year}", str(datetime.now().year))
+                                       .replace("{current_year}", str(datetime.now(timezone.utc).year))
         
         user_prompt = f"請針對主題『{topic}』進行天道解析建模。"
         
@@ -645,14 +645,14 @@ class KalpaService:
             return {
                 "role": matched_content.get("role", f"資深 {ind} 專家").replace("{ind}", ind),
                 "tone": matched_content.get("tone", "專業且深入淺出"),
-                "intro": matched_content.get("intro", "").replace("{ind}", ind).replace("{pp}", pain_point).replace("{current_year}", str(datetime.now().year))
+                "intro": matched_content.get("intro", "").replace("{ind}", ind).replace("{pp}", pain_point).replace("{current_year}", str(datetime.now(timezone.utc).year))
             }
 
         # 預設：資深領域策略諮詢顧問
         return {
             "role": f"資深 {ind} 策略諮詢顧問",
-            "tone": f"全面、平衡、深入淺出，提供 {datetime.now().year} 年最新趨勢剖析與多元化優化視野。",
-            "intro": f"針對 {ind} 領域中的『{pain_point}』現狀，我們綜合了 {datetime.now().year} 年最新的數據指標，旨在為您提供一個具備未來前瞻性的解決框架。"
+            "tone": f"全面、平衡、深入淺出，提供 {datetime.now(timezone.utc).year} 年最新趨勢剖析與多元化優化視野。",
+            "intro": f"針對 {ind} 領域中的『{pain_point}』現狀，我們綜合了 {datetime.now(timezone.utc).year} 年最新的數據指標，旨在為您提供一個具備未來前瞻性的解決框架。"
         }
 
 kalpa_service = KalpaService()

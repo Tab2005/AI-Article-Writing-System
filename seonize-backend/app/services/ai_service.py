@@ -7,7 +7,7 @@ from enum import Enum
 from typing import List, Dict, Any, Optional, AsyncGenerator
 from pydantic import BaseModel
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import re
 import logging
@@ -313,7 +313,7 @@ SERP 標題：
                                  .replace("{paa}", chr(10).join(f'  - {str(p)[:500]}' for p in paa[:10]) if paa else '無')\
                                  .replace("{related_searches}", ', '.join(str(r)[:50] for r in related[:12]) if related else '無')\
                                  .replace("{ai_overview}", (str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:4000] if isinstance(ai_overview, dict) else '無')\
-                                 .replace("{current_year}", str(datetime.now().year))
+                                 .replace("{current_year}", str(datetime.now(timezone.utc).year))
             
             if "{content_gap}" in prompt:
                 prompt = prompt.replace("{content_gap}", (gap_info)[:15000])
@@ -398,7 +398,7 @@ SERP 標題：
                              .replace("{outline}", outline)\
                              .replace("{persona_role}", persona_role)\
                              .replace("{persona_tone}", persona_tone)\
-                             .replace("{current_year}", str(datetime.now().year))
+                             .replace("{current_year}", str(datetime.now(timezone.utc).year))
         
         try:
             return await cls.generate_content(prompt, temperature=0.6)
@@ -436,7 +436,7 @@ SERP 標題：
         prompt = custom_prompt.replace("{style_blueprint}", style_blueprint)\
                              .replace("{full_article}", full_article)\
                              .replace("{persona_role}", persona_role)\
-                             .replace("{current_year}", str(datetime.now().year))
+                             .replace("{current_year}", str(datetime.now(timezone.utc).year))
         
         try:
             # 審稿使用較低的 temperature 以維持穩定性
@@ -485,7 +485,7 @@ SERP 標題：
                                  .replace("{content_gap}", strategy_info)\
                                  .replace("{style_blueprint}", style_blueprint or '請維持專業一致風格')\
                                  .replace("{full_outline}", full_outline or '暫無可用全景大綱')\
-                                 .replace("{current_year}", str(datetime.now().year))
+                                 .replace("{current_year}", str(datetime.now(timezone.utc).year))
         else:
             mode_instructions = {
                 "seo": "注重關鍵字自然嵌入，保持 1.5-2.5% 關鍵字密度",
@@ -539,7 +539,7 @@ SERP 標題：
     async def generate_ai_titles(cls, keyword: str, titles: List[str], intent: str = "informational", user_id: Optional[int] = None, custom_prompt: Optional[str] = None) -> List[Dict[str, Any]]:
         """基於競爭對手生成 AI 建議標題 (GEO 優化模式)"""
         if not titles:
-            current_yr = datetime.now().year
+            current_yr = datetime.now(timezone.utc).year
             return [
                 {"title": f"什麼是 {keyword}？{current_yr} 最完整定義與基礎指南", "strategy": "定義型", "reason": "預設生成"},
                 {"title": f"{keyword}怎麼辦？{current_yr} 最新解決教學與修復步驟", "strategy": "教學型", "reason": "預設生成"}
@@ -554,7 +554,7 @@ SERP 標題：
                 return parsed
             
             # 備用方案：如果 JSON 解析失敗
-            current_yr = datetime.now().year
+            current_yr = datetime.now(timezone.utc).year
             return [
                 {"title": f"什麼是 {keyword}？{current_yr} 最完整定義與基礎指南", "strategy": "定義型", "reason": "觸發 AI 定義摘要"},
                 {"title": f"如何優化 {keyword}？從入門到精通的 5 個教學步驟", "strategy": "教學型", "reason": "符合操作流程意圖"},
@@ -596,7 +596,7 @@ SERP 標題：
         if custom_prompt:
             prompt = custom_prompt.replace("{keyword}", keyword)\
                                  .replace("{intent}", intent)\
-                                 .replace("{current_year}", str(datetime.now().year))
+                                 .replace("{current_year}", str(datetime.now(timezone.utc).year))
             competitor_list = chr(10).join(f'- {t}' for t in titles[:10])
             prompt = prompt.replace("{titles}", competitor_list)
             if "{titles}" not in custom_prompt:
@@ -604,7 +604,7 @@ SERP 標題：
             return prompt
         else:
             # 系統預設指令
-            current_yr = datetime.now().year
+            current_yr = datetime.now(timezone.utc).year
             prompt = f"""你是一位資深的 SEO 與 GEO (生成式引擎優化) 專家。你的任務是分析競爭對手標題，並產出 5 個具備高點擊率且極易被 AI 搜尋引擎 (如 ChatGPT, SearchGPT, Gemini) 引用為摘要的標題。
 
 # 輸入數據
@@ -643,7 +643,7 @@ SERP 標題：
                 return parsed
             
             # 備用方案：如果 JSON 解析失敗
-            current_yr = datetime.now().year
+            current_yr = datetime.now(timezone.utc).year
             return [
                 {"title": f"什麼是 {keyword}？{current_yr} 最完整定義與基礎指南", "strategy": "定義型", "reason": "觸發 AI 定義摘要"},
                 {"title": f"如何優化 {keyword}？從入門到精通的 5 個教學步驟", "strategy": "教學型", "reason": "符合操作流程意圖"},
