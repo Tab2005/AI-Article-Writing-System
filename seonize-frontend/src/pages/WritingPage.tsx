@@ -248,8 +248,11 @@ export const WritingPage: React.FC = () => {
       let rawFullContent = `# ${project.selected_title || project.outline?.h1}\n\n`;
       let lastSummary = "這是文章開頭";
       
+      // 使用一個本地變數來追蹤最新狀態，避免 React 閉包 captured 舊狀態
+      let currentSections = [...sections];
+      
       for (let i = 0; i < sections.length; i++) {
-        const section = sections[i];
+        const section = currentSections[i];
         setAutomationStage(`2/3 正在撰寫第 ${i + 1}/${sections.length} 章節: ${section.heading}`);
         
         const sectionRes = await writingApi.generateSection({
@@ -263,17 +266,20 @@ export const WritingPage: React.FC = () => {
           optimization_mode: optimizationMode
         });
 
-        // 即時將生成的內容同步到本地 sections 列表
-        setSections(prev => prev.map((s, idx) => 
+        // 更新本地副本
+        currentSections = currentSections.map((s, idx) => 
           idx === i ? { ...s, content: sectionRes.content, status: 'completed' } : s
-        ));
+        );
+
+        // 即時將生成的內容同步到 UI
+        setSections(currentSections);
 
         rawFullContent += `## ${sectionRes.heading}\n\n${sectionRes.content}\n\n`;
         lastSummary = sectionRes.summary;
       }
 
-      // 全部段落寫完後，先進行一次完整存檔
-      await saveToProject();
+      // 全部段落寫完後，先進行一次完整存檔 (直接傳入最新數據)
+      await saveToProject(currentSections);
 
       // --- 階段 3: 全篇審核 ---
       setAutomationStage('3/3 正在進行全篇集成審核與最終優化...');
@@ -284,16 +290,14 @@ export const WritingPage: React.FC = () => {
       });
 
       if (reviewRes.optimized && reviewRes.content) {
-        // 如果有優化後的全文，可以在這裡處理。目前我們先同步全體專案資料。
         console.log('文章已完成全篇優化審閱');
-        // TODO: 如果審閱優化了全文內容，應考慮如何回寫到各 sections
       }
 
       // 最終完成處理
       setAutomationStage('✅ 正在同步數據並完成最後潤飾...');
       
       // 確保最後狀態也存檔
-      await saveToProject();
+      await saveToProject(currentSections);
       
       // 重新載入全體專案資料確保資料庫同步
       await loadProject();
@@ -316,14 +320,16 @@ export const WritingPage: React.FC = () => {
     }
   };
 
-  const saveToProject = async () => {
+  const saveToProject = async (latestSections?: WritingSectionState[]) => {
     if (!projectId || !project || sections.length === 0) return;
+
+    const sectionsToSave = latestSections || sections;
 
     try {
       // 1. 遞迴更新大綱結構中的內容
       const updateOutlineContent = (items: OutlineSection[]): OutlineSection[] => {
         return items.map((item) => {
-          const matched = sections.find((s) => s.id === item.id);
+          const matched = sectionsToSave.find((s) => s.id === item.id);
           return {
             ...item,
             content: matched ? matched.content : item.content,
