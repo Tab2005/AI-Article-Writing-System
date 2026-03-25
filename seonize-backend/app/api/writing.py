@@ -256,18 +256,26 @@ async def generate_blueprint_endpoint(
         db, current_user.id, db_project.primary_keyword[:50], db_project.style or ""
     )
 
-    blueprint = await AIService.generate_article_blueprint(
-        h1=request.h1,
-        outline=request.outline,
-        persona_role=persona["role"],
-        persona_tone=persona["tone"],
-        user_id=current_user.id
-    )
-    
-    db_project.style_blueprint = blueprint
-    db.commit()
-    
-    return {"blueprint": blueprint, "persona": persona}
+    # 點數扣除
+    COST = CreditService.get_cost(db, "writing_blueprint")
+    CreditService.deduct(db, current_user, COST, f"生成策略藍圖: {db_project.primary_keyword}")
+
+    try:
+        blueprint = await AIService.generate_article_blueprint(
+            h1=request.h1,
+            outline=request.outline,
+            persona_role=persona["role"],
+            persona_tone=persona["tone"],
+            user_id=current_user.id
+        )
+        
+        db_project.style_blueprint = blueprint
+        db.commit()
+        
+        return {"blueprint": blueprint, "persona": persona}
+    except Exception as e:
+        CreditService.refund(db, current_user, COST, f"藍圖生成失敗: {str(e)[:50]}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/review")
@@ -295,17 +303,25 @@ async def review_article_endpoint(
         db, current_user.id, db_project.primary_keyword[:50], db_project.style or ""
     )
 
-    final_content = await AIService.review_full_article(
-        full_article=request.content,
-        style_blueprint=request.style_blueprint,
-        persona_role=persona["role"],
-        user_id=current_user.id
-    )
-    
-    if not final_content.strip():
-        return {"content": request.content, "optimized": False}
+    # 點數扣除
+    COST = CreditService.get_cost(db, "writing_review")
+    CreditService.deduct(db, current_user, COST, f"全篇集成審核: {db_project.primary_keyword}")
 
-    return {"content": final_content, "optimized": True}
+    try:
+        final_content = await AIService.review_full_article(
+            full_article=request.content,
+            style_blueprint=request.style_blueprint,
+            persona_role=persona["role"],
+            user_id=current_user.id
+        )
+        
+        if not final_content.strip():
+            return {"content": request.content, "optimized": False}
+
+        return {"content": final_content, "optimized": True}
+    except Exception as e:
+        CreditService.refund(db, current_user, COST, f"全篇審核失敗: {str(e)[:50]}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/generate-full", response_model=FullArticleResponse)

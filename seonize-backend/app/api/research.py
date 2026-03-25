@@ -143,30 +143,39 @@ async def get_keyword_ideas(
     language_code = DataForSEOService.resolve_language_code(request.language)
     location_code = DataForSEOService.resolve_location_code(request.country)
 
-    # 併發執行關鍵字建議獲取與 Google Ads 狀態檢查
-    ideas_task = DataForSEOService.get_keyword_ideas(
-        keyword=request.keyword,
-        user_id=current_user.id, # 傳遞使用者 ID 以實現快取隔離
-        language_code=language_code,
-        location_code=location_code,
-        db=db,
-        login=config.dataforseo_login,
-        password=config.dataforseo_password,
-        force_refresh=request.force_refresh
-    )
-    
-    status_task = DataForSEOService.get_google_ads_status(
-        login=config.dataforseo_login,
-        password=config.dataforseo_password
-    )
-    
-    ideas_data, ads_status = await asyncio.gather(ideas_task, status_task)
-    
-    # 整合狀態數據
-    if isinstance(ideas_data, dict):
-        ideas_data["google_ads_status"] = ads_status
+    # 1. 扣除點數
+    COST = CreditService.get_cost(db, "research_keyword_ideas")
+    CreditService.deduct(db, current_user, COST, f"關鍵字建議獲取: {request.keyword}")
+
+    try:
+        # 併發執行關鍵字建議獲取與 Google Ads 狀態檢查
+        ideas_task = DataForSEOService.get_keyword_ideas(
+            keyword=request.keyword,
+            user_id=current_user.id, # 傳遞使用者 ID 以實現快取隔離
+            language_code=language_code,
+            location_code=location_code,
+            db=db,
+            login=config.dataforseo_login,
+            password=config.dataforseo_password,
+            force_refresh=request.force_refresh
+        )
         
-    return ideas_data
+        status_task = DataForSEOService.get_google_ads_status(
+            login=config.dataforseo_login,
+            password=config.dataforseo_password
+        )
+        
+        ideas_data, ads_status = await asyncio.gather(ideas_task, status_task)
+        
+        # 整合狀態數據
+        if isinstance(ideas_data, dict):
+            ideas_data["google_ads_status"] = ads_status
+            
+        return ideas_data
+    except Exception as e:
+        # 失敗時退款
+        CreditService.refund(db, current_user, COST, f"關鍵字建議獲取失敗: {str(e)[:50]}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class KeywordResearchRequest(BaseModel):
@@ -397,24 +406,33 @@ async def generate_titles(
             detail=f"找不到關鍵字「{request.keyword}」的 SERP 數據,請先執行搜尋研究。"
         )
 
-    suggestions = await AIService.generate_ai_titles(
-        keyword=request.keyword,
-        titles=titles,
-        intent=request.intent,
-        user_id=current_user.id
-    )
-    
-    # 2. 持久化至使用者的 KeywordCache
-    kw_cache = db.query(KeywordCache).filter(
-        KeywordCache.keyword == request.keyword,
-        KeywordCache.user_id == current_user.id
-    ).first()
-    
-    if kw_cache:
-        kw_cache.ai_suggestions = suggestions
-        db.commit()
+    # 1. 扣除點數
+    COST = CreditService.get_cost(db, "research_generate_titles")
+    CreditService.deduct(db, current_user, COST, f"AI 標題生成: {request.keyword}")
 
-    return TitleGenerationResponse(
-        keyword=request.keyword,
-        suggestions=[TitleSuggestion(**s) for s in suggestions]
-    )
+    try:
+        suggestions = await AIService.generate_ai_titles(
+            keyword=request.keyword,
+            titles=titles,
+            intent=request.intent,
+            user_id=current_user.id
+        )
+        
+        # 2. 持久化至使用者的 KeywordCache
+        kw_cache = db.query(KeywordCache).filter(
+            KeywordCache.keyword == request.keyword,
+            KeywordCache.user_id == current_user.id
+        ).first()
+        
+        if kw_cache:
+            kw_cache.ai_suggestions = suggestions
+            db.commit()
+
+        return TitleGenerationResponse(
+            keyword=request.keyword,
+            suggestions=[TitleSuggestion(**s) for s in suggestions]
+        )
+    except Exception as e:
+        # 失敗則退款
+        CreditService.refund(db, current_user, COST, f"AI 標題生成失敗: {str(e)[:50]}")
+        raise HTTPException(status_code=500, detail=str(e))

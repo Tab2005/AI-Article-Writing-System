@@ -36,6 +36,11 @@ DEFAULT_CREDIT_CONFIG = {
         "cms_ai_schedule": 2,
         "quality_audit": 3,
         "image_stock_search": 1,
+        "research_keyword_ideas": 3,
+        "research_generate_titles": 2,
+        "writing_blueprint": 5,
+        "writing_review": 5,
+        "image_metadata_suggestion": 2,
     },
     "feature_access": {
         "writing_full": 2,          # Lv2 一般會員

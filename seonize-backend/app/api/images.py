@@ -46,11 +46,19 @@ async def search_images(
 async def get_metadata_suggestion(
     content: str = Query(..., description="文章內容節錄"),
     topic: str = Query("", description="圖片主題"),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """取得 AI 建議的 Alt Text 與 Caption"""
+    """取得 AI 建議的 Alt Text 與 Caption (消耗 2 點)"""
+    from app.services.credit_service import CreditService
+    
+    # 點數扣除
+    COST = CreditService.get_cost(db, "image_metadata_suggestion")
+    CreditService.deduct(db, current_user, COST, f"圖片元數據建議: {topic}")
+
     try:
         result = await ImageService.suggest_metadata(content, topic)
         return {"success": True, "data": result}
     except Exception as e:
+        CreditService.refund(db, current_user, COST, f"圖片元數據建議失敗: {str(e)[:50]}")
         raise HTTPException(status_code=500, detail=str(e))
