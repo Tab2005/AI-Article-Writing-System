@@ -62,7 +62,7 @@ class AIService:
                     if provider and api_key:
                         cls._config = AIConfig(
                             provider=AIProvider(provider),
-                            api_key=api_key,
+                            api_key=str(api_key).strip(),
                             model=model or "gemini-2.0-flash",
                         )
                         cls._config_timestamp = now
@@ -76,9 +76,9 @@ class AIService:
         if cls._config is None or (now - cls._config_timestamp > cls._config_ttl):
             cls._config = AIConfig(
                 provider=AIProvider(os.getenv("AI_PROVIDER", settings.AI_PROVIDER)),
-                api_key=os.getenv("ZEABUR_AI_API_KEY", settings.ZEABUR_AI_API_KEY) or \
+                api_key=(os.getenv("ZEABUR_AI_API_KEY", settings.ZEABUR_AI_API_KEY) or \
                         os.getenv("OPENROUTER_API_KEY", settings.OPENROUTER_API_KEY) or \
-                        os.getenv("GEMINI_API_KEY", ""),
+                        os.getenv("GEMINI_API_KEY", "")).strip(),
                 model=os.getenv("AI_MODEL", settings.AI_MODEL),
             )
             cls._config_timestamp = now
@@ -308,33 +308,33 @@ SERP 標題：
         if custom_prompt:
             prompt = custom_prompt.replace("{keyword}", keyword)\
                                  .replace("{intent}", intent)\
-                                 .replace("{keywords}", ', '.join(keywords))\
-                                 .replace("{paa}", chr(10).join(f'  - {str(p)[:300]}' for p in paa[:5]) if paa else '無')\
-                                 .replace("{related_searches}", ', '.join(related[:8]) if related else '無')\
-                                 .replace("{ai_overview}", (str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:2000] if isinstance(ai_overview, dict) else '無')\
+                                 .replace("{keywords}", ', '.join(str(k)[:100] for k in keywords[:20]))\
+                                 .replace("{paa}", chr(10).join(f'  - {str(p)[:200]}' for p in paa[:5]) if paa else '無')\
+                                 .replace("{related_searches}", ', '.join(str(r)[:50] for r in related[:8]) if related else '無')\
+                                 .replace("{ai_overview}", (str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:1500] if isinstance(ai_overview, dict) else '無')\
                                  .replace("{current_year}", str(datetime.now().year))
             
             if "{content_gap}" in prompt:
-                prompt = prompt.replace("{content_gap}", gap_info)
+                prompt = prompt.replace("{content_gap}", (gap_info)[:2000])
             else:
-                prompt = prompt.replace("# 背景資訊", f"{gap_info}\n# 背景資訊")
+                prompt = prompt.replace("# 背景資訊", f"{(gap_info)[:2000]}\n# 背景資訊")
             return prompt
 
         return f"""你是一位資深的 SEO 內容建築師，擅長運用知識圖譜與語義搜尋技術。
 請為核心關鍵字「{keyword}」生成一篇內容深度領先競爭對手、具備極高 GEO (生成式引擎優化) 潛力的文章大綱。
 
-{gap_info}
+{(gap_info)[:2000]}
 
 # 背景資訊
 - 核心關鍵字：{keyword}
 - 搜尋意圖：{intent}
-- 推薦延伸詞：{', '.join(keywords)}
+- 推薦延伸詞：{', '.join(str(k)[:100] for k in keywords[:20])}
 
 # 實時搜尋數據 (極重要)
 我們從 Google 實時搜尋中獲取了以下關鍵數據，請將這些內容織入大綱結構：
-- **使用者常問問題 (PAA)**：{chr(10).join(f'  - {str(p)[:300]}' for p in paa[:5]) if paa else '無'}
-- **相關搜尋詞**：{', '.join(related[:8]) if related else '無'}
-- **AI 總結特徵**：{(str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:2000] if isinstance(ai_overview, dict) else '無'}
+- **使用者常問問題 (PAA)**：{chr(10).join(f'  - {str(p)[:200]}' for p in paa[:5]) if paa else '無'}
+- **相關搜尋詞**：{', '.join(str(r)[:50] for r in related[:8]) if related else '無'}
+- **AI 總結特徵**：{(str(ai_overview.get('description') or ai_overview.get('snippet') or '無'))[:1500] if isinstance(ai_overview, dict) else '無'}
 
 # 大綱生成規則
 1. **問題驅動**：請優先將上述 PAA 問題轉化為適當的 H2 或 H3 標題，這對於獲得 AI 搜尋引擎的引用至關重要。
