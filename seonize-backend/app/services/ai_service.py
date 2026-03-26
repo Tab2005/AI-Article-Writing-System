@@ -258,10 +258,10 @@ SERP 標題：
             data = parse_ai_json(result)
             if data:
                 return data
-            return {"intent": "informational", "confidence": 0.5, "signals": [], "suggested_style": "專業教育風", "quick_content_gaps": []}
+            return {"intent": "informational", "confidence": 0.5, "signals": [], "suggested_style": "專業風", "quick_content_gaps": []}
         except Exception as e:
             logger.error(f"Search intent analysis failed: {e}")
-            return {"intent": "informational", "confidence": 0.5, "signals": [str(e)], "suggested_style": "專業教育風", "quick_content_gaps": []}
+            return {"intent": "informational", "confidence": 0.5, "signals": [str(e)], "suggested_style": "專業風", "quick_content_gaps": []}
     
     @classmethod
     async def generate_outline(cls, keyword: str, intent: str, keywords: list[str], research_data: dict = None, custom_prompt: str = None, content_gap_report: dict = None, selected_title: str = None) -> dict:

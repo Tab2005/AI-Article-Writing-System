@@ -120,11 +120,14 @@ export const ProjectDetailPage: React.FC = () => {
   };
 
   const styleLabels: Record<string, string> = {
-    專業教育風: '專業教育風',
+    專業風: '專業風',
     評論風: '評論風',
     新聞風: '新聞風',
     對話風: '對話風',
     技術風: '技術風',
+    開箱風: '開箱風',
+    懶人包: '懶人包',
+    故事風: '故事風',
   };
 
   const optimizationLabels: Record<string, string> = {
@@ -267,11 +270,14 @@ export const ProjectDetailPage: React.FC = () => {
                     )
                   }
                   options={[
-                    { value: '專業教育風', label: '專業教育風' },
+                    { value: '專業風', label: '專業風' },
                     { value: '評論風', label: '評論風' },
                     { value: '新聞風', label: '新聞風' },
                     { value: '對話風', label: '對話風' },
                     { value: '技術風', label: '技術風' },
+                    { value: '開箱風', label: '開箱風' },
+                    { value: '懶人包', label: '懶人包' },
+                    { value: '故事風', label: '故事風' },
                   ]}
                 />
               ) : (

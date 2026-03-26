@@ -12,11 +12,14 @@ export const SearchIntent = {
 export type SearchIntent = (typeof SearchIntent)[keyof typeof SearchIntent];
 
 export const WritingStyle = {
-    EDUCATIONAL: '專業教育風',
-    REVIEW: '評論風',
-    NEWS: '新聞風',
-    CONVERSATIONAL: '對話風',
-    TECHNICAL: '技術風',
+    專業風: '專業風',
+    評論風: '評論風',
+    新聞風: '新聞風',
+    對話風: '對話風',
+    技術風: '技術風',
+    開箱風: '開箱風',
+    懶人包: '懶人包',
+    故事風: '故事風',
 } as const;
 
 export type WritingStyle = (typeof WritingStyle)[keyof typeof WritingStyle];
