@@ -633,7 +633,8 @@ class KalpaService:
         for p in all_personas:
             if not p.description: continue
             keywords = [k.strip().lower() for k in p.description.split(",") if k.strip()]
-            if any(k in pp for k in keywords):
+            search_pool = f"{pp} {ind.lower()}"
+            if any(k in search_pool for k in keywords):
                 try:
                     matched_content = json.loads(p.content)
                     break
