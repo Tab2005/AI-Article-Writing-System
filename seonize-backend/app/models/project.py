@@ -27,6 +27,17 @@ class WritingStyle(str, Enum):
     懶人包 = "懶人包"
     故事風 = "故事風"
 
+    @classmethod
+    def _missing_(cls, value):
+        mapping = {
+            "專業教育風": cls.專業風,
+            "評論心得風": cls.評論風,
+            "新聞報導風": cls.新聞風,
+            "對話筆調風": cls.對話風,
+            "技術教學風": cls.技術風
+        }
+        return mapping.get(value)
+
 
 class OptimizationMode(str, Enum):
     SEO = "seo"
