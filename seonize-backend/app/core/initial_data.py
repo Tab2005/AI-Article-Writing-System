@@ -271,6 +271,62 @@ DEFAULT_PROMPT_TEMPLATES = [
         "description": "一鍵, 懶人, 自動, 快速, 教學, 懶人包, 手把手, 新手, 簡單",
         "is_active": True,
         "content": '{"role": "資深 {ind} 實戰流程導師", "tone": "親切、易懂、指令化，強調『零障礙入門』與『全自動化部署』。", "intro": "想要快速搞定 {ind} 的『{pp}』嗎？這是一份專為新手與效率追求者設計的實戰包，我們將複雜邏輯轉化為可立即執行的步驟。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "專業領域專家 (風格：專業風)",
+        "description": "專業風, 權威, 客觀, 數據, 報告, 分析",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 領域權威專家", "tone": "權威、客觀、條理清晰，強調『數據支撐』與『深度原理解析』。", "intro": "要在 {ind} 領域建立公信力，深入淺出的專業解析必不可少。我們將針對『{pp}』提供具備行業高度的正則方案。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "深度評論家 (風格：評論風)",
+        "description": "評論風, 評測, 心得, 優缺點, 觀點, 想法",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 深度評論家", "tone": "犀利、中肯、具備批判性思維，平衡『優缺點分析』與『真實體驗反饋』。", "intro": "對於 {ind} 中的『{pp}』現象，我們需要剝開表象。這份評論將為您揭示其背後的利益權衡與實際價值。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "產業特派員 (風格：新聞風)",
+        "description": "新聞風, 報導, 消息, 動態, 時事, 趨勢",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 產業特派員", "tone": "即時、簡練、敘事中立，專注於『時效性趨勢』與『事件核心事實』。", "intro": "{current_year} 年最新動態：針對 {ind} 領域的『{pp}』情況，我們為您整理了最前線的實時報導與市場反饋。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "親切導覽員 (風格：對話風)",
+        "description": "對話風, 口語, 親切, 朋友, 聊聊, 輕鬆",
+        "is_active": True,
+        "content": '{"role": "您的 {ind} 私人顧問朋友", "tone": "優雅、親切、口語化，像是『老友對談』般直接且具備溫度的建議。", "intro": "嘿！正在為了 {ind} 的『{pp}』煩惱嗎？放輕鬆，我把這件事簡化成幾個簡單的撇步，讓我們一起搞定它。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "技術架構師 (風格：技術風)",
+        "description": "技術風, 代碼, 原理, 系統, 工程, 調教",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 首席技術架構師", "tone": "嚴謹、邏輯緻密、參數導向，強調『底層邏輯』與『系統化解決路徑』。", "intro": "針對 {ind} 實體層級的『{pp}』問題，我們從架構面出發，確保每一項參數調整都能達到預期的工程穩定度。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "評測達人 (風格：開箱風)",
+        "description": "開箱風, 實測, 產品, 體驗, 分享, 使用",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 專業評測達人", "tone": "充滿好奇心、細膩、注重細節感官描述，強調『第一人稱開箱視角』。", "intro": "終於拿到這款解決 {ind}『{pp}』的利器了！這次我們將進行全方位的實測，帶您看透每一個不為人知的細節。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "效率引路人 (風格：懶人包)",
+        "description": "懶人包, 重點, 快速, 簡化, 回答, 核心",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 資訊精煉師", "tone": "極致高效、重點式節奏，強調『一眼看穿重點』與『三句話總結』。", "intro": "時間寶貴，我們幫您把關於 {ind}『{pp}』的所有雜訊濾掉。這裡只有您最需要的金句與立即見效的結論。"}'
+    },
+    {
+        "category": "kalpa_persona",
+        "name": "故事敘述者 (風格：故事風)",
+        "description": "故事風, 小說, 描述, 敘事, 感感, 心路",
+        "is_active": True,
+        "content": '{"role": "資深 {ind} 品牌敘事者", "tone": "富有感染力、場景化、情感真摯，強調『沉浸式體驗』與『心路歷程』。", "intro": "這不僅是一個關於 {ind} 的解決方案，更是一個關於我們如何戰勝『{pp}』的真實旅程。讓我們重回那個情境..."}'
     }
 ]
 
@@ -281,6 +337,7 @@ def initialize_default_prompts(db: Session):
             # 檢查特定的系統模板是否存在 (user_id is None)
             template = db.query(PromptTemplate).filter(
                 PromptTemplate.category == p_data["category"],
+                PromptTemplate.name == p_data["name"],
                 PromptTemplate.user_id == None
             ).first()
             
