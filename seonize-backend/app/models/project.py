@@ -129,7 +129,7 @@ class ProjectBatchCreate(BaseModel):
     optimization_mode: OptimizationMode = OptimizationMode.SEO
     selected_titles: List[str]
     intent: Optional[SearchIntent] = SearchIntent.INFORMATIONAL
-    style: Optional[WritingStyle] = WritingStyle.EDUCATIONAL
+    style: Optional[WritingStyle] = WritingStyle.專業風
     keyword_cache_id: Optional[int] = None
 
 
