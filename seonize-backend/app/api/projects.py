@@ -49,6 +49,7 @@ def db_to_project_state(db_project: Project) -> ProjectState:
         keyword_density=db_project.keyword_density or {},
         eeat_score=db_project.eeat_score,
         quality_report=db_project.quality_report,
+        llm_summary=db_project.llm_summary,
         last_audit_at=db_project.last_audit_at,
     )
 
