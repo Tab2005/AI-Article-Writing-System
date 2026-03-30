@@ -53,6 +53,7 @@ export const WritingPage: React.FC = () => {
   // Full Content Sidebar State
   const [fullContent, setFullContent] = useState('');
   const [llmSummary, setLlmSummary] = useState('');
+  const [refreshingSummary, setRefreshingSummary] = useState(false);
   const [isAutoSyncing, setIsAutoSyncing] = useState(true);
 
   // 載入專案資料
@@ -416,16 +417,19 @@ export const WritingPage: React.FC = () => {
 
   const refreshLLMSummary = async () => {
     if (!projectId) return;
+    setRefreshingSummary(true);
     try {
-      uiBus.notify('正在重新生成 LLM 摘要...', 'info');
       const res = await writingApi.refreshSummary(projectId);
       if (res.success) {
         setLlmSummary(res.llm_summary);
-        uiBus.notify('LLM 摘要已更新', 'success');
+        uiBus.notify('機器摘要已重新生成', 'success');
         refreshUser();
       }
-    } catch (err: any) {
-      uiBus.notify(err.message || '更新摘要失敗', 'error');
+    } catch (error) {
+      console.error('Failed to refresh summary:', error);
+      uiBus.notify('摘要重新生成失敗', 'error');
+    } finally {
+      setRefreshingSummary(false);
     }
   };
 
@@ -703,28 +707,39 @@ export const WritingPage: React.FC = () => {
 
       {/* LLM 摘要預覽與更新 */}
       {(llmSummary || project?.full_content) && (
-        <div className="llm-summary-dashboard">
-          <div className="llm-summary-header">
-            <h3>🤖 LLM 機器讀取摘要 (llms.txt 格式)</h3>
+        <div className="llm-summary-dashboard card anim-fade-in">
+          <div className="quality-dashboard__header">
+            <h3 className="card-title" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+              LLM 機器讀取摘要 (llms.txt 格式)
+            </h3>
             <div className="llm-summary-actions">
-              <Button size="sm" variant="cta" onClick={refreshLLMSummary}>
-                ✨ 重新生成摘要
+              <Button size="sm" variant="outline" onClick={refreshLLMSummary} loading={refreshingSummary}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                重新生成摘要
               </Button>
             </div>
           </div>
-          <div className="llm-summary-content">
+          
+          <div className="llm-summary-content" style={{ maxHeight: '300px', overflowY: 'auto' }}>
             {llmSummary ? (
               <div className="markdown-body mini">
                 <div dangerouslySetInnerHTML={{ __html: parseMarkdown(llmSummary) }} />
               </div>
             ) : (
               <div className="empty-summary-hint">
-                目前尚未生成摘要，點擊「一鍵全篇生成」或上方按鈕產出。
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: 'var(--space-8)' }}>
+                   <p style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>目前尚未生成摘要，點擊「一鍵全篇生成」或手動產出。</p>
+                </div>
               </div>
             )}
           </div>
+          
           <div className="llm-summary-footer">
-            <span className="hint-text">此摘要將自動同步至 CMS，優化 AI 搜尋引擎 (GEO) 的索引效率。</span>
+            <span className="hint-text" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--color-text-muted)' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              此摘要將自動同步至 CMS，優化 AI 搜尋引擎 (GEO) 的索引效率。
+            </span>
           </div>
         </div>
       )}
