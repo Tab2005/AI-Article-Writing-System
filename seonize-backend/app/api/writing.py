@@ -219,6 +219,7 @@ class FullArticleResponse(BaseModel):
     keyword_density: Dict[str, float]
     meta_title: str
     meta_description: str
+    llm_summary: Optional[str] = ""
     style_blueprint: Optional[str] = ""  # 回傳產出的藍圖
 
 
@@ -409,12 +410,14 @@ async def generate_full_article(
             all_keywords.extend(section.keywords)
 
         # --- 第四階段：一體化審稿 (Global Review) ---
-        final_content = await AIService.review_full_article(
+        review_res = await AIService.review_full_article(
             full_article=raw_full_content,
             style_blueprint=blueprint,
             persona_role=persona["role"],
             user_id=current_user.id
         )
+        final_content = review_res["content"]
+        llm_summary = review_res.get("llm_summary", "")
 
         if not final_content.strip():
             CreditService.refund(db, current_user, COST, "AI 生成內容為空")
@@ -433,13 +436,21 @@ async def generate_full_article(
 
         keyword_density = calc_density(final_content, all_keywords)
 
+        # 儲存結果到資料庫
+        db_project.full_content = final_content
+        db_project.llm_summary = llm_summary
+        db_project.word_count = word_count
+        db_project.keyword_density = keyword_density
+        db.commit()
+
         return FullArticleResponse(
             title=request.h1,
             content=final_content,
             word_count=word_count,
             keyword_density=keyword_density,
             meta_title=f"{request.h1} | Seonize SEO 優質內容",
-            meta_description=f"深入了解{request.h1}，本文提供完整指南、實用技巧與專業建議。"
+            meta_description=f"深入了解{request.h1}，本文提供完整指南、實用技巧與專業建議。",
+            llm_summary=llm_summary
         )
 
     except HTTPException:
@@ -631,3 +642,64 @@ async def analyze_quality(
     except Exception as e:
         CreditService.refund(db, current_user, COST, f"品質分析失敗: {str(e)[:50]}")
         raise HTTPException(status_code=500, detail=f"品質分析失敗: {str(e)}")
+
+@router.get("/projects/{project_id}/llms.txt")
+async def get_project_llmstxt(
+    project_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    提供符合 llms.txt 標準的純 Markdown 摘要 (公開存取或是根據需求加 Auth)
+    """
+    from app.models.db_models import Project
+    from fastapi.responses import PlainTextResponse
+    
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="專案不存在")
+    
+    content = project.llm_summary or f"# {project.selected_title or project.primary_keyword}\n\n此文章尚未生成摘要。"
+    return PlainTextResponse(content)
+
+class SummaryRefreshRequest(BaseModel):
+    project_id: str
+
+@router.post("/refresh-summary")
+async def refresh_llm_summary(
+    request: SummaryRefreshRequest,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """
+    手動重新生成 llms.txt 摘要
+    """
+    from app.models.db_models import Project
+    
+    db_project = db.query(Project).filter(
+        Project.id == request.project_id,
+        Project.user_id == current_user.id
+    ).first()
+    
+    if not db_project:
+        raise HTTPException(status_code=403, detail="找不到專案或權限不足")
+    
+    if not db_project.full_content:
+        raise HTTPException(status_code=400, detail="請先生成文章內容")
+
+    # 消耗少量點數或免費 (這裡示範消耗 2 點)
+    COST = 2
+    CreditService.deduct(db, current_user, COST, f"重新整理 LLM 摘要: {db_project.primary_keyword}")
+    
+    try:
+        summary = await AIService.generate_llm_summary(
+            content=db_project.full_content,
+            title=db_project.selected_title or db_project.primary_keyword
+        )
+        
+        db_project.llm_summary = summary
+        db.commit()
+        
+        return {"success": True, "llm_summary": summary}
+    except Exception as e:
+        CreditService.refund(db, current_user, COST, f"摘要生成失敗: {str(e)[:50]}")
+        raise HTTPException(status_code=500, detail=f"摘要生成失敗: {str(e)}")

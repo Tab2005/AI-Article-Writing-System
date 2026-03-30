@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class CMSBase(ABC):
     @abstractmethod
-    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None) -> Dict[str, Any]:
+    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None, featured_media: Optional[int] = None, llm_summary: Optional[str] = None) -> Dict[str, Any]:
         pass
 
     @abstractmethod
@@ -53,7 +53,7 @@ class GhostService(CMSBase):
         except Exception:
             return False
 
-    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None, featured_media: Optional[int] = None) -> Dict[str, Any]:
+    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None, featured_media: Optional[int] = None, llm_summary: Optional[str] = None) -> Dict[str, Any]:
         token = self._get_token()
         headers = {'Authorization': f'Ghost {token}'}
         
@@ -61,6 +61,10 @@ class GhostService(CMSBase):
         # 這裡假設 content 是 Markdown，簡單處理為 HTML
         # 實際上可能需要 markdown2 或其它轉換器
         import markdown2
+        # 注入 llm_summary 到 HTML 中 (隱藏式)
+        if llm_summary:
+            content += f"\n\n<!-- LLM-SUMMARY-START -->\n<div id=\"llms-summary\" style=\"display:none;\">\n\n{llm_summary}\n\n</div>\n<!-- LLM-SUMMARY-END -->"
+        
         html_content = markdown2.markdown(content)
 
         post_data = {
@@ -250,7 +254,7 @@ class WordPressService(CMSBase):
         flush_paragraph()
         return '\n\n'.join(blocks)
 
-    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None, featured_media: Optional[int] = None) -> Dict[str, Any]:
+    async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None, featured_media: Optional[int] = None, llm_summary: Optional[str] = None) -> Dict[str, Any]:
         auth = self._get_auth()
         headers = {'Authorization': f'Basic {auth}'}
         
@@ -269,6 +273,12 @@ class WordPressService(CMSBase):
             "content": html_content,
             "status": wp_status
         }
+
+        # 注入 llm_summary 到自定義欄位 (需確保 WP 有對外暴露此 meta 或使用外掛)
+        if llm_summary:
+            post_data["meta"] = {
+                "_seonize_llm_summary": llm_summary
+            }
 
         if categories:
             post_data["categories"] = categories
@@ -337,6 +347,7 @@ class CMSManager:
                     return {"success": False, "message": "找不到指定的專案或權限不足"}
                 title = item.selected_title or item.primary_keyword
                 content = item.full_content
+                llm_summary = item.llm_summary
             else:
                 from app.models.db_models import KalpaMatrix
                 item_query = db.query(KalpaNode).join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id).filter(KalpaNode.id == target_id)
@@ -350,6 +361,7 @@ class CMSManager:
                     return {"success": False, "message": "找不到指定的節點或權限不足"}
                 title = item.target_title
                 content = item.woven_content
+                llm_summary = item.llm_summary
 
             if not content:
                 return {"success": False, "message": "文章內容為空，無法發布"}
@@ -436,7 +448,7 @@ class CMSManager:
                     except Exception as im_e:
                         logger.warning(f"⚠️ 從節點欄位獲取特色圖片失敗: {im_e}")
 
-            result = await client.publish(title, content, status, scheduled_at, categories, featured_media)
+            result = await client.publish(title, content, status, scheduled_at, categories, featured_media, llm_summary)
             
             if result["success"]:
                 item.cms_config_id = config_id

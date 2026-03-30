@@ -4,6 +4,7 @@ import { Button, KPICard, MermaidRenderer } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import PublishModal from '../components/PublishModal';
 import ImagePicker from '../components/common/ImagePicker';
+import { uiBus } from '../utils/ui-bus';
 import { projectsApi, writingApi } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import type { ProjectState, OutlineSection, OptimizationMode } from '../types';
@@ -51,6 +52,7 @@ export const WritingPage: React.FC = () => {
   
   // Full Content Sidebar State
   const [fullContent, setFullContent] = useState('');
+  const [llmSummary, setLlmSummary] = useState('');
   const [isAutoSyncing, setIsAutoSyncing] = useState(true);
 
   // 載入專案資料
@@ -65,6 +67,7 @@ export const WritingPage: React.FC = () => {
       setLoading(true);
       const data = await projectsApi.get(projectId);
       setProject(data);
+      setLlmSummary(data.llm_summary || '');
       setOptimizationMode(data.optimization_mode || 'seo');
 
       // 轉換大綱章節為寫作狀態
@@ -326,6 +329,9 @@ export const WritingPage: React.FC = () => {
 
       if (reviewRes.optimized && reviewRes.content) {
         console.log('文章已完成全篇優化審閱');
+        if (reviewRes.llm_summary) {
+          setLlmSummary(reviewRes.llm_summary);
+        }
       }
 
       // 最終完成處理
@@ -405,6 +411,21 @@ export const WritingPage: React.FC = () => {
       }
     } catch (err) {
       console.error('儲存失敗:', err);
+    }
+  };
+
+  const refreshLLMSummary = async () => {
+    if (!projectId) return;
+    try {
+      uiBus.notify('正在重新生成 LLM 摘要...', 'info');
+      const res = await writingApi.refreshSummary(projectId);
+      if (res.success) {
+        setLlmSummary(res.llm_summary);
+        uiBus.notify('LLM 摘要已更新', 'success');
+        refreshUser();
+      }
+    } catch (err: any) {
+      uiBus.notify(err.message || '更新摘要失敗', 'error');
     }
   };
 
@@ -676,6 +697,34 @@ export const WritingPage: React.FC = () => {
             <ul>
               {qualityAnalysis.recommendations?.map((rec: string, i: number) => <li key={i}>{rec}</li>)}
             </ul>
+          </div>
+        </div>
+      )}
+
+      {/* LLM 摘要預覽與更新 */}
+      {(llmSummary || project?.full_content) && (
+        <div className="llm-summary-dashboard">
+          <div className="llm-summary-header">
+            <h3>🤖 LLM 機器讀取摘要 (llms.txt 格式)</h3>
+            <div className="llm-summary-actions">
+              <Button size="sm" variant="cta" onClick={refreshLLMSummary}>
+                ✨ 重新生成摘要
+              </Button>
+            </div>
+          </div>
+          <div className="llm-summary-content">
+            {llmSummary ? (
+              <div className="markdown-body mini">
+                <div dangerouslySetInnerHTML={{ __html: parseMarkdown(llmSummary) }} />
+              </div>
+            ) : (
+              <div className="empty-summary-hint">
+                目前尚未生成摘要，點擊「一鍵全篇生成」或上方按鈕產出。
+              </div>
+            )}
+          </div>
+          <div className="llm-summary-footer">
+            <span className="hint-text">此摘要將自動同步至 CMS，優化 AI 搜尋引擎 (GEO) 的索引效率。</span>
           </div>
         </div>
       )}

@@ -414,8 +414,8 @@ SERP 標題：
         persona_role: str = "資深主編",
         user_id: Optional[int] = None,
         custom_prompt: Optional[str] = None
-    ) -> str:
-        """對完整文章進行最終的集成優化與審核"""
+    ) -> Dict[str, str]:
+        """對完整文章進行最終的集成優化與審核，同時產出 llm_summary"""
         from app.models.db_models import PromptTemplate
         from app.core.database import get_db_context
         from sqlalchemy import or_
@@ -431,7 +431,7 @@ SERP 標題：
                     custom_prompt = template.content
         
         if not custom_prompt:
-            custom_prompt = "請針對以下內容進行語氣優化，確保符合藍圖設定：{style_blueprint}\n內容：{full_article}"
+            custom_prompt = "請針對以下內容進行語氣優化並提供 JSON 回覆：\n藍圖：{style_blueprint}\n內容：{full_article}"
 
         prompt = custom_prompt.replace("{style_blueprint}", style_blueprint)\
                              .replace("{full_article}", full_article)\
@@ -439,11 +439,41 @@ SERP 標題：
                              .replace("{current_year}", str(datetime.now(timezone.utc).year))
         
         try:
-            # 審稿使用較低的 temperature 以維持穩定性
-            return await cls.generate_content(prompt, temperature=0.3)
+            result = await cls.generate_content(prompt, temperature=0.3)
+            data = parse_ai_json(result)
+            if data and "content" in data:
+                return {
+                    "content": data["content"],
+                    "llm_summary": data.get("llm_summary", "")
+                }
+            # Fallback if AI didn't return JSON but raw text
+            return {"content": result, "llm_summary": ""}
         except Exception as e:
             logger.error(f"Failed to review full article: {e}")
-            return full_article # 失敗則回傳原內容
+            return {"content": full_article, "llm_summary": ""}
+
+    @classmethod
+    async def generate_llm_summary(cls, content: str, title: str) -> str:
+        """獨立生成內容的 llms.txt 格式摘要 (供手動更新使用)"""
+        prompt = f"""你是一位資深的 SEO 與 LLM 導讀專家。
+請為以下文章撰寫符合 llms.txt 標準的機器讀取摘要。
+
+文章標題：{title}
+文章內容：
+{content[:8000]}
+
+### 任務要求：
+1. 使用 H1 作為文章標題。
+2. 使用 Blockquote (>) 撰寫 100 字內的核心結論。
+3. 使用列表 (-) 列出 3-5 個關鍵要點、權威數據或結論。
+4. 格式必須精簡，避免任何廣告語或 UI 噪音。
+
+請直接輸出 Markdown 格式的摘要內容，嚴禁輸出任何前言或後記。"""
+        try:
+            return await cls.generate_content(prompt, temperature=0.5)
+        except Exception as e:
+            logger.error(f"Failed to generate llm summary: {e}")
+            return ""
     
     
     @classmethod

@@ -114,6 +114,7 @@ class Project(Base):
     cms_post_id = Column(String(100), nullable=True)
     publish_status = Column(String(20), default="draft")  # draft, scheduled, published, failed
     cms_publish_url = Column(Text, nullable=True)
+    llm_summary = Column(Text, nullable=True)  # 新增：符合 llms.txt 標準的機器讀取摘要
     scheduled_at = Column(DateTime, nullable=True)
     published_at = Column(DateTime, nullable=True)
     
@@ -157,6 +158,7 @@ class Project(Base):
             "cms_post_id": self.cms_post_id,
             "publish_status": self.publish_status,
             "cms_publish_url": self.cms_publish_url,
+            "llm_summary": self.llm_summary,
             "scheduled_at": self.scheduled_at.replace(tzinfo=timezone.utc).isoformat() if self.scheduled_at else None,
             "published_at": self.published_at.replace(tzinfo=timezone.utc).isoformat() if self.published_at else None,
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
@@ -445,6 +447,7 @@ class KalpaNode(Base):
     cms_post_id = Column(String(100), nullable=True)
     publish_status = Column(String(20), default="draft")  # draft, scheduled, published, failed
     cms_publish_url = Column(Text, nullable=True)
+    llm_summary = Column(Text, nullable=True)  # 新增：符合 llms.txt 標準的機器讀取摘要
     scheduled_at = Column(DateTime, nullable=True)
     published_at = Column(DateTime, nullable=True)
 
@@ -475,6 +478,7 @@ class KalpaNode(Base):
             "cms_post_id": self.cms_post_id,
             "publish_status": self.publish_status,
             "cms_publish_url": self.cms_publish_url,
+            "llm_summary": self.llm_summary,
             "scheduled_at": self.scheduled_at.replace(tzinfo=timezone.utc).isoformat() if self.scheduled_at else None,
             "published_at": self.published_at.replace(tzinfo=timezone.utc).isoformat() if self.published_at else None,
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,

@@ -346,6 +346,7 @@ export const writingApi = {
       keyword_density: Record<string, number>;
       meta_title: string;
       meta_description: string;
+      llm_summary: string;
     }>('/api/writing/generate-full', {
       method: 'POST',
       body: data,
@@ -369,7 +370,13 @@ export const writingApi = {
     request<{ blueprint: string; persona: any }>('/api/writing/blueprint', { method: 'POST', body: data }),
 
   review: (data: { project_id: string; content: string; style_blueprint: string }) =>
-    request<{ content: string; optimized: boolean }>('/api/writing/review', { method: 'POST', body: data }),
+    request<{ content: string; optimized: boolean; llm_summary?: string }>('/api/writing/review', { method: 'POST', body: data }),
+
+  refreshSummary: (projectId: string) =>
+    request<{ success: boolean; llm_summary: string }>('/api/writing/refresh-summary', {
+      method: 'POST',
+      body: { project_id: projectId }
+    }),
 };
 
 // Kalpa API

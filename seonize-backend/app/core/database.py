@@ -179,6 +179,27 @@ def init_db():
                 conn.execute(text(alter_proj_sql))
                 conn.commit()
                 logger.info("Direct patch (style_blueprint) successful.")
+
+            # 檢查 llm_summary 是否存在於 projects
+            result = conn.execute(text(check_proj_sql)).fetchall()
+            col_exists = any(row[1 if IS_SQLITE else 0] == 'llm_summary' for row in result)
+            if not col_exists:
+                logger.info("Direct patch: Adding 'llm_summary' column to 'projects'...")
+                conn.execute(text("ALTER TABLE projects ADD COLUMN llm_summary TEXT;"))
+                conn.commit()
+
+            # 檢查 llm_summary 是否存在於 kalpa_nodes
+            check_node_sql = "SELECT column_name FROM information_schema.columns WHERE table_name='kalpa_nodes' AND column_name='llm_summary';"
+            if IS_SQLITE:
+                check_node_sql = "PRAGMA table_info(kalpa_nodes);"
+            
+            node_result = conn.execute(text(check_node_sql)).fetchall()
+            node_col_exists = any(row[1 if IS_SQLITE else 0] == 'llm_summary' for row in node_result)
+            if not node_col_exists:
+                logger.info("Direct patch: Adding 'llm_summary' column to 'kalpa_nodes'...")
+                conn.execute(text("ALTER TABLE kalpa_nodes ADD COLUMN llm_summary TEXT;"))
+                conn.commit()
+                logger.info("Direct patch (llm_summary) successful.")
     except Exception as patch_err:
         logger.warning(f"Direct patch fallback failed (likely fine): {patch_err}")
 

@@ -58,6 +58,7 @@ export interface ProjectState {
     cms_post_id?: string;
     publish_status?: 'draft' | 'scheduled' | 'published' | 'failed';
     cms_publish_url?: string;
+    llm_summary?: string;
     scheduled_at?: string;
     published_at?: string;
 }
