@@ -662,7 +662,8 @@ async def get_project_llmstxt(
     return PlainTextResponse(content)
 
 class SummaryRefreshRequest(BaseModel):
-    project_id: str
+    project_id: Optional[str] = None
+    node_id: Optional[str] = None
 
 @router.post("/refresh-summary")
 async def refresh_llm_summary(
@@ -673,30 +674,45 @@ async def refresh_llm_summary(
     """
     手動重新生成 llms.txt 摘要
     """
-    from app.models.db_models import Project
+    from app.models.db_models import Project, KalpaNode, KalpaMatrix
     
-    db_project = db.query(Project).filter(
-        Project.id == request.project_id,
-        Project.user_id == current_user.id
-    ).first()
+    db_item = None
+    content_to_analyze = ""
     
-    if not db_project:
-        raise HTTPException(status_code=403, detail="找不到專案或權限不足")
+    if request.node_id:
+        db_item = db.query(KalpaNode).join(KalpaMatrix, KalpaNode.matrix_id == KalpaMatrix.id).filter(
+            KalpaNode.id == request.node_id,
+            KalpaMatrix.user_id == current_user.id
+        ).first()
+        if not db_item:
+            raise HTTPException(status_code=403, detail="找不到節點或權限不足")
+        content_to_analyze = db_item.woven_content
+    elif request.project_id:
+        db_item = db.query(Project).filter(
+            Project.id == request.project_id,
+            Project.user_id == current_user.id
+        ).first()
+        if not db_item:
+            raise HTTPException(status_code=403, detail="找不到專案或權限不足")
+        content_to_analyze = db_item.full_content
+    else:
+        raise HTTPException(status_code=400, detail="必須提供 project_id 或 node_id")
     
-    if not db_project.full_content:
+    if not content_to_analyze:
         raise HTTPException(status_code=400, detail="請先生成文章內容")
 
     # 消耗少量點數或免費 (這裡示範消耗 2 點)
     COST = 2
-    CreditService.deduct(db, current_user, COST, f"重新整理 LLM 摘要: {db_project.primary_keyword}")
-    
+    item_name = db_item.target_title if hasattr(db_item, 'target_title') else (db_item.selected_title or db_item.primary_keyword)
+    CreditService.deduct(db, current_user, COST, f"重新整理 LLM 摘要: {item_name}")
+
     try:
         summary = await AIService.generate_llm_summary(
-            content=db_project.full_content,
-            title=db_project.selected_title or db_project.primary_keyword
+            content=content_to_analyze,
+            title=item_name
         )
         
-        db_project.llm_summary = summary
+        db_item.llm_summary = summary
         db.commit()
         
         return {"success": True, "llm_summary": summary}

@@ -220,6 +220,7 @@ export interface KalpaNode {
     publish_status?: 'draft' | 'published' | 'scheduled' | 'failed';
     cms_publish_url?: string;
     scheduled_at?: string;
+    llm_summary?: string;
     woven_at?: string;
     created_at?: string;
 }

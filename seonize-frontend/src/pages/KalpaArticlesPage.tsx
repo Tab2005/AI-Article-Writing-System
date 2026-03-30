@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button, DataTable, KPICard, MermaidRenderer, Input } from '../components/ui';
 import PublishModal from '../components/PublishModal';
-import { kalpaApi } from '../services/api';
+import { kalpaApi, writingApi } from '../services/api';
+import { uiBus } from '../utils/ui-bus';
 import type { KalpaNode, KalpaMatrix } from '../services/api';
 import { parseMarkdown } from '../utils/markdown';
 import ImagePicker from '../components/common/ImagePicker';
@@ -19,10 +20,20 @@ export const KalpaArticlesPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [showPublishModal, setShowPublishModal] = useState(false);
     const [showImagePicker, setShowImagePicker] = useState(false);
+    const [llmSummary, setLlmSummary] = useState<string | null>(null);
+    const [refreshingSummary, setRefreshingSummary] = useState(false);
 
     useEffect(() => {
         fetchMatrices();
     }, []);
+
+    useEffect(() => {
+        if (previewNode) {
+            setLlmSummary(previewNode.llm_summary || null);
+        } else {
+            setLlmSummary(null);
+        }
+    }, [previewNode]);
 
     const fetchMatrices = async () => {
         setLoading(true);
@@ -90,6 +101,25 @@ export const KalpaArticlesPage: React.FC = () => {
             console.log("Successfully saved node changes");
         } catch (error) {
             console.error('Failed to save node changes:', error);
+        }
+    };
+
+    const refreshLLMSummary = async () => {
+        if (!previewNode?.id) return;
+        setRefreshingSummary(true);
+        try {
+            const res = await writingApi.refreshSummary(undefined, previewNode.id);
+            if (res.success) {
+                setLlmSummary(res.llm_summary);
+                // 同步回 articles 列表
+                setArticles(prev => prev.map(a => a.id === previewNode.id ? { ...a, llm_summary: res.llm_summary } : a));
+                uiBus.notify('機器摘要已重新生成', 'success');
+            }
+        } catch (error) {
+            console.error('Failed to refresh summary:', error);
+            uiBus.notify('摘要重新生成失敗', 'error');
+        } finally {
+            setRefreshingSummary(false);
         }
     };
 
@@ -312,6 +342,30 @@ export const KalpaArticlesPage: React.FC = () => {
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* LLM 摘要預覽 */}
+                                        <div className="llm-summary-mini-card" style={{
+                                            background: 'rgba(var(--color-primary-rgb), 0.05)',
+                                            border: '1px solid var(--color-primary)',
+                                            borderRadius: 'var(--radius-lg)',
+                                            padding: 'var(--space-4)',
+                                            marginBottom: 'var(--space-6)'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
+                                                <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-primary)' }}>🤖 LLM 機器摘要</h4>
+                                                <Button size="sm" variant="outline" onClick={refreshLLMSummary} loading={refreshingSummary}>
+                                                    ✨ 重新生成
+                                                </Button>
+                                            </div>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontStyle: llmSummary ? 'normal' : 'italic' }}>
+                                                {llmSummary ? (
+                                                    <div className="preview-summary-text">{llmSummary.substring(0, 300)}{llmSummary.length > 300 ? '...' : ''}</div>
+                                                ) : (
+                                                    "尚未生成摘要，點擊右側按鈕產出"
+                                                )}
+                                            </div>
+                                        </div>
+
                                         <div dangerouslySetInnerHTML={{ __html: parseMarkdown(previewNode.content) }} />
                                         <MermaidRenderer content={previewNode.content} />
                                     </>

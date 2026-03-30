@@ -372,10 +372,10 @@ export const writingApi = {
   review: (data: { project_id: string; content: string; style_blueprint: string }) =>
     request<{ content: string; optimized: boolean; llm_summary?: string }>('/api/writing/review', { method: 'POST', body: data }),
 
-  refreshSummary: (projectId: string) =>
+  refreshSummary: (projectId?: string, nodeId?: string) =>
     request<{ success: boolean; llm_summary: string }>('/api/writing/refresh-summary', {
       method: 'POST',
-      body: { project_id: projectId }
+      body: { project_id: projectId, node_id: nodeId }
     }),
 };
 
