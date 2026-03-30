@@ -123,6 +123,7 @@ class ProjectState(BaseModel):
     eeat_score: Optional[float] = None
     quality_report: Optional[Dict[str, Any]] = None
     style_blueprint: Optional[str] = Field(default=None, description="寫作風格藍圖")
+    llm_summary: Optional[str] = Field(default=None, description="LLM 機器摘要")
     last_audit_at: Optional[datetime] = None
 
 
@@ -155,4 +156,5 @@ class ProjectUpdate(BaseModel):
     content: Optional[str] = None
     full_content: Optional[str] = None
     style_blueprint: Optional[str] = None
+    llm_summary: Optional[str] = None
     word_count: Optional[int] = None

@@ -398,12 +398,18 @@ export const WritingPage: React.FC = () => {
       await projectsApi.update(projectId, {
         outline: updatedOutline,
         full_content: fullContentToSave,
+        llm_summary: llmSummary, // 加入摘要儲存
         word_count: fullContentToSave.length,
       });
 
       // 更新本地 project 狀態，防止被舊狀態覆蓋
       setProject((prev) =>
-        prev ? { ...prev, outline: updatedOutline, full_content: fullContentToSave } : null
+        prev ? { 
+          ...prev, 
+          outline: updatedOutline, 
+          full_content: fullContentToSave,
+          llm_summary: llmSummary // 同步本地狀態
+        } : null
       );
       
       // 如果是外部觸發的儲存且傳入了內容，同步到 local state

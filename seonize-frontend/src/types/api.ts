@@ -199,6 +199,7 @@ export interface ProjectUpdate {
     content_gap_report?: any;
     content?: string;
     full_content?: string;
+    llm_summary?: string;
     word_count?: number;
     cms_config_id?: string;
 }
