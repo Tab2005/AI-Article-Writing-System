@@ -22,7 +22,11 @@ class GhostService(CMSBase):
     def __init__(self, api_url: str, api_key: str):
         self.api_url = api_url.rstrip('/')
         self.api_key = api_key
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json",
+        }
+        self.client = httpx.AsyncClient(timeout=30.0, headers=self.headers)
 
     def _get_token(self):
         """產生 Ghost Admin API JWT Token"""
@@ -115,7 +119,11 @@ class WordPressService(CMSBase):
         self.api_url = api_url.rstrip('/')
         self.username = username
         self.app_password = app_password
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json",
+        }
+        self.client = httpx.AsyncClient(timeout=30.0, headers=self.headers)
 
     def _get_auth(self):
         import base64
