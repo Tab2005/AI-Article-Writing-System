@@ -27,6 +27,16 @@ class WritingStyle(str, Enum):
     懶人包 = "懶人包"
     故事風 = "故事風"
 
+    # 英文屬性別名
+    EDUCATIONAL = "專業風"
+    REVIEW = "評論風"
+    NEWS = "新聞風"
+    CONVERSATIONAL = "對話風"
+    TECHNICAL = "技術風"
+    UNBOXING = "開箱風"
+    CURATED = "懶人包"
+    STORY = "故事風"
+
     @classmethod
     def _missing_(cls, value):
         mapping = {
