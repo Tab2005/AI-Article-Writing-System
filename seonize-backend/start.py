@@ -28,6 +28,14 @@ def get_port(default: int = 8000) -> int:
 
 
 if __name__ == "__main__":
+    # 自動執行資料庫結構修復 (補強 Migration 缺失)
+    try:
+        from patch_db import patch_db
+        logger.info("Initializing Database Patch...")
+        patch_db()
+    except Exception as e:
+        logger.warning(f"Database patch skipped or error: {e}")
+
     port = get_port(default=8000)
     logger.info(f"Starting Seonize Backend on 0.0.0.0:{port}")
     try:
