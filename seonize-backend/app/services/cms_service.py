@@ -15,7 +15,7 @@ class CMSBase(ABC):
         pass
 
     @abstractmethod
-    async def test_connection(self) -> bool:
+    async def test_connection(self) -> Dict[str, Any]:
         pass
 
 class GhostService(CMSBase):
@@ -26,8 +26,8 @@ class GhostService(CMSBase):
 
     def _get_token(self):
         """產生 Ghost Admin API JWT Token"""
-        import jwt # 需要安裝 pyjwt
         try:
+            import jwt
             id, secret = self.api_key.split(':')
             iat = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             header = {'alg': 'HS256', 'typ': 'JWT', 'kid': id}
@@ -37,24 +37,37 @@ class GhostService(CMSBase):
                 'aud': '/admin/'
             }
             token = jwt.encode(payload, bytes.fromhex(secret), algorithm='HS256', headers=header)
-            return token
+            return token, None
+        except ImportError:
+            return None, "系統缺失 pyjwt 套件，請聯繫管理員更新 requirements.txt"
+        except ValueError:
+            return None, "無效的 API Key 格式 (預期為 id:secret)"
         except Exception as e:
             logger.error(f"Ghost Token generation failed: {e}")
-            return None
+            return None, str(e)
 
-    async def test_connection(self) -> bool:
-        token = self._get_token()
-        if not token: return False
+    async def test_connection(self) -> Dict[str, Any]:
+        token, err = self._get_token()
+        if not token: 
+            return {"success": False, "message": f"Token 生成失敗: {err}"}
         try:
             headers = {'Authorization': f'Ghost {token}'}
             # 嘗試取得站點資訊
             response = await self.client.get(f"{self.api_url}/ghost/api/admin/site/", headers=headers)
-            return response.status_code == 200
-        except Exception:
-            return False
+            if response.status_code == 200:
+                site_data = response.json()
+                return {"success": True, "message": f"連線成功: {site_data.get('site', {}).get('title', 'Ghost Site')}"}
+            else:
+                return {"success": False, "message": f"Ghost API 回傳錯誤 ({response.status_code}): {response.text}"}
+        except httpx.ConnectError:
+            return {"success": False, "message": "連線失敗: 無法存取該網址，請檢查 API URL 是否正確"}
+        except Exception as e:
+            return {"success": False, "message": f"連線異常: {str(e)}"}
 
     async def publish(self, title: str, content: str, status: str = "draft", scheduled_at: Optional[datetime.datetime] = None, categories: Optional[List[int]] = None, featured_media: Optional[int] = None, llm_summary: Optional[str] = None) -> Dict[str, Any]:
-        token = self._get_token()
+        token, err = self._get_token()
+        if not token:
+            return {"success": False, "message": f"Token 生成失敗: {err}"}
         headers = {'Authorization': f'Ghost {token}'}
         
         # Ghost 預設發布 HTML 或 MobileDoc
@@ -109,14 +122,18 @@ class WordPressService(CMSBase):
         auth = f"{self.username}:{self.app_password}"
         return base64.b64encode(auth.encode()).decode()
 
-    async def test_connection(self) -> bool:
+    async def test_connection(self) -> Dict[str, Any]:
         auth = self._get_auth()
         headers = {'Authorization': f'Basic {auth}'}
         try:
             response = await self.client.get(f"{self.api_url}/wp-json/wp/v2/users/me", headers=headers)
-            return response.status_code == 200
-        except Exception:
-            return False
+            if response.status_code == 200:
+                user_data = response.json()
+                return {"success": True, "message": f"連線成功! 歡迎 {user_data.get('name')}"}
+            else:
+                return {"success": False, "message": f"WordPress API 錯誤 ({response.status_code}): {response.text}"}
+        except Exception as e:
+            return {"success": False, "message": f"連線異常: {str(e)}"}
 
     async def get_categories(self) -> List[Dict[str, Any]]:
         """取得 WordPress 所有分類"""
