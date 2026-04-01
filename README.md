@@ -54,5 +54,20 @@ cd seonize-frontend
 npm run dev
 ```
 
-> [!NOTE]
-> 首次啟動前請確保已依照各目錄下的 `.env.example` 完成 `.env` 配置。
+## 生產環境疑難排解 (Troubleshooting)
+
+### 1. 部署後出現 500 錯誤
+如果在更換主機或新部署後，執行分析功能出現 500 錯誤，通常是資料庫結構不一致（缺失 Phase 3 的點數系統表）所致。
+
+**解決方法：**
+在生產環境的終端機執行修補腳本：
+```bash
+cd seonize-backend
+python patch_db.py
+```
+此腳本會自動檢查並補齊缺失的 `credit_logs`、`cms_configs` 等關鍵資料表與欄位。
+
+### 2. 前端部署失敗 (npm update -g npm)
+如果部署時出現 `MODULE_NOT_FOUND` 或 `npm` 相關錯誤，請檢查雲端平台（如 Zeabur）的編譯設定：
+- **移除**任何手動執行的 `npm update -g npm` 指令。
+- 確保 **Node.js 版本** 設定為穩定版（推薦 v18 或 v20）。
