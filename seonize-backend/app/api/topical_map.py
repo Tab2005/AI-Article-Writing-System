@@ -37,7 +37,8 @@ async def create_topical_map(
     db.commit()
     db.refresh(new_map)
     
-    background_tasks.add_task(topical_map_service.generate_map_task, db, new_map.id, current_user.id)
+    # 修改：不要傳遞 request session 'db'，改由 task 內部自行建立
+    background_tasks.add_task(topical_map_service.generate_map_task, new_map.id, current_user.id)
     return new_map
 
 @router.get("/list", response_model=List[TopicalMapResponse])
