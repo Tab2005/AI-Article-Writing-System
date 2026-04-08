@@ -73,6 +73,9 @@ async def list_topical_maps(
             detail=f"Database error: {str(e)}. Please contact administrator if this persists."
         )
 
+from sqlalchemy.orm import Session, joinedload, selectinload
+# ... (rest of imports)
+
 @router.get("/{map_id}", response_model=TopicalMapDetailResponse)
 async def get_topical_map(
     map_id: str,
@@ -80,7 +83,11 @@ async def get_topical_map(
     current_user: Any = Depends(get_current_user)
 ):
     """獲取特定地圖的詳細結構"""
-    topical_map = db.query(TopicalMap).filter(
+    # 使用 selectinload 確保巢狀結構 (L1 -> L2 -> Keywords) 被完整載入
+    topical_map = db.query(TopicalMap).options(
+        selectinload(TopicalMap.clusters).selectinload(TopicalCluster.subclusters),
+        selectinload(TopicalMap.clusters).selectinload(TopicalCluster.keywords)
+    ).filter(
         TopicalMap.id == map_id,
         TopicalMap.user_id == current_user.id
     ).first()

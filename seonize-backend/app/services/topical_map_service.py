@@ -53,7 +53,7 @@ class TopicalMapService:
             logger.info(f"Successfully fetched {len(suggestions)} keywords from DataForSEO")
 
             # 限制處理數量，避免 AI 負擔過重
-            suggestions = suggestions[:300]
+            suggestions = suggestions[:500]
             
             # 2. AI 語義聚類
             logger.info(f"Clustering {len(suggestions)} keywords with AI...")
