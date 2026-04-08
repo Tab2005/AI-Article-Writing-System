@@ -51,8 +51,27 @@ async def list_topical_maps(
     current_user: Any = Depends(get_current_user)
 ):
     """獲取使用者的所有地圖列表"""
-    maps = db.query(TopicalMap).filter(TopicalMap.user_id == current_user.id).order_by(TopicalMap.created_at.desc()).all()
-    return maps
+    try:
+        # 手動檢查資料表是否存在 (最後防線)
+        from sqlalchemy import inspect
+        inspector = inspect(db.get_bind())
+        if not inspector.has_table("topical_maps"):
+            # 如果資料表不存在，嘗試透過 Base 建立 (這在 Alembic 失效時很有用)
+            TopicalMap.__table__.create(db.get_bind(), checkfirst=True)
+            TopicalCluster.__table__.create(db.get_bind(), checkfirst=True)
+            TopicalKeyword.__table__.create(db.get_bind(), checkfirst=True)
+            db.commit()
+
+        maps = db.query(TopicalMap).filter(TopicalMap.user_id == current_user.id).order_by(TopicalMap.created_at.desc()).all()
+        return maps
+    except Exception as e:
+        import traceback
+        print(f"Topical Map List Error: {e}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}. Please contact administrator if this persists."
+        )
 
 @router.get("/{map_id}", response_model=TopicalMapDetailResponse)
 async def get_topical_map(
