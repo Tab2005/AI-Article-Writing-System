@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import InsufficientCreditsModal from '../common/InsufficientCreditsModal';
@@ -16,7 +16,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     path: '/dashboard',
-    label: '?銵冽',
+    label: '主控制台',
     icon: (
       <svg
         width="20"
@@ -37,7 +37,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/projects',
-    label: '撠??”',
+    label: '專案管理',
     icon: (
       <svg
         width="20"
@@ -56,8 +56,26 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    path: '/topical-map',
+    label: '主題地圖',
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+    ),
+  },
+  {
     path: '/keyword',
-    label: '?摮?蝛?,
+    label: '關鍵字研究',
     icon: (
       <svg
         width="20"
@@ -76,7 +94,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/keyword/history',
-    label: '?弦甇瑕',
+    label: '研究紀錄',
     icon: (
       <svg
         width="20"
@@ -95,7 +113,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/analysis',
-    label: '????',
+    label: '內容分析',
     icon: (
       <svg
         width="20"
@@ -114,7 +132,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/outline',
-    label: '憭抒雇蝺刻摩',
+    label: '大綱編輯',
     icon: (
       <svg
         width="20"
@@ -137,7 +155,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/writing',
-    label: '?批捆?啣神',
+    label: '文章生成',
     icon: (
       <svg
         width="20"
@@ -156,7 +174,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/prompts',
-    label: '?誘?澈',
+    label: '提示詞庫',
     icon: (
       <svg
         width="20"
@@ -174,7 +192,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/kalpa-eye',
-    label: '?思??潸?',
+    label: '劫之眼',
     icon: (
       <svg
         width="20"
@@ -192,14 +210,14 @@ const navItems: NavItem[] = [
       </svg>
     ),
     children: [
-      { path: '/kalpa-eye/matrix', label: '???拚' },
-      { path: '/kalpa-eye/history', label: '???亥岷' },
-      { path: '/kalpa-eye/articles', label: '???阮' },
+      { path: '/kalpa-eye/matrix', label: '矩陣生成' },
+      { path: '/kalpa-eye/history', label: '矩陣紀錄' },
+      { path: '/kalpa-eye/articles', label: '專案文章' },
     ]
   },
   {
     path: '/cms',
-    label: '蝡?蝞∠?',
+    label: '發佈設定',
     icon: (
       <svg
         width="20"
@@ -219,7 +237,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/cms/guide',
-    label: '????',
+    label: '部署教學',
     icon: (
       <svg
         width="20"
@@ -238,7 +256,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/admin/users',
-    label: '?冽蝞∠?',
+    label: '管理後台',
     adminOnly: true,
     icon: (
       <svg
@@ -260,7 +278,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/admin/credits',
-    label: '蝑??蔭',
+    label: '點數配置',
     adminOnly: true,
     icon: (
       <svg
@@ -281,7 +299,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/settings',
-    label: '蝟餌絞閮剖?',
+    label: '系統設定',
     adminOnly: true,
     icon: (
       <svg
@@ -331,7 +349,7 @@ export const MainLayout: React.FC = () => {
 
   return (
     <div className="main-layout">
-      {/* ?典?暺銝雲?內 Modal */}
+      {/* 點數不足時顯示 Modal */}
       <InsufficientCreditsModal
         isOpen={creditsModal.isOpen}
         required={creditsModal.required}
@@ -349,7 +367,7 @@ export const MainLayout: React.FC = () => {
           <button
             className="sidebar__toggle"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label={sidebarOpen ? '?嗅??湧?甈? : '撅??湧?甈?}
+            aria-label={sidebarOpen ? '收起側邊欄' : '展開側邊欄'}
           >
             <svg
               width="20"
@@ -421,7 +439,7 @@ export const MainLayout: React.FC = () => {
               <Link
                 to="/profile"
                 className="sidebar__user-avatar"
-                title="?亦??犖鞈?"
+                title="查看個人資料"
               >
                 {user.username.charAt(0).toUpperCase()}
                 <div className="sidebar__user-avatar-badge">
@@ -437,7 +455,7 @@ export const MainLayout: React.FC = () => {
                   </Link>
                   <div className="sidebar__user-role">
                     <span className={`sidebar__user-credits ${user.credits < 50 ? 'sidebar__user-credits--low' : ''}`}>
-                      {user.role === 'super_admin' ? '?? UNLIMITED' : `?? ${user.credits}`}
+                      {user.role === 'super_admin' ? '點數 UNLIMITED' : `點數 ${user.credits}`}
                     </span>
                     {user.role === 'super_admin' && <span className="sidebar__role-badge">ADMIN</span>}
                   </div>
@@ -447,7 +465,7 @@ export const MainLayout: React.FC = () => {
                 <button
                   className="sidebar__logout-btn"
                   onClick={handleLogout}
-                  title="?餃"
+                  title="登出"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -475,4 +493,3 @@ export const MainLayout: React.FC = () => {
     </div>
   );
 };
-
