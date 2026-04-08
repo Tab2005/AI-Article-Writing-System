@@ -63,4 +63,4 @@ seonize-backend/seonize.db
 seonize-backend/__pycache__/
 seonize-frontend/node_modules/
 seonize-frontend/dist/
-db_models.py
+

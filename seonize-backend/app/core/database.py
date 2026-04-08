@@ -95,7 +95,8 @@ def init_db():
     from app.models.db_models import (
         User, Project, Settings, SerpCache, KeywordCache, 
         CompetitiveCache, PromptTemplate, CMSConfig, 
-        KalpaMatrix, KalpaNode, CreditLog
+        KalpaMatrix, KalpaNode, CreditLog,
+        TopicalMap, TopicalCluster, TopicalKeyword
     )
     
     # 遮蔽敏感資訊的日誌
