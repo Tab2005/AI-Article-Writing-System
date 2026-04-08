@@ -3,15 +3,14 @@ Seonize Backend - SQLAlchemy Database Models
 """
 
 import uuid
-import os
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Text, Integer, Float, Boolean, DateTime, JSON, ForeignKey, MetaData
+from sqlalchemy import Column, String, Text, Integer, Float, Boolean, DateTime, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from app.core.database import Base, IS_SQLITE
 from app.core.security import encrypt_value, decrypt_value
 
-# 定義命名慣例，這對於 Alembic 在 SQLite 下執行 batch 遷移至關重要
+# 命名慣例，用於 Alembic 遷移
 naming_convention = {
     "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",
@@ -20,19 +19,16 @@ naming_convention = {
     "pk": "pk_%(table_name)s"
 }
 
-# 套用命名慣例到 Base.metadata
 Base.metadata.naming_convention = naming_convention
 
-
-# 根據資料庫類型選擇 UUID 類型
 def get_uuid_type():
+    """根據資料庫類型返回適當的 UUID 類型"""
     if IS_SQLITE:
         return String(36)
     return PG_UUID(as_uuid=True)
 
-
 class User(Base):
-    """使用者資料表"""
+    """使用者模型"""
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -42,13 +38,13 @@ class User(Base):
     role = Column(String(20), default="user")  # super_admin, vip, user
     credits = Column(Integer, default=0)
     membership_level = Column(Integer, default=1)
-    
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
-    prompt_templates = relationship("PromptTemplate", back_populates="user", cascade="all, delete-orphan")
+    prompt_templates = relationship("PromptTemplate", back_populates="user", cascade="all, delete-orphan")      
     cms_configs = relationship("CMSConfig", back_populates="user", cascade="all, delete-orphan")
     kalpa_matrices = relationship("KalpaMatrix", back_populates="user", cascade="all, delete-orphan")
     credit_logs = relationship("CreditLog", back_populates="user", cascade="all, delete-orphan")
@@ -66,60 +62,49 @@ class User(Base):
             "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
 
-
 class Project(Base):
-    """專案資料表"""
+    """專案模型"""
     __tablename__ = "projects"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     primary_keyword = Column(String(255), nullable=False, index=True)
     country = Column(String(10), default="TW")
     language = Column(String(10), default="zh-TW")
-    
-    # 分析結果
-    intent = Column(String(20), nullable=True)  # informational, commercial, navigational, transactional
-    style = Column(String(50), nullable=True)   # 專業教育風, 評論風, etc.
-    optimization_mode = Column(String(20), default="seo")  # seo, aeo, geo, hybrid
-    
-    # 標題
+
+    intent = Column(String(20), nullable=True)
+    style = Column(String(50), nullable=True)
+    optimization_mode = Column(String(20), default="seo")
+
     candidate_titles = Column(JSON, default=list)
     selected_title = Column(Text, nullable=True)
-    
-    # 關鍵字
-    keywords = Column(JSON, default=dict)  # {secondary: [], lsi: [], density: {}}
-    research_data = Column(JSON, nullable=True) # 儲存 PAA, 相關搜尋, AI Overview 等研究數據
-    content_gap_report = Column(JSON, nullable=True) # 儲存 AI 產出的內容缺口與 EEAT 建議
-    
-    # 大綱
-    outline = Column(JSON, nullable=True)  # {h1: "", sections: []}
-    
-    # 內容
+
+    keywords = Column(JSON, default=dict)
+    research_data = Column(JSON, nullable=True)
+    content_gap_report = Column(JSON, nullable=True)
+
+    outline = Column(JSON, nullable=True)
     full_content = Column(Text, default="")
     meta_title = Column(String(255), nullable=True)
     meta_description = Column(Text, nullable=True)
-    
-    # 指標
+
     word_count = Column(Integer, default=0)
     keyword_density = Column(JSON, default=dict)
     eeat_score = Column(Float, nullable=True)
-    images = Column(JSON, default=list) # [{url, alt, caption, source}]
-    
-    # 品質審計
+    images = Column(JSON, default=list)
+
     quality_report = Column(JSON, nullable=True)
-    style_blueprint = Column(Text, nullable=True) # 四階段寫作引擎生成的方針藍圖
+    style_blueprint = Column(Text, nullable=True)
     last_audit_at = Column(DateTime, nullable=True)
-    
-    # CMS 發布資訊
-    cms_config_id = Column(String(36), ForeignKey("cms_configs.id", ondelete="SET NULL"), nullable=True) # 關聯至 CMSConfig.id
+
+    cms_config_id = Column(String(36), ForeignKey("cms_configs.id", ondelete="SET NULL"), nullable=True)
     cms_post_id = Column(String(100), nullable=True)
-    publish_status = Column(String(20), default="draft")  # draft, scheduled, published, failed
+    publish_status = Column(String(20), default="draft")
     cms_publish_url = Column(Text, nullable=True)
-    llm_summary = Column(Text, nullable=True)  # 新增：符合 llms.txt 標準的機器讀取摘要
+    llm_summary = Column(Text, nullable=True)
     scheduled_at = Column(DateTime, nullable=True)
     published_at = Column(DateTime, nullable=True)
-    
-    # 時間戳記
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -128,7 +113,6 @@ class Project(Base):
     cms_config = relationship("CMSConfig")
 
     def to_dict(self) -> dict:
-        """轉換為字典"""
         return {
             "project_id": self.id,
             "user_id": self.user_id,
@@ -141,10 +125,10 @@ class Project(Base):
             "candidate_titles": self.candidate_titles or [],
             "selected_title": self.selected_title,
             "keywords": self.keywords or {"secondary": [], "lsi": []},
-            "research_data": self.research_data or {"paa": [], "related_searches": [], "ai_overview": None},
+            "research_data": self.research_data or {"paa": [], "related_searches": [], "ai_overview": None},    
             "content_gap_report": self.content_gap_report,
             "outline": self.outline,
-            "content": self.full_content or "", # 統一為 content
+            "content": self.full_content or "",
             "full_content": self.full_content or "",
             "meta_title": self.meta_title,
             "meta_description": self.meta_description,
@@ -166,9 +150,8 @@ class Project(Base):
             "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
 
-
 class Settings(Base):
-    """系統設定資料表"""
+    """系統設定模型"""
     __tablename__ = "settings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -179,48 +162,35 @@ class Settings(Base):
 
     @classmethod
     def get_value(cls, db, key: str, default: str = None) -> str:
-        """取得設定值，全量由資料庫管理"""
         setting = db.query(cls).filter(cls.key == key).first()
         if not setting or setting.value is None:
             return default
-        
-        # 如果標記為加密，則進行解密
         if setting.encrypted:
             return decrypt_value(setting.value)
-            
         return setting.value
 
     @classmethod
     def set_value(cls, db, key: str, value: str, encrypted: bool = False):
-        """設定值"""
         setting = db.query(cls).filter(cls.key == key).first()
         if setting:
-            # 如果是金鑰、密碼或帳號，自動去前後空白
             if any(k in key for k in ["api_key", "password", "login"]):
                 value = value.strip()
-            
-            # 如果需要加密
             if encrypted:
                 value = encrypt_value(value)
-                
             setting.value = value
             setting.encrypted = encrypted
         else:
             if any(k in key for k in ["api_key", "password", "login"]):
                 value = value.strip()
-            
-            # 如果需要加密
             if encrypted:
                 value = encrypt_value(value)
-                
             setting = cls(key=key, value=value, encrypted=encrypted)
             db.add(setting)
         db.commit()
         return setting
 
-
 class SerpCache(Base):
-    """SERP 快取資料表"""
+    """SERP 快取模型"""
     __tablename__ = "serp_cache"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -236,57 +206,45 @@ class SerpCache(Base):
     def is_expired(self) -> bool:
         if not self.expires_at:
             return True
-        
-        from datetime import timezone
         now = datetime.now(timezone.utc)
-        # 如果 self.expires_at 沒有時區資訊 (常見於 SQLite)，則也將 now 轉換為無時區時間作比較
         if self.expires_at.tzinfo is None:
             now = now.replace(tzinfo=None)
-            
         return now > self.expires_at
 
 class KeywordCache(Base):
-    """關鍵字快取資料表，儲存 Keyword Ideas 研究結果"""
+    """關鍵字快取模型"""
     __tablename__ = "keyword_cache"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     keyword = Column(String(255), nullable=False, index=True)
     location_code = Column(Integer, nullable=False)
     language_code = Column(String(10), nullable=False)
-    
-    seed_data = Column(JSON, nullable=True)     # 核心詞數據 {search_volume, cpc, ...}
-    suggestions = Column(JSON, nullable=True)   # 長尾詞建議列表 [{keyword, search_volume, ...}]
-    ai_suggestions = Column(JSON, nullable=True) # AI 產出的 5 個標題建議列表
-    
+    seed_data = Column(JSON, nullable=True)
+    suggestions = Column(JSON, nullable=True)
+    ai_suggestions = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
-
-    # Relationships
     user = relationship("User")
 
     @property
     def is_expired(self) -> bool:
         if not self.expires_at:
-            return False # 預設不逾期
-            
-        from datetime import timezone
+            return False
         now = datetime.now(timezone.utc)
         if self.expires_at.tzinfo is None:
             now = now.replace(tzinfo=None)
-            
         return now > self.expires_at
 
 class CompetitiveCache(Base):
-    """競爭對手網頁內容快取資料表"""
+    """競爭力分析快取模型"""
     __tablename__ = "competitive_cache"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     url = Column(Text, nullable=False, index=True)
-    h_tags = Column(JSON, nullable=True)     # [{tag: 'h2', text: '...'}, ...]
-    content_stats = Column(JSON, nullable=True) # {word_count: 1200, images_count: 5, ...}
-    meta_info = Column(JSON, nullable=True)    # {title: '...', description: '...'}
-    
+    h_tags = Column(JSON, nullable=True)
+    content_stats = Column(JSON, nullable=True)
+    meta_info = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
 
@@ -294,29 +252,24 @@ class CompetitiveCache(Base):
     def is_expired(self) -> bool:
         if not self.expires_at:
             return False
-            
-        from datetime import timezone
         now = datetime.now(timezone.utc)
         if self.expires_at.tzinfo is None:
             now = now.replace(tzinfo=None)
-            
         return now > self.expires_at
 
 class PromptTemplate(Base):
-    """指令模板資料表"""
+    """提示詞模板模型"""
     __tablename__ = "prompt_templates"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者 (NULL 代表系統預設)
-    category = Column(String(50), nullable=False, index=True) # title_generation, outline_generation, etc.
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    category = Column(String(50), nullable=False, index=True)
     name = Column(String(100), nullable=False)
-    description = Column(Text, nullable=True) # 用於儲存觸發關鍵字或人格說明
+    description = Column(Text, nullable=True)
     content = Column(Text, nullable=False)
     is_active = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
     user = relationship("User", back_populates="prompt_templates")
 
     def to_dict(self) -> dict:
@@ -332,33 +285,24 @@ class PromptTemplate(Base):
             "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
 
-
 class CMSConfig(Base):
-    """CMS 站點設定資料表"""
+    """CMS 設定模型"""
     __tablename__ = "cms_configs"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String(100), nullable=False)
-    platform = Column(String(20), nullable=False)  # ghost, wordpress
+    platform = Column(String(20), nullable=False)
     api_url = Column(Text, nullable=False)
-    
-    # Auth 資訊 (加密儲存)
-    api_key = Column(Text, nullable=True)         # Ghost Admin API Key 或 WP App Password
-    username = Column(String(100), nullable=True) # WP 專用
-    
+    api_key = Column(Text, nullable=True)
+    username = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
-    
-    # 自動循環發布設定
     auto_publish_enabled = Column(Boolean, default=False)
-    frequency_type = Column(String(20), default="day") # hour, day, week
-    frequency_count = Column(Integer, default=1)      # 單位時間內的發布篇數
+    frequency_type = Column(String(20), default="day")
+    frequency_count = Column(Integer, default=1)
     last_auto_published_at = Column(DateTime, nullable=True)
-    
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
     user = relationship("User", back_populates="cms_configs")
 
     def to_dict(self) -> dict:
@@ -378,30 +322,22 @@ class CMSConfig(Base):
             "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
 
-
 class KalpaMatrix(Base):
-    """因果矩陣專案資料表"""
+    """劫之眼矩陣模型"""
     __tablename__ = "kalpa_matrices"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True) # 歸屬使用者
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
     project_name = Column(String(255), nullable=False, index=True)
     industry = Column(String(100), default="Crypto")
     money_page_url = Column(Text, nullable=True)
-    
-    # 原始配置
     entities = Column(JSON, default=list)
     actions = Column(JSON, default=list)
     pain_points = Column(JSON, default=list)
-    anchor_variants = Column(JSON, default=list)  # 法寶袋：動態生成的錨點文字清單
-    
-    # CMS 發布資訊
-    cms_config_id = Column(String(36), ForeignKey("cms_configs.id", ondelete="SET NULL"), nullable=True) # 預設發布站點
-    
+    anchor_variants = Column(JSON, default=list)
+    cms_config_id = Column(String(36), ForeignKey("cms_configs.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
     user = relationship("User", back_populates="kalpa_matrices")
     nodes = relationship("KalpaNode", back_populates="matrix", cascade="all, delete-orphan")
     cms_config = relationship("CMSConfig")
@@ -422,40 +358,31 @@ class KalpaMatrix(Base):
             "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
         }
 
-
 class KalpaNode(Base):
-    """因果矩陣節點（意圖）資料表"""
+    """劫之眼節點模型"""
     __tablename__ = "kalpa_nodes"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # 歸屬使用者
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     matrix_id = Column(String(36), ForeignKey("kalpa_matrices.id", ondelete="CASCADE"), nullable=False, index=True)
-    
     entity = Column(String(100))
     action = Column(String(100))
     pain_point = Column(String(100))
     target_title = Column(Text)
-    
-    # 編織與發布結果
-    status = Column(String(20), default="pending")  # pending, weaving, completed, failed
+    status = Column(String(20), default="pending")
     woven_content = Column(Text, nullable=True)
     anchor_used = Column(String(255), nullable=True)
     woven_at = Column(DateTime, nullable=True)
-    images = Column(JSON, default=list) # [{url, alt, caption, source}]
-    
-    # CMS 發布資訊
+    images = Column(JSON, default=list)
     cms_config_id = Column(String(36), ForeignKey("cms_configs.id", ondelete="SET NULL"), nullable=True)
     cms_post_id = Column(String(100), nullable=True)
-    publish_status = Column(String(20), default="draft")  # draft, scheduled, published, failed
+    publish_status = Column(String(20), default="draft")
     cms_publish_url = Column(Text, nullable=True)
-    llm_summary = Column(Text, nullable=True)  # 新增：符合 llms.txt 標準的機器讀取摘要
+    llm_summary = Column(Text, nullable=True)
     scheduled_at = Column(DateTime, nullable=True)
     published_at = Column(DateTime, nullable=True)
-
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
     matrix = relationship("KalpaMatrix", back_populates="nodes")
     user = relationship("User")
     cms_config = relationship("CMSConfig")
@@ -470,11 +397,11 @@ class KalpaNode(Base):
             "pain_point": self.pain_point,
             "target_title": self.target_title,
             "status": self.status,
-            "content": self.woven_content, # 統一為 content
-            "woven_content": self.woven_content, # 保留舊欄位以防止其他潛在點崩潰
+            "content": self.woven_content,
+            "woven_content": self.woven_content,
             "anchor_used": self.anchor_used,
             "images": self.images or [],
-            "woven_at": self.woven_at.replace(tzinfo=timezone.utc).isoformat() if self.woven_at else None,
+            "woven_at": self.woven_at.replace(tzinfo=timezone.utc).isoformat() if self.woven_at else None,      
             "cms_config_id": self.cms_config_id,
             "cms_post_id": self.cms_post_id,
             "publish_status": self.publish_status,
@@ -485,19 +412,16 @@ class KalpaNode(Base):
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
         }
 
-
 class CreditLog(Base):
-    """點數異動記錄表（扣點 / 退款歷程）"""
+    """點數紀錄模型"""
     __tablename__ = "credit_logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
-    delta = Column(Integer, nullable=False)      # 正數=入帳/退還, 負數=扣除
-    balance = Column(Integer, nullable=False)    # 操作後餘額快照
-    operation = Column(String(150), nullable=True)  # 操作名稱
+    delta = Column(Integer, nullable=False)
+    balance = Column(Integer, nullable=False)
+    operation = Column(String(150), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-
-    # Relationships
     user = relationship("User", back_populates="credit_logs")
 
     def to_dict(self) -> dict:
@@ -510,28 +434,23 @@ class CreditLog(Base):
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
         }
 
-
 class TopicalMap(Base):
-    """主題地圖元數據"""
+    """主題地圖模型"""
     __tablename__ = "topical_maps"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)        
     name = Column(String(255), nullable=False)
     topic = Column(String(255), nullable=False)
     country = Column(String(10), default="TW")
     language = Column(String(10), default="zh-TW")
-    
     total_keywords = Column(Integer, default=0)
     total_search_volume = Column(Integer, default=0)
-    status = Column(String(20), default="pending") # pending, processing, completed, failed
-    
+    status = Column(String(20), default="pending")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
     user = relationship("User", back_populates="topical_maps")
-    clusters = relationship("TopicalCluster", back_populates="topical_map", cascade="all, delete-orphan")
+    clusters = relationship("TopicalCluster", back_populates="topical_map", cascade="all, delete-orphan")       
 
     def to_dict(self) -> dict:
         return {
@@ -549,20 +468,16 @@ class TopicalMap(Base):
         }
 
 class TopicalCluster(Base):
-    """主題分組 (L1/L2)"""
+    """主題群聚模型"""
     __tablename__ = "topical_clusters"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     topical_map_id = Column(String(36), ForeignKey("topical_maps.id", ondelete="CASCADE"), nullable=False, index=True)
-    parent_id = Column(String(36), ForeignKey("topical_clusters.id", ondelete="CASCADE"), nullable=True)
-    
+    parent_id = Column(String(36), ForeignKey("topical_clusters.id", ondelete="CASCADE"), nullable=True)        
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    level = Column(Integer, default=1) # 1 for L1, 2 for L2
-    
+    level = Column(Integer, default=1)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-
-    # Relationships
     topical_map = relationship("TopicalMap", back_populates="clusters")
     parent = relationship("TopicalCluster", remote_side=[id], back_populates="subclusters")
     subclusters = relationship("TopicalCluster", back_populates="parent", cascade="all, delete-orphan")
@@ -580,24 +495,19 @@ class TopicalCluster(Base):
         }
 
 class TopicalKeyword(Base):
-    """主題地圖中的具體關鍵字 (L3)"""
+    """主題關鍵字模型"""
     __tablename__ = "topical_keywords"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     cluster_id = Column(String(36), ForeignKey("topical_clusters.id", ondelete="CASCADE"), nullable=False, index=True)
-    
     keyword = Column(String(255), nullable=False)
     search_volume = Column(Integer, default=0)
     cpc = Column(Float, default=0.0)
     competition = Column(Float, default=0.0)
     intent = Column(String(50), nullable=True)
-    
     suggested_title = Column(Text, nullable=True)
-    status = Column(String(20), default="pending") # pending, written, etc.
-    
+    status = Column(String(20), default="pending")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-
-    # Relationships
     cluster = relationship("TopicalCluster", back_populates="keywords")
 
     def to_dict(self) -> dict:
