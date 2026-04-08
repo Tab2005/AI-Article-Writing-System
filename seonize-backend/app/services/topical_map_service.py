@@ -25,7 +25,7 @@ class TopicalMapService:
 
         try:
             # 1. 獲取關鍵字數據 (DataForSEO)
-            logger.info(f"Fetching keywords for topic: {topical_map.topic}")
+            logger.info(f"Fetching keywords for topic: {topical_map.topic} (Location: {topical_map.country}, Lang: {topical_map.language})")
             
             language_code = DataForSEOService.resolve_language_code(topical_map.language)
             location_code = DataForSEOService.resolve_location_code(topical_map.country)
@@ -46,16 +46,33 @@ class TopicalMapService:
             
             suggestions = keyword_data.get("suggestions", [])
             if not suggestions:
-                raise ValueError("No keywords found for this topic")
+                error_msg = keyword_data.get("error") or "No keywords found for this topic"
+                logger.error(f"DataForSEO error: {error_msg}")
+                raise ValueError(error_msg)
 
-            # 限制處理數量
-            suggestions = suggestions[:500]
+            logger.info(f"Successfully fetched {len(suggestions)} keywords from DataForSEO")
+
+            # 限制處理數量，避免 AI 負擔過重
+            suggestions = suggestions[:300]
             
             # 2. AI 語義聚類
-            logger.info(f"Clustering {len(suggestions)} keywords with AI")
+            logger.info(f"Clustering {len(suggestions)} keywords with AI...")
             clusters_data = await TopicalMapService._cluster_keywords_with_ai(topical_map.topic, suggestions)
             
+            if not clusters_data:
+                logger.warning("AI clustering returned no data, creating a fallback cluster")
+                clusters_data = [{
+                    "name": "General",
+                    "description": "Unclassified keywords",
+                    "subclusters": [{
+                        "name": "Related Keywords",
+                        "description": "Keywords related to the main topic",
+                        "keywords": [s["keyword"] for s in suggestions]
+                    }]
+                }]
+            
             # 3. 儲存至資料庫
+            logger.info("Saving clusters and keywords to database")
             await TopicalMapService._save_clusters_and_keywords(db, topical_map, clusters_data, suggestions)
             
             # 4. 更新地圖狀態
@@ -64,7 +81,7 @@ class TopicalMapService:
             topical_map.total_search_volume = sum(s.get("search_volume", 0) or 0 for s in suggestions)
             db.commit()
             
-            logger.info(f"Topical Map {map_id} generation completed")
+            logger.info(f"Topical Map {map_id} generation completed successfully")
 
         except Exception as e:
             logger.error(f"Topical Map generation failed: {str(e)}")
