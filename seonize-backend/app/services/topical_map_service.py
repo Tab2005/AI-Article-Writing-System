@@ -25,7 +25,7 @@ class TopicalMapService:
 
         try:
             # 1. 獲取關鍵字數據 (DataForSEO)
-            logger.info(f"Fetching keywords for topic: {topical_map.topic} (Location: {topical_map.country}, Lang: {topical_map.language})")
+            logger.info(f"Step 1: Fetching keywords for topic: {topical_map.topic}")
             
             language_code = DataForSEOService.resolve_language_code(topical_map.language)
             location_code = DataForSEOService.resolve_location_code(topical_map.country)
@@ -50,29 +50,31 @@ class TopicalMapService:
                 logger.error(f"DataForSEO error: {error_msg}")
                 raise ValueError(error_msg)
 
-            logger.info(f"Successfully fetched {len(suggestions)} keywords from DataForSEO")
+            logger.info(f"Successfully fetched {len(suggestions)} keywords")
 
-            # 限制處理數量，避免 AI 負擔過重
-            suggestions = suggestions[:500]
+            # 限制處理數量，500 筆對 AI 來說負擔較重，我們分批處理
+            process_limit = 500
+            suggestions = suggestions[:process_limit]
             
             # 2. AI 語義聚類
-            logger.info(f"Clustering {len(suggestions)} keywords with AI...")
+            logger.info(f"Step 2: Clustering {len(suggestions)} keywords with AI...")
             clusters_data = await TopicalMapService._cluster_keywords_with_ai(topical_map.topic, suggestions)
             
+            # 確保 clusters_data 不為空，若 AI 失敗則使用 Fallback
             if not clusters_data:
-                logger.warning("AI clustering returned no data, creating a fallback cluster")
+                logger.warning("AI clustering returned no data or failed to parse. Using fallback.")
                 clusters_data = [{
-                    "name": "General",
-                    "description": "Unclassified keywords",
+                    "name": "主要相關詞",
+                    "description": "自動分類建議",
                     "subclusters": [{
-                        "name": "Related Keywords",
-                        "description": "Keywords related to the main topic",
+                        "name": "所有關鍵字",
+                        "description": "由系統自動匯整",
                         "keywords": [s["keyword"] for s in suggestions]
                     }]
                 }]
             
             # 3. 儲存至資料庫
-            logger.info("Saving clusters and keywords to database")
+            logger.info(f"Step 3: Saving {len(clusters_data)} clusters to database")
             await TopicalMapService._save_clusters_and_keywords(db, topical_map, clusters_data, suggestions)
             
             # 4. 更新地圖狀態
@@ -81,10 +83,12 @@ class TopicalMapService:
             topical_map.total_search_volume = sum(s.get("search_volume", 0) or 0 for s in suggestions)
             db.commit()
             
-            logger.info(f"Topical Map {map_id} generation completed successfully")
+            logger.info(f"Topical Map {map_id} generation task finished successfully")
 
         except Exception as e:
+            import traceback
             logger.error(f"Topical Map generation failed: {str(e)}")
+            traceback.print_exc()
             topical_map.status = "failed"
             db.commit()
 
@@ -97,17 +101,8 @@ class TopicalMapService:
         
         for i in range(0, len(kw_list), batch_size):
             batch = kw_list[i:i+batch_size]
-            prompt = f"""你是一位 SEO 戰略專家。請針對核心主題「{topic}」，將以下關鍵字進行語義聚類。
-請建立一個兩層的結構：
-1. L1 (Main Topic): 大類主題
-2. L2 (Sub-topic): 子類主題
-
-請將每個關鍵字分配到最合適的 L2 子主題下。
-
-關鍵字列表：
-{', '.join(batch)}
-
-請以 JSON 格式回傳，格式如下：
+            prompt = f"""你是一位專業的 SEO 戰略專家。請針對核心主題「{topic}」，將以下關鍵字進行語義聚類。
+請嚴格遵守以下 JSON 格式回傳，不要包含任何額外文字：
 [
   {{
     "name": "L1 主題名稱",
@@ -115,19 +110,26 @@ class TopicalMapService:
     "subclusters": [
       {{
         "name": "L2 子主題名稱",
-        "description": "簡短描述",
+        "description": "子主題描述",
         "keywords": ["關鍵字1", "關鍵字2"]
       }}
     ]
   }}
 ]
+
+關鍵字列表：
+{', '.join(batch)}
 """
             
             try:
-                content = await AIService.generate_content(prompt, temperature=0.3)
+                # 增加逾時重試
+                content = await AIService.generate_content(prompt, temperature=0.2)
                 batch_clusters = parse_ai_json(content)
-                if batch_clusters:
+                if isinstance(batch_clusters, list) and len(batch_clusters) > 0:
                     all_clusters.extend(batch_clusters)
+                    logger.info(f"Batch {i//100 + 1} clustered successfully")
+                else:
+                    logger.warning(f"Batch {i//100 + 1} returned empty or invalid JSON")
             except Exception as e:
                 logger.error(f"AI Clustering batch {i} failed: {e}")
         
@@ -136,37 +138,47 @@ class TopicalMapService:
     @staticmethod
     async def _save_clusters_and_keywords(db: Session, topical_map: TopicalMap, clusters_data: List[Dict[str, Any]], raw_keywords: List[Dict[str, Any]]):
         """將聚類結果持久化到資料庫"""
+        # 建立快速查詢索引
         kw_lookup = {k["keyword"]: k for k in raw_keywords}
         
         for l1_data in clusters_data:
+            l1_name = l1_data.get("name", "未分類")
             l1_node = TopicalCluster(
                 id=str(uuid.uuid4()),
                 topical_map_id=topical_map.id,
-                name=l1_data["name"],
+                name=l1_name,
                 description=l1_data.get("description"),
                 level=1
             )
             db.add(l1_node)
+            db.flush() # 確保 ID 已產生
             
-            for l2_data in l1_data.get("subclusters", []):
+            # 相容不同的欄位命名
+            sub_list = l1_data.get("subclusters") or l1_data.get("sub_clusters") or []
+            
+            for l2_data in sub_list:
+                l2_name = l2_data.get("name", "相關詞")
                 l2_node = TopicalCluster(
                     id=str(uuid.uuid4()),
                     topical_map_id=topical_map.id,
                     parent_id=l1_node.id,
-                    name=l2_data["name"],
+                    name=l2_name,
                     description=l2_data.get("description"),
                     level=2
                 )
                 db.add(l2_node)
+                db.flush()
                 
-                for kw_text in l2_data.get("keywords", []):
+                # 儲存關鍵字
+                kw_names = l2_data.get("keywords") or l2_data.get("keyword_list") or []
+                for kw_text in kw_names:
                     raw_data = kw_lookup.get(kw_text, {"keyword": kw_text})
                     kw_node = TopicalKeyword(
                         cluster_id=l2_node.id,
                         keyword=kw_text,
-                        search_volume=raw_data.get("search_volume", 0) or 0,
-                        cpc=raw_data.get("cpc", 0.0) or 0.0,
-                        competition=raw_data.get("competition", 0.0) or 0.0,
+                        search_volume=raw_data.get("search_volume") or 0,
+                        cpc=raw_data.get("cpc") or 0.0,
+                        competition=raw_data.get("competition") or 0.0,
                         intent=raw_data.get("intent"),
                         status="pending"
                     )
