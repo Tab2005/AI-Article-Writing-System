@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Input, DataTable, KPICard } from '../components/ui';
 import { topicalMapApi } from '../services/api';
-import type { TopicalMap, TopicalMapDetail, TopicalCluster, TopicalKeyword } from '../types';
+import type { TopicalMap, TopicalMapDetail } from '../types';
 import './TopicalMapPage.css';
 
 export const TopicalMapPage: React.FC = () => {
   const [maps, setMaps] = useState<TopicalMap[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMap, setSelectedMap] = useState<TopicalMapDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newMapData, setNewMapData] = useState({ name: '', topic: '', country: 'TW', language: 'zh-TW' });
   const [creating, setCreating] = useState(false);
@@ -46,13 +45,10 @@ export const TopicalMapPage: React.FC = () => {
 
   const handleViewDetail = async (id: string) => {
     try {
-      setDetailLoading(true);
       const data = await topicalMapApi.get(id);
       setSelectedMap(data);
     } catch (error) {
       console.error('Failed to fetch map detail:', error);
-    } finally {
-      setDetailLoading(false);
     }
   };
 
