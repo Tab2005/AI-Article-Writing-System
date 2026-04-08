@@ -45,6 +45,7 @@ try:
         cms_router,
         users_router,
         images_router,
+        topical_map_router,
     )
     from app.core.config import settings as app_settings
     from app.core.database import init_db
@@ -162,6 +163,7 @@ app.include_router(users_router, prefix="/api/admin/users", tags=["Admin - User 
 app.include_router(images_router, prefix="/api/images", tags=["Images"])
 from app.api.credit_config import router as credit_config_router
 app.include_router(credit_config_router, tags=["Admin - Credits & Levels"])
+app.include_router(topical_map_router, prefix="/api/topical-map", tags=["Topical Map"])
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """捕捉 HTTPException 並確保帶有 CORS 標頭"""

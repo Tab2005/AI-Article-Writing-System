@@ -1,11 +1,12 @@
-import { lazy, Suspense } from 'react';
+﻿import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { UIProvider } from './context/UIContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { MainLayout } from './components/layout';
 import './index.css';
 
-// 路由按需加載 (Lazy Loading)
+// 頝舐???? (Lazy Loading)
+const TopicalMapPage = lazy(() => import('./pages').then(m => ({ default: m.TopicalMapPage })));
 const HeroPage = lazy(() => import('./pages').then(m => ({ default: m.HeroPage })));
 const DashboardPage = lazy(() => import('./pages').then(m => ({ default: m.DashboardPage })));
 const LoginPage = lazy(() => import('./pages').then(m => ({ default: m.LoginPage })));
@@ -30,19 +31,19 @@ const UserManagementPage = lazy(() => import('./pages').then(m => ({ default: m.
 const SystemGuidePage = lazy(() => import('./pages').then(m => ({ default: m.SystemGuidePage })));
 const CreditManagementPage = lazy(() => import('./pages').then(m => ({ default: m.CreditManagementPage })));
 
-// Loading fallback 組件
+// Loading fallback 蝯辣
 const PageLoader = () => (
   <div className="loading-screen" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)' }}>
     <div className="preview-loading-spinner"></div>
   </div>
 );
 
-// 路由守衛組件
+// 頝舐摰?蝯辣
 const ProtectedRoute = ({ requireAdmin = false }: { requireAdmin?: boolean }) => {
   const { user, isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
-    return <div className="loading-screen">載入中...</div>;
+    return <div className="loading-screen">頛銝?..</div>;
   }
 
   if (!isAuthenticated) {
@@ -73,6 +74,7 @@ function App() {
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/projects" element={<ProjectsPage />} />
                   <Route path="/keyword" element={<KeywordPage />} />
+                  <Route path="/topical-map" element={<TopicalMapPage />} />
                   <Route path="/keyword/history" element={<KeywordHistoryPage />} />
                   <Route path="/projects/new" element={<ProjectNewPage />} />
                   <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
@@ -91,7 +93,7 @@ function App() {
                   <Route path="/cms" element={<CMSPage />} />
                   <Route path="/cms/guide" element={<SystemGuidePage />} />
 
-                  {/* 僅限超管訪問的設定頁面 */}
+                  {/* ??頞恣閮芸??身摰???*/}
                   <Route element={<ProtectedRoute requireAdmin />}>
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/admin/users" element={<UserManagementPage />} />
@@ -111,3 +113,4 @@ function App() {
 }
 
 export default App;
+

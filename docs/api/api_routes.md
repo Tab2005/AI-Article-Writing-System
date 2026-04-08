@@ -1,250 +1,254 @@
-# Seonize AI 後端 API 路由詳細說明 (2026-03-17)
+﻿# Seonize AI 敺垢 API 頝舐閰喟敦隤芣? (2026-03-17)
 
-本文件詳列 `seonize-backend` 所有已掛載的 API 路由，包含路徑前綴、HTTP 方法、認證需求、點數消耗與功能說明。
-
-> **基底 URL**：`https://your-backend.zeabur.app`  
-> **認證方式**：Bearer JWT，登入後取得 Token，加入 Header `Authorization: Bearer <token>`  
-> **文件自動產生**：後端啟動後可前往 `/api/docs` 查看 Swagger 互動文件
+?祆?隞嗉底??`seonize-backend` ??歇????API 頝舐嚗??怨楝敺?蝬氬TTP ?寞???霅?瘙??豢????隤芣???
+> **?箏? URL**嚗https://your-backend.zeabur.app`  
+> **隤??孵?**嚗earer JWT嚗?亙??? Token嚗???Header `Authorization: Bearer <token>`  
+> **?辣?芸??Ｙ?**嚗?蝡臬????臬?敺 `/api/docs` ?亦? Swagger 鈭??辣
 
 ---
 
-## 認證等級說明
+## 隤?蝑?隤芣?
 
-| 符號 | 說明 |
+| 蝚西? | 隤芣? |
 | :---: | :--- |
-| 🌐 | 公開路由，無需登入 |
-| 🔑 | 需要登入（任何角色） |
-| 👑 | 需要超級管理員 (super_admin) |
-| ⭐ | 需要特定會員等級才能使用 |
+| ?? | ?祇?頝舐嚗??餃 |
+| ?? | ?閬?伐?隞颱?閫嚗?|
+| ?? | ?閬?蝝恣? (super_admin) |
+| 潃?| ?閬摰??∠?蝝??賭蝙??|
 
 ---
 
-## 路由總表
+## 頝舐蝮質”
 
-| 模組 | 路由前綴 |
+| 璅∠? | 頝舐?韌 |
 | :--- | :--- |
-| 認證 / 使用者 | `/api/auth` |
-| 專案管理 | `/api/projects` |
-| 關鍵字研究 | `/api/research` |
-| 意圖分析 | `/api/analysis` |
-| 內容寫作 | `/api/writing` |
-| 指令模板 | `/api/prompts` |
-| 系統設定 | `/api/settings` |
-| 劫之眼術 (Kalpa) | `/api/kalpa` |
-| CMS 發布 | `/api/cms` |
-| 管理員 - 使用者 | `/api/admin/users` |
-| 圖片工具 | `/api/images` |
-| 健康檢查 | `/api/health` |
+| 隤? / 雿輻??| `/api/auth` |
+| 撠?蝞∠? | `/api/projects` |
+| ?摮?蝛?| `/api/research` |
+| ???? | `/api/analysis` |
+| ?批捆撖思? | `/api/writing` |
+| ?誘璅⊥ | `/api/prompts` |
+| 蝟餌絞閮剖? | `/api/settings` |
+| ?思??潸? (Kalpa) | `/api/kalpa` |
+| CMS ?澆? | `/api/cms` |
+| 蝞∠???- 雿輻??| `/api/admin/users` |
+| ??撌亙 | `/api/images` |
+| ?亙熒瑼Ｘ | `/api/health` |
 
 ---
 
-## 1. 認證 `/api/auth`
+## 1. 隤? `/api/auth`
 
-| 方法 | 路徑 | 認證 | 點數 | 說明 |
+| ?寞? | 頝臬? | 隤? | 暺 | 隤芣? |
 | :---: | :--- | :---: | :---: | :--- |
-| `POST` | `/api/auth/register` | 🌐 | — | 使用者自行註冊帳號 |
-| `POST` | `/api/auth/login` | 🌐 | — | 登入並取得 JWT Token |
-| `GET` | `/api/auth/validate` | 🔑 | — | 驗證目前 Token 有效性，同時回傳使用者完整資料 |
-| `GET` | `/api/auth/me` | 🔑 | — | 取得目前使用者簡要資訊（診斷用） |
-| `PATCH` | `/api/auth/profile` | 🔑 | — | 修改個人顯示名稱或更換密碼 |
-| `GET` | `/api/auth/credits/history` | 🔑 | — | 取得點數交易紀錄（支援分頁：`?page=1&per_page=20`） |
-| `GET` | `/api/auth/membership/levels` | 🌐 | — | 取得目前配置的會員等級名稱清單 |
-| `POST` | `/api/auth/membership/mock-upgrade` | 🔑 | — | **測試用**：模擬升級會員等級（含補點） |
+| `POST` | `/api/auth/register` | ?? | ??| 雿輻?銵酉?董??|
+| `POST` | `/api/auth/login` | ?? | ??| ?餃銝血?敺?JWT Token |
+| `GET` | `/api/auth/validate` | ?? | ??| 撽??桀? Token ???改????雿輻???渲???|
+| `GET` | `/api/auth/me` | ?? | ??| ???桀?雿輻?陛閬?閮?閮箸?剁? |
+| `PATCH` | `/api/auth/profile` | ?? | ??| 靽格?犖憿舐內?迂???蝣?|
+| `GET` | `/api/auth/credits/history` | ?? | ??| ??暺鈭斗?蝝???舀??嚗?page=1&per_page=20`嚗?|
+| `GET` | `/api/auth/membership/levels` | ?? | ??| ???桀??蔭???∠?蝝?蝔望???|
+| `POST` | `/api/auth/membership/mock-upgrade` | ?? | ??| **皜祈岫??*嚗芋?砍?蝝??∠?蝝??怨?暺? |
 
 ---
 
-## 2. 專案管理 `/api/projects`
+## 2. 撠?蝞∠? `/api/projects`
 
-| 方法 | 路徑 | 認證 | 點數 | 說明 |
+| ?寞? | 頝臬? | 隤? | 暺 | 隤芣? |
 | :---: | :--- | :---: | :---: | :--- |
-| `POST` | `/api/projects/` | 🔑 | — | 建立新的文章專案 |
-| `GET` | `/api/projects/` | 🔑 | — | 列出專案清單（管理員可看全部，一般使用者只看自己的） |
-| `GET` | `/api/projects/{project_id}` | 🔑 | — | 取得單一專案詳情 |
-| `PATCH` | `/api/projects/{project_id}` | 🔑 | — | 更新專案內容（關鍵字、大綱、文章等） |
-| `DELETE` | `/api/projects/{project_id}` | 🔑 | — | 刪除專案（管理員或擁有者） |
+| `POST` | `/api/projects/` | ?? | ??| 撱箇??啁???撠? |
+| `GET` | `/api/projects/` | ?? | ??| ?撠?皜嚗恣??舐??券嚗??砌蝙?刻?撌梁?嚗?|
+| `GET` | `/api/projects/{project_id}` | ?? | ??| ???桐?撠?閰單? |
+| `PATCH` | `/api/projects/{project_id}` | ?? | ??| ?湔撠??批捆嚗??萄??之蝬晞?蝡?嚗?|
+| `DELETE` | `/api/projects/{project_id}` | ?? | ??| ?芷撠?嚗恣????? |
 
 ---
 
-## 3. 關鍵字研究 `/api/research`
+## 3. ?摮?蝛?`/api/research`
 
-| 方法 | 路徑 | 認證 | 點數 | 說明 |
+| ?寞? | 頝臬? | 隤? | 暺 | 隤芣? |
 | :---: | :--- | :---: | :---: | :--- |
-| `POST` | `/api/research/serp` | 🔑 | **2 點** (快取免費) | 執行 SERP 搜尋研究；命中快取時記錄 0 點操作 |
-| `POST` | `/api/research/keyword-ideas` | 🔑 | — | 透過 DataForSEO 取得關鍵字建議與流量數據 |
-| `GET` | `/api/research/keywords` | 🔑 ⭐Lv.2 | **3 點** | 取得指定關鍵字詳細成交數據（搜尋量、CPC） |
-| `POST` | `/api/research/keywords` | 🔑 | — | 批量取得關鍵字數據（直接透過 DataForSEO，無快取） |
-| `GET` | `/api/research/history` | 🔑 | — | 取得目前使用者的關鍵字研究歷史清單 |
-| `DELETE` | `/api/research/history/{record_id}` | 🔑 | — | 刪除指定歷史紀錄 |
-| `POST` | `/api/research/crawl` | 🔑 | — | 爬取指定 URL 清單的網頁內容（最多 10 筆，並行限 3） |
-| `POST` | `/api/research/intent` | 🔑 | **2 點** | AI 意圖分析（透過關鍵字判斷搜尋意圖） |
-| `POST` | `/api/research/generate-titles` | 🔑 | — | 基於 SERP 資料使用 AI 生成標題建議 |
+| `POST` | `/api/research/serp` | ?? | **2 暺?* (敹怠??祥) | ?瑁? SERP ???弦嚗銝剖翰??閮? 0 暺?雿?|
+| `POST` | `/api/research/keyword-ideas` | ?? | ??| ?? DataForSEO ???摮遣霅啗?瘚??豢? |
+| `GET` | `/api/research/keywords` | ?? 潃v.2 | **3 暺?* | ?????摮底蝝唳?鈭斗?????PC嚗?|
+| `POST` | `/api/research/keywords` | ?? | ??| ?寥????摮???湔?? DataForSEO嚗敹怠?嚗?|
+| `GET` | `/api/research/history` | ?? | ??| ???桀?雿輻???摮?蝛嗆風?脫???|
+| `DELETE` | `/api/research/history/{record_id}` | ?? | ??| ?芷??甇瑕蝝??|
+| `POST` | `/api/research/crawl` | ?? | ??| ?砍??? URL 皜?雯?摰對??憭?10 蝑?銝西???3嚗?|
+| `POST` | `/api/research/intent` | ?? | **2 暺?* | AI ????嚗??摮?瑟?撠??? |
+| `POST` | `/api/research/generate-titles` | ?? | ??| ?箸 SERP 鞈?雿輻 AI ??璅?撱箄降 |
 
 ---
 
-## 4. 意圖分析與大綱 `/api/analysis`
+## 4. ?????之蝬?`/api/analysis`
 
-| 方法 | 路徑 | 認證 | 點數 | 說明 |
+| ?寞? | 頝臬? | 隤? | 暺 | 隤芣? |
 | :---: | :--- | :---: | :---: | :--- |
-| `POST` | `/api/analysis/intent` | 🔑 | **2 點** | 執行搜尋意圖分析、關鍵字抽取與標題建議（含 TF-IDF） |
-| `POST` | `/api/analysis/outline` | 🔑 | **5 點** | AI 生成文章大綱（含章節架構與邏輯鏈） |
-| `POST` | `/api/analysis/content-gap` | 🔑 | **3 點** | AI 執行內容缺口分析與 E-E-A-T 建議（命中快取免費） |
+| `POST` | `/api/analysis/intent` | ?? | **2 暺?* | ?瑁??????????萄??賢???憿遣霅堆???TF-IDF嚗?|
+| `POST` | `/api/analysis/outline` | ?? | **5 暺?* | AI ????憭抒雇嚗蝡??嗆???頛舫?嚗?|
+| `POST` | `/api/analysis/content-gap` | ?? | **3 暺?* | AI ?瑁??批捆蝻箏????E-E-A-T 撱箄降嚗銝剖翰??鞎鳴? |
 
 ---
 
-## 5. 內容寫作 `/api/writing`
+## 5. ?批捆撖思? `/api/writing`
 
-| 方法 | 路徑 | 認證 | 點數 | 說明 |
+| ?寞? | 頝臬? | 隤? | 暺 | 隤芣? |
 | :---: | :--- | :---: | :---: | :--- |
-| `POST` | `/api/writing/generate-section` | 🔑 | **5 點** | AI 生成單一章節文字（失敗自動退還點數） |
-| `POST` | `/api/writing/generate-full` | 🔑 ⭐Lv.2 | **20 點** | AI 一鍵生成完整文章（含所有章節，失敗退還） |
-| `POST` | `/api/writing/seo-check` | 🔑 | — | SEO 品質分析（關鍵字密度、標題結構等） |
-| `POST` | `/api/writing/projects/{project_id}/analyze-competition` | 🔑 | — | 競品分析：對比競品網頁結構與內容 |
-| `POST` | `/api/writing/analyze-quality` | 🔑 | **3 點** | AI 文章品質審核，產出修改建議報告 |
+| `POST` | `/api/writing/generate-section` | ?? | **5 暺?* | AI ???桐?蝡???嚗仃?????賂? |
+| `POST` | `/api/writing/generate-full` | ?? 潃v.2 | **20 暺?* | AI 銝?萇????湔?蝡??急???蝭嚗仃??? |
+| `POST` | `/api/writing/seo-check` | ?? | ??| SEO ?釭??嚗??萄?撖漲??憿?瑽?嚗?|
+| `POST` | `/api/writing/projects/{project_id}/analyze-competition` | ?? | ??| 蝡嗅???嚗?瘥奎?雯??瑽??批捆 |
+| `POST` | `/api/writing/analyze-quality` | ?? | **3 暺?* | AI ???釭撖拇嚗?箔耨?孵遣霅啣??|
 
 ---
 
-## 6. 指令模板 `/api/prompts`
+## 6. ?誘璅⊥ `/api/prompts`
 
-| 方法 | 路徑 | 認證 | 點數 | 說明 |
+| ?寞? | 頝臬? | 隤? | 暺 | 隤芣? |
 | :---: | :--- | :---: | :---: | :--- |
-| `GET` | `/api/prompts/templates` | 🔑 | — | 列出系統預設與個人自定義指令模板（可按分類篩選） |
-| `POST` | `/api/prompts/templates` | 🔑 | — | 建立個人指令模板 |
-| `PATCH` | `/api/prompts/templates/{template_id}` | 🔑 | — | 更新指令模板內容或啟用狀態（僅限擁有者） |
-| `DELETE` | `/api/prompts/templates/{template_id}` | 🔑 | — | 刪除個人指令模板（僅限擁有者） |
+| `GET` | `/api/prompts/templates` | ?? | ??| ?蝟餌絞?身?犖?芸?蝢拇?隞斗芋?選??舀???蝭拚嚗?|
+| `POST` | `/api/prompts/templates` | ?? | ??| 撱箇??犖?誘璅⊥ |
+| `PATCH` | `/api/prompts/templates/{template_id}` | ?? | ??| ?湔?誘璅⊥?批捆???函????????? |
+| `DELETE` | `/api/prompts/templates/{template_id}` | ?? | ??| ?芷?犖?誘璅⊥嚗????? |
 
-**模板分類 (category)**：
-- `content_writing` — 文章段落生成
-- `outline_generation` — 大綱生成
-- `kalpa_weaving` — 因果矩陣節點文章生成
-- `kalpa_brainstorm` — 天道解析（Brainstorm）
-- `multi_persona` — 多角色寫作模式
-
+**璅⊥?? (category)**嚗?- `content_writing` ????畾菔??
+- `outline_generation` ??憭抒雇??
+- `kalpa_weaving` ?????拚蝭暺?蝡???- `kalpa_brainstorm` ??憭拚?閫??嚗rainstorm嚗?- `multi_persona` ??憭??脣神雿芋撘?
 ---
 
-## 7. 系統設定 `/api/settings`
+## 7. 蝟餌絞閮剖? `/api/settings`
 
-> 所有路由均需 **超級管理員** 登入
+> ??楝?勗?? **頞?蝞∠???* ?餃
 
-| 方法 | 路徑 | 認證 | 說明 |
+| ?寞? | 頝臬? | 隤? | 隤芣? |
 | :---: | :--- | :---: | :--- |
-| `GET` | `/api/settings/` | 👑 | 取得目前所有系統設定（API Key 部分遮蔽）|
-| `POST` | `/api/settings/` | 👑 | 儲存系統設定（資料庫值優先於環境變數） |
-| `GET` | `/api/settings/providers` | 👑 | 取得支援的 AI 供應商清單與可用模型 |
-| `POST` | `/api/settings/test-ai` | 👑 | 測試 AI API 連線是否成功 |
-| `POST` | `/api/settings/test-dataforseo` | 👑 | 測試 DataForSEO API 帳密是否正確 |
-| `GET` | `/api/settings/database-info` | 👑 | 取得目前使用的資料庫類型資訊 |
-| `GET` | `/api/settings/cache-info` | 👑 | 取得快取系統類型與大小 |
+| `GET` | `/api/settings/` | ?? | ???桀???頂蝯梯身摰?API Key ?典??株嚗
+| `POST` | `/api/settings/` | ?? | ?脣?蝟餌絞閮剖?嚗??澈?澆??啣?霈嚗?|
+| `GET` | `/api/settings/providers` | ?? | ???舀??AI 靘????株??舐璅∪? |
+| `POST` | `/api/settings/test-ai` | ?? | 皜祈岫 AI API ????臬?? |
+| `POST` | `/api/settings/test-dataforseo` | ?? | 皜祈岫 DataForSEO API 撣喳??臬甇?Ⅱ |
+| `GET` | `/api/settings/database-info` | ?? | ???桀?雿輻???澈憿?鞈? |
+| `GET` | `/api/settings/cache-info` | ?? | ??敹怠?蝟餌絞憿??之撠?|
 
 ---
 
-## 8. 劫之眼術 (Kalpa) `/api/kalpa`
+## 8. ?思??潸? (Kalpa) `/api/kalpa`
 
-| 方法 | 路徑 | 認證 | 點數 | 說明 |
+| ?寞? | 頝臬? | 隤? | 暺 | 隤芣? |
 | :---: | :--- | :---: | :---: | :--- |
-| `POST` | `/api/kalpa/brainstorm` | 🔑 | **3 點** | 天道解析：根據主題 AI 生成因果矩陣要素建議 |
-| `POST` | `/api/kalpa/generate` | 🔑 | — | 本機計算生成因果矩陣節點（不消耗點數，不儲存） |
-| `POST` | `/api/kalpa/save` | 🔑 | — | 儲存或更新因果矩陣至資料庫 |
-| `GET` | `/api/kalpa/list` | 🔑 | — | 列出已儲存的矩陣（管理員可看全部） |
-| `GET` | `/api/kalpa/{matrix_id}` | 🔑 | — | 取得指定矩陣及其所有節點詳情 |
-| `DELETE` | `/api/kalpa/delete/{matrix_id}` | 🔑 | — | 刪除指定矩陣（管理員或擁有者） |
-| `POST` | `/api/kalpa/weave/{node_id}` | 🔑 | **8 點** | 神諭編織：為指定節點生成文章（失敗自動退還） |
-| `POST` | `/api/kalpa/batch-weave` | 🔑 ⭐Lv.3 | **8×N 點**（深度會員享折扣） | 批量啟動神諭編織，加入背景佇列處理 |
-| `GET` | `/api/kalpa/articles/all` | 🔑 | — | 列出所有已完成編織的文章（可按矩陣篩選） |
-| `GET` | `/api/kalpa/node/{node_id}` | 🔑 | — | 取得單一節點詳情 |
-| `POST` | `/api/kalpa/node/{node_id}/update` | 🔑 | — | 更新節點內容、圖片或錨文本（僅限擁有者） |
-| `POST` | `/api/kalpa/node/{node_id}/reset` | 🔑 | — | 手動重置節點狀態為 `pending` |
+| `POST` | `/api/kalpa/brainstorm` | ?? | **3 暺?* | 憭拚?閫??嚗?蜓憿?AI ?????拚閬?撱箄降 |
+| `POST` | `/api/kalpa/generate` | ?? | ??| ?祆?閮??????拚蝭暺?銝????賂?銝摮? |
+| `POST` | `/api/kalpa/save` | ?? | ??| ?脣???啣????鞈?摨?|
+| `GET` | `/api/kalpa/list` | ?? | ??| ?撌脣摮??拚嚗恣??舐??券嚗?|
+| `GET` | `/api/kalpa/{matrix_id}` | ?? | ??| ?????拚????暺底??|
+| `DELETE` | `/api/kalpa/delete/{matrix_id}` | ?? | ??| ?芷???拚嚗恣????? |
+| `POST` | `/api/kalpa/weave/{node_id}` | ?? | **8 暺?* | 蟡垠蝺函?嚗??蝭暺???蝡?憭望??芸???? |
+| `POST` | `/api/kalpa/batch-weave` | ?? 潃v.3 | **8?N 暺?*嚗楛摨行??∩澈?嚗?| ?寥???蟡垠蝺函?嚗??亥??臭?????|
+| `GET` | `/api/kalpa/articles/all` | ?? | ??| ???歇摰?蝺函???蝡??舀??拚蝭拚嚗?|
+| `GET` | `/api/kalpa/node/{node_id}` | ?? | ??| ???桐?蝭暺底??|
+| `POST` | `/api/kalpa/node/{node_id}/update` | ?? | ??| ?湔蝭暺摰嫘????冽??穿??????? |
+| `POST` | `/api/kalpa/node/{node_id}/reset` | ?? | ??| ???蔭蝭暺?? `pending` |
 
-**批量折扣規則（深度會員 Lv.3）**：
-
-| 節點數 | 折扣率 |
+**?寥??閬?嚗楛摨行???Lv.3嚗?*嚗?
+| 蝭暺 | ???|
 | :---: | :---: |
-| ≥ 20 | 7 折 |
-| 6–19 | 8 折 |
-| 2–5 | 8.5 折 |
+| ??20 | 7 ??|
+| 6??9 | 8 ??|
+| 2?? | 8.5 ??|
 
 ---
 
-## 9. CMS 發布 `/api/cms`
+## 9. CMS ?澆? `/api/cms`
 
-| 方法 | 路徑 | 認證 | 點數 | 說明 |
+| ?寞? | 頝臬? | 隤? | 暺 | 隤芣? |
 | :---: | :--- | :---: | :---: | :--- |
-| `GET` | `/api/cms/configs` | 🔑 ⭐Lv.2 | — | 取得 CMS 設定清單（管理員可看全部） |
-| `POST` | `/api/cms/configs` | 🔑 | — | 建立 CMS 設定（WordPress、Shopify 等） |
-| `PUT` | `/api/cms/configs/{config_id}` | 🔑 | — | 更新 CMS 設定 |
-| `DELETE` | `/api/cms/configs/{config_id}` | 🔑 | — | 刪除 CMS 設定 |
-| `POST` | `/api/cms/test-connection/{config_id}` | 🔑 | — | 測試 CMS 連線是否成功 |
-| `POST` | `/api/cms/publish` | 🔑 | — | 發布文章至指定 CMS（支援立即或排程發布） |
+| `GET` | `/api/cms/configs` | ?? 潃v.2 | ??| ?? CMS 閮剖?皜嚗恣??舐??券嚗?|
+| `POST` | `/api/cms/configs` | ?? | ??| 撱箇? CMS 閮剖?嚗ordPress?hopify 蝑? |
+| `PUT` | `/api/cms/configs/{config_id}` | ?? | ??| ?湔 CMS 閮剖? |
+| `DELETE` | `/api/cms/configs/{config_id}` | ?? | ??| ?芷 CMS 閮剖? |
+| `POST` | `/api/cms/test-connection/{config_id}` | ?? | ??| 皜祈岫 CMS ????臬?? |
+| `POST` | `/api/cms/publish` | ?? | ??| ?澆????單?摰?CMS嚗?渡??單????澆?嚗?|
 
 ---
 
-## 10. 管理員 - 使用者管理 `/api/admin/users`
+## 10. 蝞∠???- 雿輻?恣??`/api/admin/users`
 
-> 所有路由均需 **超級管理員** 登入
+> ??楝?勗?? **頞?蝞∠???* ?餃
 
-| 方法 | 路徑 | 認證 | 說明 |
+| ?寞? | 頝臬? | 隤? | 隤芣? |
 | :---: | :--- | :---: | :--- |
-| `GET` | `/api/admin/users` | 👑 | 取得使用者清單（支援分頁、角色篩選、Email 搜尋） |
-| `GET` | `/api/admin/users/{user_id}` | 👑 | 取得單一使用者詳情 |
-| `PATCH` | `/api/admin/users/{user_id}` | 👑 | 更新使用者資料（角色、點數、會員等級、密碼） |
-| `DELETE` | `/api/admin/users/{user_id}` | 👑 | 刪除使用者帳號（不能刪除自己） |
-| `POST` | `/api/admin/users/{user_id}/credits` | 👑 | 快速調整指定使用者點數（含原因說明） |
-| `GET` | `/api/admin/users/stats/summary` | 👑 | 取得使用者統計數據（總人數、各角色分佈） |
-| `GET` | `/api/admin/credits/config` | 👑 | 取得目前點數費率設定 |
-| `PUT` | `/api/admin/credits/config` | 👑 | 更新點數費率設定 |
+| `GET` | `/api/admin/users` | ?? | ??雿輻???殷??舀?????脩祟?詻mail ??嚗?|
+| `GET` | `/api/admin/users/{user_id}` | ?? | ???桐?雿輻?底??|
+| `PATCH` | `/api/admin/users/{user_id}` | ?? | ?湔雿輻????閫???詻??∠?蝝?蝣潘? |
+| `DELETE` | `/api/admin/users/{user_id}` | ?? | ?芷雿輻?董??銝?芷?芸楛嚗?|
+| `POST` | `/api/admin/users/{user_id}/credits` | ?? | 敹恍矽?湔?摰蝙?刻??賂??怠??牧?? |
+| `GET` | `/api/admin/users/stats/summary` | ?? | ??雿輻?絞閮??蝮賭犖?詻?閫??嚗?|
+| `GET` | `/api/admin/credits/config` | ?? | ???桀?暺鞎餌?閮剖? |
+| `PUT` | `/api/admin/credits/config` | ?? | ?湔暺鞎餌?閮剖? |
 
 ---
 
-## 11. 圖片工具 `/api/images`
+## 11. ??撌亙 `/api/images`
 
-| 方法 | 路徑 | 認證 | 點數 | 說明 |
+| ?寞? | 頝臬? | 隤? | 暺 | 隤芣? |
 | :---: | :--- | :---: | :---: | :--- |
-| `POST` | `/api/images/upload` | 🔑 | — | 上傳本機圖片（自動轉換為 WebP 格式） |
-| `GET` | `/api/images/search` | 🔑 | **1 點** | 搜尋 Pexels / Pixabay 免費圖庫（`?q=...&limit=5`） |
-| `GET` | `/api/images/metadata-suggestion` | 🔑 | — | AI 建議圖片 Alt Text 與圖說（`?content=...&topic=...`） |
+| `POST` | `/api/images/upload` | ?? | ??| 銝?祆???嚗??? WebP ?澆?嚗?|
+| `GET` | `/api/images/search` | ?? | **1 暺?* | ?? Pexels / Pixabay ?祥?澈嚗?q=...&limit=5`嚗?|
+| `GET` | `/api/images/metadata-suggestion` | ?? | ??| AI 撱箄降?? Alt Text ??隤迎?`?content=...&topic=...`嚗?|
 
 ---
 
-## 12. 健康檢查
+## 12. ?亙熒瑼Ｘ
 
-| 方法 | 路徑 | 認證 | 說明 |
+| ?寞? | 頝臬? | 隤? | 隤芣? |
 | :---: | :--- | :---: | :--- |
-| `GET` | `/api/health` | 🌐 | 確認後端服務存活狀態 |
+| `GET` | `/api/health` | ?? | 蝣箄?敺垢??摮暑???|
 
 ---
 
-## 點數費率速覽
+## 暺鞎餌??汗
 
-| 功能 | 點數成本 | 費率鍵值 |
+| ? | 暺? | 鞎餌??萄?|
 | :--- | :---: | :--- |
-| SERP 搜尋（非快取） | **2** | `serp_query` |
-| 關鍵字詳細數據 (DataForSEO) | **3** | `dataforseo_keywords` |
-| AI 意圖分析 | **2** | `ai_intent_analysis` |
-| 大綱生成 | **5** | `create_outline` |
-| 競品分析 | **3** | `competitor_analysis` |
-| 內容缺口分析 | **3** | `content_gap_analysis` |
-| 段落生成 | **5** | `writing_section` |
-| 完整文章生成 | **20** | `writing_full` |
-| 寫作優化 | **5** | `writing_optimize` |
-| 天道解析 (Brainstorm) | **3** | `kalpa_brainstorm` |
-| 節點成稿 (Weave Node) | **8** | `kalpa_weave_node` |
-| 批量節點成稿 | **8×N（±折扣）** | `kalpa_batch_weave` |
-| CMS AI 排程發布 | **2** | `cms_ai_schedule` |
-| 品質審核 | **3** | `quality_audit` |
-| 圖庫搜尋 | **1** | `image_stock_search` |
+| SERP ??嚗?敹怠?嚗?| **2** | `serp_query` |
+| ?摮底蝝唳??(DataForSEO) | **3** | `dataforseo_keywords` |
+| AI ???? | **2** | `ai_intent_analysis` |
+| 憭抒雇?? | **5** | `create_outline` |
+| 蝡嗅??? | **3** | `competitor_analysis` |
+| ?批捆蝻箏?? | **3** | `content_gap_analysis` |
+| 畾菔?? | **5** | `writing_section` |
+| 摰???? | **20** | `writing_full` |
+| 撖思??芸? | **5** | `writing_optimize` |
+| 憭拚?閫?? (Brainstorm) | **3** | `kalpa_brainstorm` |
+| 蝭暺?蝔?(Weave Node) | **8** | `kalpa_weave_node` |
+| ?寥?蝭暺?蝔?| **8?N嚗望????** | `kalpa_batch_weave` |
+| CMS AI ???澆? | **2** | `cms_ai_schedule` |
+| ?釭撖拇 | **3** | `quality_audit` |
+| ?澈?? | **1** | `image_stock_search` |
 
 > [!NOTE]
-> 費率可由超級管理員在後台「系統設定 → 點數費率配置」動態修改，修改後即時生效（快取 60 秒刷新一次）。
-> 所有扣點失敗時系統均會自動退還點數，且點數變動與交易紀錄採原子化提交，確保一致性。
+> 鞎餌??舐頞?蝞∠??∪敺?頂蝯梯身摰???暺鞎餌??蔭???耨?對?靽格敺????敹怠? 60 蝘?唬?甈∴???> ??暺仃??蝟餌絞???芸?????賂?銝??貉???鈭斗?蝝?????鈭歹?蝣箔?銝?湔扼?
+---
+
+## ?訾?隤芣?
+
+| 憭?? | ?券?|
+| :--- | :--- |
+| DataForSEO | SERP ?????萄?撱箄降?????|
+| Zeabur AI Hub / OpenRouter | AI ????嚗之蝬晞?蝡??? |
+| Pexels | ?平?澈?? |
+| Pixabay | ?祥?澈?? |
+| PostgreSQL / SQLite | 銝餉?鞈?摨恬???啣?撱箄降 PG嚗?|
+| Redis嚗?賂? | 敹怠????征?蝙?刻??園?敹怠?嚗?|
 
 ---
 
-## 相依說明
+## 13. Topical Map (???) /api/topical-map () 
 
-| 外部服務 | 用途 |
-| :--- | :--- |
-| DataForSEO | SERP 搜尋、關鍵字建議與流量數據 |
-| Zeabur AI Hub / OpenRouter | AI 文字生成（大綱、文章、分析） |
-| Pexels | 商業圖庫搜尋 |
-| Pixabay | 免費圖庫搜尋 |
-| PostgreSQL / SQLite | 主要資料庫（生產環境建議 PG） |
-| Redis（可選） | 快取加速（留空則使用記憶體快取） |
+| ?撖? | ? | 歹? | 綜等?? | ?? |
+| :---: | :--- | :---: | :---: | :--- |
+| `POST` | /api/topical-map/generate | ?? | **50 ?** | 梁???? (AI ) |
+| `GET` | /api/topical-map/list | ?? | ?? | ?謅??? |
+| `GET` | /api/topical-map/{map_id} | ?? | ?? | ?謘??啣? (???) |
+| `DELETE` | /api/topical-map/{map_id} | ?? | ?? | ?畸??? |
+

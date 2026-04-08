@@ -52,6 +52,7 @@ class User(Base):
     cms_configs = relationship("CMSConfig", back_populates="user", cascade="all, delete-orphan")
     kalpa_matrices = relationship("KalpaMatrix", back_populates="user", cascade="all, delete-orphan")
     credit_logs = relationship("CreditLog", back_populates="user", cascade="all, delete-orphan")
+    topical_maps = relationship("TopicalMap", back_populates="user", cascade="all, delete-orphan")
 
     def to_dict(self) -> dict:
         return {
@@ -506,5 +507,109 @@ class CreditLog(Base):
             "delta": self.delta,
             "balance": self.balance,
             "operation": self.operation,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
+        }
+
+
+class TopicalMap(Base):
+    """主題地圖元數據"""
+    __tablename__ = "topical_maps"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    topic = Column(String(255), nullable=False)
+    country = Column(String(10), default="TW")
+    language = Column(String(10), default="zh-TW")
+    
+    total_keywords = Column(Integer, default=0)
+    total_search_volume = Column(Integer, default=0)
+    status = Column(String(20), default="pending") # pending, processing, completed, failed
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    user = relationship("User", back_populates="topical_maps")
+    clusters = relationship("TopicalCluster", back_populates="topical_map", cascade="all, delete-orphan")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "name": self.name,
+            "topic": self.topic,
+            "country": self.country,
+            "language": self.language,
+            "total_keywords": self.total_keywords,
+            "total_search_volume": self.total_search_volume,
+            "status": self.status,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.replace(tzinfo=timezone.utc).isoformat() if self.updated_at else None,
+        }
+
+class TopicalCluster(Base):
+    """主題分組 (L1/L2)"""
+    __tablename__ = "topical_clusters"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    topical_map_id = Column(String(36), ForeignKey("topical_maps.id", ondelete="CASCADE"), nullable=False, index=True)
+    parent_id = Column(String(36), ForeignKey("topical_clusters.id", ondelete="CASCADE"), nullable=True)
+    
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    level = Column(Integer, default=1) # 1 for L1, 2 for L2
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    topical_map = relationship("TopicalMap", back_populates="clusters")
+    parent = relationship("TopicalCluster", remote_side=[id], back_populates="subclusters")
+    subclusters = relationship("TopicalCluster", back_populates="parent", cascade="all, delete-orphan")
+    keywords = relationship("TopicalKeyword", back_populates="cluster", cascade="all, delete-orphan")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "topical_map_id": self.topical_map_id,
+            "parent_id": self.parent_id,
+            "name": self.name,
+            "description": self.description,
+            "level": self.level,
+            "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
+        }
+
+class TopicalKeyword(Base):
+    """主題地圖中的具體關鍵字 (L3)"""
+    __tablename__ = "topical_keywords"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    cluster_id = Column(String(36), ForeignKey("topical_clusters.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    keyword = Column(String(255), nullable=False)
+    search_volume = Column(Integer, default=0)
+    cpc = Column(Float, default=0.0)
+    competition = Column(Float, default=0.0)
+    intent = Column(String(50), nullable=True)
+    
+    suggested_title = Column(Text, nullable=True)
+    status = Column(String(20), default="pending") # pending, written, etc.
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    cluster = relationship("TopicalCluster", back_populates="keywords")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "cluster_id": self.cluster_id,
+            "keyword": self.keyword,
+            "search_volume": self.search_volume,
+            "cpc": self.cpc,
+            "competition": self.competition,
+            "intent": self.intent,
+            "suggested_title": self.suggested_title,
+            "status": self.status,
             "created_at": self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
         }

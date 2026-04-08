@@ -1,4 +1,4 @@
-import { uiBus } from '../utils/ui-bus';
+﻿import { uiBus } from '../utils/ui-bus';
 import type {
   ProjectCreate,
   ProjectBatchCreate,
@@ -22,38 +22,41 @@ import type {
   ImageSearchResult,
   CMSPublishResponse,
   User,
+  TopicalMap,
+  TopicalMapDetail,
+  CreateTopicalMapRequest,
 } from '../types';
 
 // Re-export core types for backward compatibility across the codebase
-export type { KalpaNode, KalpaMatrix } from '../types';
+export type { KalpaNode, KalpaMatrix, TopicalMap, TopicalMapDetail } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// API 請求配置
+// API 隢??蔭
 const API_CONFIG = {
-  timeout: 30000, // 30 秒超時
-  maxRetries: 3, // 最多重試 3 次
-  retryDelay: 1000, // 重試延遲 1 秒
+  timeout: 30000, // 30 蝘???
+  maxRetries: 3, // ?憭?閰?3 甈?
+  retryDelay: 1000, // ?岫撱園 1 蝘?
 };
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   headers?: Record<string, string>;
-  timeout?: number; // 自定義超時
-  retries?: number; // 自定義重試次數
-  showLoading?: boolean; // 是否顯示全域 Loading
+  timeout?: number; // ?芸?蝢抵???
+  retries?: number; // ?芸?蝢拚?閰行活??
+  showLoading?: boolean; // ?臬憿舐內?典? Loading
 }
 
 /**
- * 延遲函數
+ * 撱園?賣
  */
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
- * 帶有超時控制的 fetch
+ * 撣嗆?頞??批??fetch
  */
 async function fetchWithTimeout(url: string, config: RequestInit, timeout: number): Promise<Response> {
   const controller = new AbortController();
@@ -69,7 +72,7 @@ async function fetchWithTimeout(url: string, config: RequestInit, timeout: numbe
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
-      throw new Error('請求超時，請重試');
+      throw new Error('隢?頞?嚗??岫');
     }
     throw error;
   }
@@ -85,7 +88,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     showLoading = true,
   } = options;
 
-  // 從 LocalStorage 獲取 Token
+  // 敺?LocalStorage ?脣? Token
   const token = localStorage.getItem('seonize_token');
 
   const config: RequestInit = {
@@ -101,27 +104,27 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     config.body = JSON.stringify(body);
   }
 
-  // 自動開啟全域 Loading
+  // ?芸????典? Loading
   if (showLoading) uiBus.showLoading();
 
   let lastError: Error | null = null;
 
   try {
-    // 重試邏輯
+    // ?岫?摩
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, config, timeout);
 
         if (!response.ok) {
           if (response.status === 401) {
-            // 如果是驗證請求，不執行自動跳轉，讓 AuthContext 處理
+            // 憒??舫?霅?瘙?銝銵?歲頧?霈?AuthContext ??
             if (endpoint === '/api/auth/validate') {
               throw new Error('Unauthorized');
             }
 
-            // 其他請求則維持原本的 Token 清理與跳轉邏輯
+            // ?嗡?隢??雁???祉? Token 皜??歲頧?頛?
             localStorage.removeItem('seonize_token');
-            uiBus.notify('登入逾期，請重新登入', 'warning');
+            uiBus.notify('?餃?暹?嚗???餃', 'warning');
             if (window.location.pathname !== '/login') {
               window.location.href = '/login';
             }
@@ -129,30 +132,30 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
           }
 
           const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-          let errorMsg = '發生錯誤';
+          let errorMsg = '?潛??航炊';
           
           if (typeof error.detail === 'string') {
             errorMsg = error.detail;
           } else if (error.detail && typeof error.detail === 'object') {
-            // FastAPI 422 錯誤通常是個 list
+            // FastAPI 422 ?航炊?虜?臬?list
             errorMsg = JSON.stringify(error.detail);
           } else {
-            errorMsg = `HTTP 錯誤！狀態碼: ${response.status}`;
+            errorMsg = `HTTP ?航炊嚗??Ⅳ: ${response.status}`;
           }
 
-          // 5xx 錯誤可以重試，4xx 錯誤（除了 401）不重試
+          // 5xx ?航炊?臭誑?岫嚗?xx ?航炊嚗鈭?401嚗??岫
           if (response.status >= 500 && attempt < retries) {
             lastError = new Error(errorMsg);
-            await delay(API_CONFIG.retryDelay * (attempt + 1)); // 指數退避
+            await delay(API_CONFIG.retryDelay * (attempt + 1)); // ????
             continue;
           }
 
-          // 全域錯誤通知
+          // ?典??航炊?
           uiBus.notify(errorMsg, 'error');
           throw new Error(errorMsg);
         }
 
-        // 成功，返回結果
+        // ??嚗?????
         if (response.status === 204) {
           return null as any;
         }
@@ -160,9 +163,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
       } catch (err: any) {
         lastError = err;
 
-        // 網路錯誤或超時可以重試
+        // 蝬脰楝?航炊???隞仿?閰?
         const isRetriable =
-          err.message?.includes('請求超時') ||
+          err.message?.includes('隢?頞?') ||
           err.message?.includes('Failed to fetch') ||
           err.message?.includes('NetworkError');
 
@@ -171,21 +174,21 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
           continue;
         }
 
-        // 最後一次嘗試失敗，且不是 Unauthorized 錯誤（401），則顯示連線錯誤
+        // ?敺?甈∪?閰血仃??銝???Unauthorized ?航炊嚗?01嚗??＊蝷粹???航炊
         if (err.message !== 'Unauthorized' && (isRetriable || !err.message)) {
           const msg = attempt > 0
-            ? `無法連接至伺服器（已重試 ${attempt} 次），請檢查網路連線`
-            : '無法連接至伺服器，請檢查網路連線';
+            ? `?⊥????喃撩?嚗歇?岫 ${attempt} 甈∴?嚗?瑼Ｘ蝬脰楝???`
+            : '?⊥????喃撩?嚗?瑼Ｘ蝬脰楝???';
           uiBus.notify(msg, 'error');
         }
         throw err;
       }
     }
 
-    // 如果所有重試都失敗
-    throw lastError || new Error('請求失敗');
+    // 憒????閰阡憭望?
+    throw lastError || new Error('隢?憭望?');
   } finally {
-    // 自動關閉全域 Loading
+    // ?芸????典? Loading
     if (showLoading) uiBus.hideLoading();
   }
 }
@@ -194,7 +197,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 export const authApi = {
   login: (email: string, password: string) => {
     const formData = new URLSearchParams();
-    formData.append('username', email); // FastAPI OAuth2PasswordRequestForm 預設使用 'username' 欄位
+    formData.append('username', email); // FastAPI OAuth2PasswordRequestForm ?身雿輻 'username' 甈?
     formData.append('password', password);
 
     return fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -205,8 +208,8 @@ export const authApi = {
       body: formData.toString(),
     }).then(async (res) => {
       if (!res.ok) {
-        const error = await res.json().catch(() => ({ detail: '登入失敗' }));
-        throw new Error(error.detail || '登入失敗');
+        const error = await res.json().catch(() => ({ detail: '?餃憭望?' }));
+        throw new Error(error.detail || '?餃憭望?');
       }
       return res.json();
     });
@@ -302,15 +305,15 @@ export const analysisApi = {
     }>('/api/analysis/outline', { 
       method: 'POST', 
       body: data,
-      timeout: 120000, // 增加到 120 秒，與後端 AI 超時同步
-      retries: 0      // 關閉自動重試，避免發出多次 AI 請求
+      timeout: 120000, // 憓???120 蝘???蝡?AI 頞??郊
+      retries: 0      // ???芸??岫嚗??箏?甈?AI 隢?
     }),
 
   getContentGap: (projectId?: string, keyword?: string, forceRefresh?: boolean) =>
     request<any>('/api/analysis/content-gap', {
       method: 'POST',
       body: { project_id: projectId, keyword, force_refresh: forceRefresh },
-      timeout: 60000 // 內容分析點較耗時，延長至 60 秒
+      timeout: 60000 // ?批捆??暺???嚗辣?瑁 60 蝘?
     }),
 };
 
@@ -350,7 +353,7 @@ export const writingApi = {
     }>('/api/writing/generate-full', {
       method: 'POST',
       body: data,
-      timeout: 300000, // 增加到 300 秒 (5 分鐘)
+      timeout: 300000, // 憓???300 蝘?(5 ??)
       retries: 0,
       showLoading: false
     }),
@@ -476,7 +479,7 @@ export const promptsApi = {
 export interface AIProvider {
   id: 'zeabur' | 'openrouter' | string;
   name: string;
-  models: (string | { id: string; name: string })[]; // 支援原始字串陣列或詳細模型物件陣列
+  models: (string | { id: string; name: string })[]; // ?舀??摮葡????底蝝唳芋?隞園??
   description: string;
 }
 
@@ -609,4 +612,14 @@ export const imagesApi = {
 
   metadataSuggestion: (content: string, topic: string) =>
     request<{ success: boolean; data: { alt: string; caption: string } }>(`/api/images/metadata-suggestion?content=${encodeURIComponent(content)}&topic=${encodeURIComponent(topic)}`),
+};
+
+
+// Topical Map API
+export const topicalMapApi = {
+  generate: (data: CreateTopicalMapRequest) =>
+    request<TopicalMapDetail>('/api/topical-map/generate', { method: 'POST', body: data }),
+  list: () => request<TopicalMap[]>('/api/topical-map/list'),
+  get: (id: string) => request<TopicalMapDetail>(/api/topical-map/),
+  delete: (id: string) => request<void>(/api/topical-map/, { method: 'DELETE' }),
 };

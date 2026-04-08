@@ -21,3 +21,5 @@ export { NotFoundPage } from './NotFoundPage';
 export { default as CMSPage } from './CMSPage';
 export { SystemGuidePage } from './SystemGuidePage';
 export { default as CreditManagementPage } from './CreditManagementPage';
+
+export { TopicalMapPage } from './TopicalMapPage';

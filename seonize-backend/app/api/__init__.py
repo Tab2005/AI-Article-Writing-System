@@ -10,9 +10,11 @@ from .kalpa import router as kalpa_router
 from .cms import router as cms_router
 from .users import router as users_router
 from .images import router as images_router
+from .topical_map import router as topical_map_router
 
 
 __all__ = [
+    "topical_map_router",
     "projects_router",
     "research_router",
     "analysis_router",

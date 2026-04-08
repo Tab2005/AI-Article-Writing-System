@@ -1,35 +1,36 @@
-# Seonize 技術文檔索引 (README)
+﻿# Seonize ?銵?瑼揣撘?(README)
 
-本目錄包含 Seonize 系統的完整技術文件與開發指南。
+?祉????Seonize 蝟餌絞???湔?銵?隞嗉??????
 
-## 🏛️ 核心架構 (Architecture)
-*   [**系統結構設計文件 (SSD) v3.0**](./architecture/Seonize%20系統結構設計文件%20(SSD)%20v3.0.md) - **最新現狀描述**
-*   [系統模組功能架構](./architecture/system_modules.md) - 各模組詳細職責說明
-*   [UI 設計系統規範](./architecture/Seonize_UI_Design_System.md) - 前端視覺與樣式定義
+## ??儭??詨??嗆? (Architecture)
+*   [**蝟餌絞蝯?閮剛??辣 (SSD) v3.0**](./architecture/Seonize%20蝟餌絞蝯?閮剛??辣%20(SSD)%20v3.0.md) - **??啁??膩**
+*   [蝟餌絞璅∠???嗆?](./architecture/system_modules.md) - ?芋蝯底蝝啗鞎祈牧??
+*   [UI 閮剛?蝟餌絞閬?](./architecture/Seonize_UI_Design_System.md) - ?垢閬死?見撘?蝢?
 
-## 🔌 API 與協議 (API Reference)
-*   [**最新 API 路由手冊**](./api/api_routes.md) - 全域後端接口詳解
-*   [DataForSEO 整合參考](./api/DataForSEO_API_Reference.md) - 關鍵字研究數據源
-*   [CMS 發布整合計劃](./api/cms_integration.md) - 站點連線協議
+## ?? API ??霅?(API Reference)
+*   [**???API 頝舐??**](./api/api_routes.md) - ?典?敺垢?亙閰唾圾
+*   [DataForSEO ?游??(./api/DataForSEO_API_Reference.md) - ?摮?蝛嗆??
+*   [CMS ?澆??游?閮?](./api/cms_integration.md) - 蝡?????降
 
-## 🚀 指南與手冊 (Guides)
-*   [**Zeabur 部署指南**](./guides/deployment_zeabur.md) - 從環境變數到資料庫遷移
-*   [劫之眼術 (Kalpa Eye) 使用手冊](./guides/Kalpa_Eye_Manual.md) - 如何進行因果矩陣推演
-*   [圖庫整合指南](./guides/image_integration_guide.md) - Pexels 與 Pixabay 配置
-*   [關鍵字研究工作流](./guides/Seonize_Keyword_Research_Process.md) - SEO 研究實作步驟
+## ?? ??????(Guides)
+*   [**Zeabur ?函蔡??**](./guides/deployment_zeabur.md) - 敺憓??詨鞈?摨恍蝘?
+*   [?思??潸? (Kalpa Eye) 雿輻??](./guides/Kalpa_Eye_Manual.md) - 憒??脰????拚?冽?
+*   [?澈?游???](./guides/image_integration_guide.md) - Pexels ??Pixabay ?蔭
+*   [?摮?蝛嗅極雿?](./guides/Seonize_Keyword_Research_Process.md) - SEO ?弦撖虫?甇仿?
 
-## 🛠️ 專項功能說明 (Features)
-*   [**優化模式 (Optimization Modes) 指南**](./features/optimization_modes.md) - **最新功能說明**
-*   [會籍與點數系統實作](./features/phase3_credits_membership_plan.md)
-*   [SERP 智能分析計劃](./features/serp_intelligence_plan.md)
-*   [多角色權限 (RBAC) 規劃](./features/multi_user_rbac_plan.md)
-*   [**一詞多標應用工作流**](./features/multi_article_workflow.md) - **實作計劃中**
+## ??儭?撠??隤芣? (Features)
+*   [**?芸?璅∪? (Optimization Modes) ??**](./features/optimization_modes.md) - **??啣??質牧??*
+*   [?????貊頂蝯勗祕雿(./features/phase3_credits_membership_plan.md)
+*   [SERP ?箄??閮?](./features/serp_intelligence_plan.md)
+*   [憭??脫???(RBAC) 閬?](./features/multi_user_rbac_plan.md)
+*   [**銝閰?璅??典極雿?**](./features/multi_article_workflow.md) - **撖虫?閮?銝?*
 
-## 📊 數據統計與分析 (Analysis)
-*   [**點數消耗配置審計報告**](./analysis/credit_consumption_audit.md) - **最新審計資料**
+## ?? ?豢?蝯梯?????(Analysis)
+*   [**暺瘨?蝵桀祟閮??*](./analysis/credit_consumption_audit.md) - **??啣祟閮???*
 
-## 📁 封存與歷史 (Archive)
-*   [歷史封存目錄](./archive/README.md) - 包含過期的優化計劃、審查報告與恢復文件。
+## ?? 撠??風??(Archive)
+*   [甇瑕撠??桅?](./archive/README.md) - ???????祟?亙???Ｗ儔?辣??
 
 ---
-*更新日期：2026-03-25*
+*?湔?交?嚗?026-03-25*
+
