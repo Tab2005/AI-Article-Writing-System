@@ -120,31 +120,37 @@ export const TopicalMapPage: React.FC = () => {
             </div>
 
             <div className="tree-view">
-              {selectedMap.clusters.filter(c => c.level === 1).map(l1 => (
-                <div key={l1.id} className="cluster-l1">
-                  <div className="cluster-header">
-                    <span className="level-badge">L1</span>
-                    <h3>{l1.name}</h3>
-                  </div>
-                  <div className="subclusters">
-                    {l1.subclusters.map(l2 => (
-                      <div key={l2.id} className="cluster-l2">
-                        <div className="cluster-header">
-                          <span className="level-badge">L2</span>
-                          <h4>{l2.name}</h4>
+              {selectedMap.clusters && selectedMap.clusters.length > 0 ? (
+                selectedMap.clusters.map(l1 => (
+                  <div key={l1.id} className="cluster-l1">
+                    <div className="cluster-header">
+                      <span className="level-badge">L1</span>
+                      <h3>{l1.name}</h3>
+                    </div>
+                    <div className="subclusters">
+                      {l1.subclusters && l1.subclusters.map(l2 => (
+                        <div key={l2.id} className="cluster-l2">
+                          <div className="cluster-header">
+                            <span className="level-badge">L2</span>
+                            <h4>{l2.name}</h4>
+                          </div>
+                          <div className="keywords-tag-cloud">
+                            {l2.keywords && l2.keywords.map(kw => (
+                              <span key={kw.id} className="keyword-tag" title={`搜尋量: ${kw.search_volume}`}>
+                                {kw.keyword}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                        <div className="keywords-tag-cloud">
-                          {l2.keywords.map(kw => (
-                            <span key={kw.id} className="keyword-tag" title={`搜尋量: ${kw.search_volume}`}>
-                              {kw.keyword}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="empty-tree">
+                  <p>尚未生成主題分類資料，請稍候再試或檢查後端日誌。</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}

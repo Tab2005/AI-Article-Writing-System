@@ -83,7 +83,7 @@ async def get_topical_map(
     current_user: Any = Depends(get_current_user)
 ):
     """獲取特定地圖的詳細結構"""
-    # 使用 selectinload 確保巢狀結構 (L1 -> L2 -> Keywords) 被完整載入
+    # 預先載入所有關聯資料
     topical_map = db.query(TopicalMap).options(
         selectinload(TopicalMap.clusters).selectinload(TopicalCluster.subclusters),
         selectinload(TopicalMap.clusters).selectinload(TopicalCluster.keywords)
@@ -95,7 +95,26 @@ async def get_topical_map(
     if not topical_map:
         raise HTTPException(status_code=404, detail="主題地圖不存在")
     
-    return topical_map
+    # 為了讓前端渲染更方便，我們只回傳 level 1 的 clusters (樹狀根部)
+    # SQLAlchemy 的 selectinload 會自動填充子物件
+    root_clusters = [c for c in topical_map.clusters if c.level == 1]
+    
+    # 建立一個臨時對象來匹配 Response Schema，只包含根群聚
+    # 注意：TopicalMapDetailResponse 繼承自 TopicalMapResponse
+    return {
+        "id": topical_map.id,
+        "user_id": topical_map.user_id,
+        "name": topical_map.name,
+        "topic": topical_map.topic,
+        "country": topical_map.country,
+        "language": topical_map.language,
+        "total_keywords": topical_map.total_keywords,
+        "total_search_volume": topical_map.total_search_volume,
+        "status": topical_map.status,
+        "created_at": topical_map.created_at,
+        "updated_at": topical_map.updated_at,
+        "clusters": root_clusters
+    }
 
 @router.delete("/{map_id}")
 async def delete_topical_map(
