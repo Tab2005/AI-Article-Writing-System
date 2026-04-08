@@ -218,5 +218,5 @@ async def health_check():
     return {
         "status": "healthy",
         "database": get_database_info(),
-        "cache": get_cache().get_stats(),
+        "cache": await get_cache().get_stats(),
     }

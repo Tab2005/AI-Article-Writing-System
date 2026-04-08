@@ -173,8 +173,8 @@ async def test_cms_connection(
     if not client:
         return {"success": False, "message": "無效的平台"}
     
-    success = await client.test_connection()
-    return {"success": success}
+    result = await client.test_connection()
+    return result
 
 @router.post("/publish")
 async def publish_to_cms(
