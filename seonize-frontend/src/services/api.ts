@@ -620,6 +620,6 @@ export const topicalMapApi = {
   generate: (data: CreateTopicalMapRequest) =>
     request<TopicalMapDetail>('/api/topical-map/generate', { method: 'POST', body: data }),
   list: () => request<TopicalMap[]>('/api/topical-map/list'),
-  get: (id: string) => request<TopicalMapDetail>(/api/topical-map/),
-  delete: (id: string) => request<void>(/api/topical-map/, { method: 'DELETE' }),
+  get: (id: string) => request<TopicalMapDetail>(`/api/topical-map/${id}`),
+  delete: (id: string) => request<void>(`/api/topical-map/${id}`, { method: 'DELETE' }),
 };
