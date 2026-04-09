@@ -74,11 +74,29 @@ class AIService:
             
         # 只有在初次載入、過期且 DB 沒設定時，才重新從環境變數載入
         if cls._config is None or (now - cls._config_timestamp > cls._config_ttl):
+            provider_str = os.getenv("AI_PROVIDER", settings.AI_PROVIDER)
+            provider = AIProvider(provider_str)
+            
+            # 根據 Provider 選取正確的環境變數
+            if provider == AIProvider.ZEABUR:
+                api_key = os.getenv("ZEABUR_AI_API_KEY") or os.getenv("AI_API_KEY")
+            elif provider == AIProvider.OPENROUTER:
+                api_key = os.getenv("OPENROUTER_API_KEY")
+            elif provider == AIProvider.GEMINI:
+                api_key = os.getenv("GEMINI_API_KEY")
+            else:
+                api_key = os.getenv("AI_API_KEY")
+                
+            # 如果都沒拿到，嘗試 settings 的預設值
+            if not api_key:
+                if provider == AIProvider.ZEABUR:
+                    api_key = settings.ZEABUR_AI_API_KEY
+                elif provider == AIProvider.OPENROUTER:
+                    api_key = settings.OPENROUTER_API_KEY
+            
             cls._config = AIConfig(
-                provider=AIProvider(os.getenv("AI_PROVIDER", settings.AI_PROVIDER)),
-                api_key=(os.getenv("ZEABUR_AI_API_KEY", settings.ZEABUR_AI_API_KEY) or \
-                        os.getenv("OPENROUTER_API_KEY", settings.OPENROUTER_API_KEY) or \
-                        os.getenv("GEMINI_API_KEY", "")).strip(),
+                provider=provider,
+                api_key=(api_key or "").strip(),
                 model=os.getenv("AI_MODEL", settings.AI_MODEL),
             )
             cls._config_timestamp = now
