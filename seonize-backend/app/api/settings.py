@@ -206,8 +206,8 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
     """測試 AI API 連線"""
     api_key = request.api_key
     
-    # 如果是遮蔽碼，從資料庫或環境變數讀取真實內容
-    if api_key and "****" in api_key:
+    # 如果是空值或遮蔽碼，從資料庫或環境變數讀取真實內容
+    if not api_key or "****" in api_key:
         real_key = Settings.get_value(db, "ai_api_key", None)
         if not real_key:
             # 嘗試從環境變數讀取 (比照 AIService.get_config 邏輯)
