@@ -210,35 +210,38 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
     # 使用 ERROR 等級確保日誌可見
     logger.error(f"[DEBUG] Testing AI connection for provider: {provider}")
     
-    # 如果是空值或遮蔽碼，從資料庫或環境變數讀取真實內容
+    # 決定金鑰來源的優先順序
     source = "request"
+    
+    # 如果前端沒傳 Key 或傳的是遮蔽碼，則開始尋找真實 Key
     if not api_key or "****" in api_key:
-        real_key = Settings.get_value(db, "ai_api_key", None)
-        if real_key:
-            api_key = real_key
-            source = "database"
+        # 1. 優先嘗試 Provider 特定的環境變數 (這是最準確的)
+        if provider == "openrouter":
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            source = "env(OPENROUTER)"
+        elif provider == "zeabur":
+            api_key = os.getenv("ZEABUR_AI_API_KEY")
+            source = "env(ZEABUR)"
+        elif provider == "gemini":
+            api_key = os.getenv("GEMINI_API_KEY")
+            source = "env(GEMINI)"
+
+        # 2. 如果環境變數沒有，且資料庫中的 provider 與目前測試的一致，才使用資料庫的 Key
+        if not api_key:
+            db_provider = Settings.get_value(db, "ai_provider", None)
+            if db_provider == provider:
+                api_key = Settings.get_value(db, "ai_api_key", None)
+                source = "database"
         
-        if not api_key or "****" in api_key:
-            # 根據 Provider 選擇對應的環境變數
-            if provider == "zeabur":
-                api_key = os.getenv("ZEABUR_AI_API_KEY")
-                source = "env(ZEABUR)"
-            elif provider == "openrouter":
-                api_key = os.getenv("OPENROUTER_API_KEY")
-                source = "env(OPENROUTER)"
-            elif provider == "gemini":
-                api_key = os.getenv("GEMINI_API_KEY")
-                source = "env(GEMINI)"
-            
-            # 如果還是沒有，嘗試通用 Key
-            if not api_key:
-                api_key = os.getenv("AI_API_KEY")
-                source = "env(AI_API_KEY)"
+        # 3. 最後嘗試通用 Key
+        if not api_key:
+            api_key = os.getenv("AI_API_KEY")
+            source = "env(AI_API_KEY)"
     
     # 檢查 Key 的有效性
     is_valid = "Yes" if api_key and len(api_key) > 10 else "No"
     key_preview = f"{api_key[:10]}..." if api_key and len(api_key) > 10 else "None/TooShort"
-    logger.error(f"[DEBUG] Using API Key from {source}. Valid: {is_valid}, Preview: {key_preview}")
+    logger.error(f"[DEBUG] Final API Key source: {source}. Valid: {is_valid}, Preview: {key_preview}")
         
     result = await AIService.test_connection(
         api_key=api_key,
