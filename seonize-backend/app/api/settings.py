@@ -207,7 +207,8 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
     api_key = request.api_key
     provider = request.provider
     
-    logger.info(f"Testing AI connection for provider: {provider}")
+    # 使用 ERROR 等級確保日誌可見
+    logger.error(f"[DEBUG] Testing AI connection for provider: {provider}")
     
     # 如果是空值或遮蔽碼，從資料庫或環境變數讀取真實內容
     source = "request"
@@ -234,8 +235,10 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
                 api_key = os.getenv("AI_API_KEY")
                 source = "env(AI_API_KEY)"
     
-    key_preview = f"{api_key[:8]}..." if api_key and len(api_key) > 8 else "None/Empty"
-    logger.info(f"Using API Key from {source}: {key_preview}")
+    # 檢查 Key 的有效性
+    is_valid = "Yes" if api_key and len(api_key) > 10 else "No"
+    key_preview = f"{api_key[:10]}..." if api_key and len(api_key) > 10 else "None/TooShort"
+    logger.error(f"[DEBUG] Using API Key from {source}. Valid: {is_valid}, Preview: {key_preview}")
         
     result = await AIService.test_connection(
         api_key=api_key,
