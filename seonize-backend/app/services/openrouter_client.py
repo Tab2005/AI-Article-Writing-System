@@ -21,6 +21,10 @@ class OpenRouterClient:
     """OpenRouter API 客戶端"""
     
     def __init__(self, api_key: str):
+        # 偵錯日誌：確保在雲端可見
+        key_preview = f"{api_key[:8]}..." if api_key and len(api_key) > 8 else "None/Empty"
+        logger.error(f"[DEBUG] OpenRouterClient initialized with API Key: {key_preview} (Length: {len(api_key) if api_key else 0})")
+        
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1"
         self.timeout = 120.0
