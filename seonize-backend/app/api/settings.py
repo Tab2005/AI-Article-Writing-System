@@ -207,25 +207,24 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
     api_key = request.api_key
     provider = request.provider
     
-    logger.error(f"[DEBUG] Starting connection test for provider: {provider}")
+    logger.error(f"[DEBUG] === Connection Test Start: {provider} ===")
     
-    # 偵測環境中存在哪些變數 (僅列出名稱)
+    # 偵測環境變數清單 (僅名稱)
     env_keys = [k for k in os.environ.keys() if "API_KEY" in k or "AI_" in k]
-    logger.error(f"[DEBUG] Found AI-related env vars: {', '.join(env_keys)}")
+    logger.error(f"[DEBUG] Current Env Vars: {', '.join(env_keys)}")
     
     source = "request"
     
     # 如果前端沒傳 Key 或傳的是遮蔽碼
     if not api_key or "****" in api_key:
-        # 針對 Provider 進行嚴格的金鑰選取
         if provider == "openrouter":
-            # 強制只看 OPENROUTER_API_KEY
+            # 優先從特定的環境變數讀取
             env_val = os.getenv("OPENROUTER_API_KEY")
             if env_val:
                 api_key = env_val
                 source = "env(OPENROUTER_API_KEY)"
             else:
-                # 嘗試從資料庫讀取，但前提是資料庫目前的 Provider 也是 openrouter
+                # 其次從資料庫讀取，但必須確保資料庫目前的 provider 也是 openrouter
                 db_provider = Settings.get_value(db, "ai_provider", None)
                 db_key = Settings.get_value(db, "ai_api_key", None)
                 if db_provider == "openrouter" and db_key:
@@ -233,31 +232,40 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
                     source = "database"
                 else:
                     api_key = None
-                    source = "none (no specific key found)"
-                    
+                    source = "FAILED - No OpenRouter specific key found"
+        
         elif provider == "zeabur":
             api_key = os.getenv("ZEABUR_AI_API_KEY") or os.getenv("AI_API_KEY")
-            source = "env(ZEABUR/AI_API_KEY)" if api_key else "none"
-            
+            source = "env(ZEABUR/AI_API_KEY)"
+            if not api_key:
+                api_key = Settings.get_value(db, "ai_api_key", None)
+                source = "database"
+        
         elif provider == "gemini":
             api_key = os.getenv("GEMINI_API_KEY")
             source = "env(GEMINI)"
     
-    # 最終安全性檢查與日誌
     if not api_key:
-        logger.error(f"[DEBUG] Connection failed: No API Key found for {provider}")
+        logger.error(f"[DEBUG] Final Decision -> Source: {source}, Key: None")
         return TestConnectionResponse(
             success=False,
-            message=f"連線失敗：找不到 {provider} 的有效 API 金鑰。請檢查環境變數設定。",
+            message=f"連線失敗：找不到 {provider} 的金鑰。來源: {source}",
             provider=provider
         )
-
+        
     # 檢查是否拿到了錯誤的前綴
-    if provider == "openrouter" and api_key and not api_key.startswith("sk-or-"):
+    if provider == "openrouter" and not api_key.startswith("sk-or-"):
         logger.error(f"[DEBUG] CRITICAL: OpenRouter using WRONG KEY PREFIX: {api_key[:10]}...")
-    
+
     key_preview = f"{api_key[:10]}..." if len(api_key) > 10 else "too_short"
-    logger.error(f"[DEBUG] Final Decision - Source: {source}, Key: {key_preview}")
+    logger.error(f"[DEBUG] Final Decision -> Source: {source}, Key: {key_preview}")
+        
+    result = await AIService.test_connection(
+        api_key=api_key,
+        provider=provider,
+        model=request.model,
+    )
+    return TestConnectionResponse(**result)
         
     result = await AIService.test_connection(
         api_key=api_key,
