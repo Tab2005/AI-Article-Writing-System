@@ -207,24 +207,35 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
     api_key = request.api_key
     provider = request.provider
     
+    logger.info(f"Testing AI connection for provider: {provider}")
+    
     # 如果是空值或遮蔽碼，從資料庫或環境變數讀取真實內容
+    source = "request"
     if not api_key or "****" in api_key:
         real_key = Settings.get_value(db, "ai_api_key", None)
-        if not real_key:
-            # 根據 Provider 選擇對應的環境變數
-            if provider == "zeabur":
-                real_key = os.getenv("ZEABUR_AI_API_KEY")
-            elif provider == "openrouter":
-                real_key = os.getenv("OPENROUTER_API_KEY")
-            elif provider == "gemini":
-                real_key = os.getenv("GEMINI_API_KEY")
-            
-            # 如果還是沒有，嘗試通用 Key
-            if not real_key:
-                real_key = os.getenv("AI_API_KEY")
-        
         if real_key:
             api_key = real_key
+            source = "database"
+        
+        if not api_key or "****" in api_key:
+            # 根據 Provider 選擇對應的環境變數
+            if provider == "zeabur":
+                api_key = os.getenv("ZEABUR_AI_API_KEY")
+                source = "env(ZEABUR)"
+            elif provider == "openrouter":
+                api_key = os.getenv("OPENROUTER_API_KEY")
+                source = "env(OPENROUTER)"
+            elif provider == "gemini":
+                api_key = os.getenv("GEMINI_API_KEY")
+                source = "env(GEMINI)"
+            
+            # 如果還是沒有，嘗試通用 Key
+            if not api_key:
+                api_key = os.getenv("AI_API_KEY")
+                source = "env(AI_API_KEY)"
+    
+    key_preview = f"{api_key[:8]}..." if api_key and len(api_key) > 8 else "None/Empty"
+    logger.info(f"Using API Key from {source}: {key_preview}")
         
     result = await AIService.test_connection(
         api_key=api_key,
