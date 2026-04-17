@@ -172,9 +172,9 @@ class AIService:
             "id": AIProvider.GEMINI,
             "name": "Google Gemini",
             "models": [
-                {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash"},
-                {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro"},
-                {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash"}
+                {"id": "google/gemini-2.0-flash", "name": "Gemini 2.0 Flash"},
+                {"id": "google/gemini-1.5-pro", "name": "Gemini 1.5 Pro"},
+                {"id": "google/gemini-1.5-flash", "name": "Gemini 1.5 Flash"}
             ],
             "description": "Google 原生 Gemini API (直連、速度最快)"
         })
@@ -242,10 +242,12 @@ class AIService:
         elif config.provider == AIProvider.GEMINI:
             from app.services.gemini_client import GeminiClient
             client = GeminiClient(config.api_key)
+            # 移除 google/ 前綴以符合 Google SDK 格式
+            model_id = config.model.replace("google/", "") if config.model else "gemini-2.0-flash"
             return await client.generate(
                 prompt=prompt,
                 system_prompt=system_prompt,
-                model=config.model,
+                model=model_id,
                 temperature=temperature or config.temperature,
                 max_tokens=max_tokens or config.max_tokens,
             )

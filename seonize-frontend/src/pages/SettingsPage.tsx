@@ -69,7 +69,7 @@ export const SettingsPage: React.FC = () => {
           models: [
             "gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3-mini",
             "claude-3-7-sonnet", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet", "claude-3-5-haiku",
-            "gemini-2.0-flash", "gemini-2.0-flash-lite-preview", "gemini-1.5-pro", "gemini-1.5-flash",
+            "gemini-2.0-flash", "google/gemini-2.0-flash-lite-preview", "gemini-1.5-pro", "gemini-1.5-flash",
             "deepseek-v3", "deepseek-r1", "deepseek-chat", "deepseek-reasoner",
             "llama-3.3-70b-instruct", "llama-3.1-405b", "llama-3.1-70b",
             "mistral-large-latest", "pixtral-large-latest"
@@ -87,6 +87,16 @@ export const SettingsPage: React.FC = () => {
             "deepseek/deepseek-chat"
           ],
           description: 'OpenRouter 提供的 AI 整合服務 (存取數百種模型)'
+        },
+        {
+          id: 'gemini',
+          name: 'Google Gemini',
+          models: [
+            "google/gemini-2.0-flash",
+            "google/gemini-1.5-pro",
+            "google/gemini-1.5-flash"
+          ],
+          description: 'Google 原生 Gemini API (直連、速度最快)'
         },
       ]);
     }
