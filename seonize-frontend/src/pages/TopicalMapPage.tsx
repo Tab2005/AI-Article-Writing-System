@@ -102,26 +102,35 @@ export const TopicalMapPage: React.FC = () => {
         <Button variant="cta" onClick={() => setShowCreateModal(true)}>建立主題地圖</Button>
       </div>
 
-      <div className={`content-grid ${selectedMap ? 'has-selection' : ''}`}>
-        <div className="map-list-section card">
-          <DataTable 
-            columns={columns as any} 
-            data={maps} 
-            loading={loading} 
-            onRowClick={(row) => handleViewDetail(row.id)}
-          />
-        </div>
-
-        {selectedMap && (
+      <div className="content-grid">
+        {!selectedMap ? (
+          /* 列表視圖 */
+          <div className="map-list-section card animate-fade-in-up">
+            <DataTable 
+              columns={columns as any} 
+              data={maps} 
+              loading={loading} 
+              onRowClick={(row) => handleViewDetail(row.id)}
+            />
+          </div>
+        ) : (
+          /* 全螢幕詳情視圖 */
           <div className="map-detail-section animate-fade-in">
             <div className="detail-header">
-              <div>
-                <h2>{selectedMap.name}</h2>
-                <p style={{ color: 'var(--color-primary)', fontWeight: 600 }}>種子主題: {selectedMap.topic}</p>
+              <div className="detail-title-group">
+                <Button size="sm" variant="outline" onClick={() => setSelectedMap(null)} className="back-button">
+                  ← 返回列表
+                </Button>
+                <div className="title-text">
+                  <h2>{selectedMap.name}</h2>
+                  <p className="topic-subtitle">種子主題: {selectedMap.topic}</p>
+                </div>
               </div>
-              <Button size="sm" variant="secondary" onClick={() => setSelectedMap(null)}>
-                <span style={{ fontSize: '1.2rem', marginRight: '8px' }}>×</span> 關閉詳情
-              </Button>
+              <div className="detail-actions">
+                <Button size="sm" variant="secondary" onClick={() => handleViewDetail(selectedMap.id)} loading={loading}>
+                  重新整理數據
+                </Button>
+              </div>
             </div>
             
             <div className="detail-stats">
@@ -158,8 +167,18 @@ export const TopicalMapPage: React.FC = () => {
                 ))
               ) : (
                 <div className="empty-tree">
-                  <p>✨ AI 正在努力分析並分類您的關鍵字數據中...</p>
-                  <p style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '10px' }}>這可能需要幾秒鐘的運算時間，請稍後</p>
+                  {selectedMap.status === 'processing' ? (
+                    <>
+                      <div className="ai-loader"></div>
+                      <p>✨ AI 正在努力分析並分類您的關鍵字數據中...</p>
+                      <p style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '10px' }}>這可能需要幾秒鐘的運算時間，請稍候</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>✅ 分析已完成，但未能自動辨識出顯著的主題簇群。</p>
+                      <p style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '10px' }}>這通常發生在關鍵字數量過少或相關性較分散的情況下。</p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
