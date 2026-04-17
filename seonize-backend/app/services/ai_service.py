@@ -167,6 +167,18 @@ class AIService:
             "description": "OpenRouter 提供的 AI 整合服務 (存取數百種模型)"
         })
         
+        # 加入 Google Gemini
+        providers.append({
+            "id": AIProvider.GEMINI,
+            "name": "Google Gemini",
+            "models": [
+                {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash"},
+                {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro"},
+                {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash"}
+            ],
+            "description": "Google 原生 Gemini API (直連、速度最快)"
+        })
+        
         return providers
     
     @classmethod
@@ -183,6 +195,14 @@ class AIService:
                 client = OpenRouterClient(api_key)
                 await client.generate("Hello", model=model or "openai/gpt-4o-mini", max_tokens=5)
                 return {"success": True, "provider": provider, "message": "OpenRouter 連線成功"}
+            elif provider == AIProvider.GEMINI:
+                from app.services.gemini_client import GeminiClient
+                client = GeminiClient(api_key)
+                success = await client.test_connection()
+                if success:
+                    return {"success": True, "provider": provider, "message": "Google Gemini 連線成功"}
+                else:
+                    return {"success": False, "provider": provider, "message": "Google Gemini 連線失敗，請檢查 API Key"}
             else:
                 return {"success": False, "provider": provider, "message": "不支援的提供者"}
         except Exception as e:
@@ -212,6 +232,16 @@ class AIService:
         elif config.provider == AIProvider.OPENROUTER:
             from app.services.openrouter_client import OpenRouterClient
             client = OpenRouterClient(config.api_key)
+            return await client.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                model=config.model,
+                temperature=temperature or config.temperature,
+                max_tokens=max_tokens or config.max_tokens,
+            )
+        elif config.provider == AIProvider.GEMINI:
+            from app.services.gemini_client import GeminiClient
+            client = GeminiClient(config.api_key)
             return await client.generate(
                 prompt=prompt,
                 system_prompt=system_prompt,
