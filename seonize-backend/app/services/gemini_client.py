@@ -30,18 +30,19 @@ class GeminiClient:
             genai.configure(api_key=self.api_key)
             self._configured = True
     
-    async def test_connection(self) -> bool:
+    async def test_connection(self, model_name: str = "gemini-1.5-flash") -> bool:
         """測試 API 連線"""
         if not self._configured:
             return False
         
         try:
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            # 使用傳入的模型進行測試，預設為最穩定的 1.5-flash
+            model = genai.GenerativeModel(model_name)
             # 修正：genai 是同步呼叫，使用 to_thread 避免阻塞
             response = await asyncio.to_thread(model.generate_content, "Hello, respond with 'OK' only.")
             return response.text is not None
         except Exception as e:
-            logger.error(f"Gemini connection test failed: {e}")
+            logger.error(f"Gemini connection test failed for model {model_name}: {e}")
             return False
     
     async def generate(

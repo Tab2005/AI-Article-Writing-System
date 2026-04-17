@@ -215,11 +215,13 @@ class AIService:
             elif provider == AIProvider.GEMINI:
                 from app.services.gemini_client import GeminiClient
                 client = GeminiClient(api_key)
-                success = await client.test_connection()
+                # 取得乾淨的模型 ID (移除 google/ 前綴)
+                model_id = (model or "gemini-1.5-flash").replace("google/", "")
+                success = await client.test_connection(model_id)
                 if success:
-                    return {"success": True, "provider": provider, "message": "Google Gemini 連線成功"}
+                    return {"success": True, "provider": provider, "message": f"Google Gemini 連線成功 (模型: {model_id})"}
                 else:
-                    return {"success": False, "provider": provider, "message": "Google Gemini 連線失敗，請檢查 API Key"}
+                    return {"success": False, "provider": provider, "message": f"Google Gemini 連線失敗，請檢查 API Key 或該模型({model_id})權限"}
             else:
                 return {"success": False, "provider": provider, "message": "不支援的提供者"}
         except Exception as e:
