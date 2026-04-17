@@ -110,28 +110,18 @@ async def get_settings(db: Session = Depends(get_db)):
                 settings[key] = value
 
         # 檢查是否真理由環境變數提供（支援多種可能的環境變數名稱）
-        # 針對 AI API Key，只有當目前的 provider 對應的環境變數存在時才算 system_provided
-        if key == "ai_api_key":
-            current_provider = settings.get("ai_provider")
-            provider_env_map = {
-                "zeabur": ["ZEABUR_AI_API_KEY", "AI_API_KEY"],
-                "openrouter": ["OPENROUTER_API_KEY"],
-                "gemini": ["GEMINI_API_KEY"]
-            }
-            possible_envs = provider_env_map.get(current_provider, ["AI_API_KEY"])
-        else:
+        # 2026-04-17 更新：為了讓使用者能在 UI 手動覆寫設定，我們不再將 AI/圖庫相關欄位標記為 system_provided
+        # 這樣前端輸入框就不會被 disabled，使用者儲存後資料庫的值會優先於環境變數。
+        
+        lockable_keys = ["dataforseo_login", "dataforseo_password"] # DataForSEO 仍保持鎖定以示區分
+        if key in lockable_keys:
             env_map = {
-                "ai_provider": ["AI_PROVIDER"],
-                "ai_model": ["AI_MODEL"],
                 "dataforseo_login": ["DATAFORSEO_LOGIN"],
-                "dataforseo_password": ["DATAFORSEO_PASSWORD"],
-                "pexels_api_key": ["PEXELS_API_KEY"],
-                "pixabay_api_key": ["PIXABAY_API_KEY"]
+                "dataforseo_password": ["DATAFORSEO_PASSWORD"]
             }
             possible_envs = env_map.get(key, [key.upper()])
-        
-        if any(env_key in os.environ for env_key in possible_envs):
-            system_provided.append(key)
+            if any(env_key in os.environ for env_key in possible_envs):
+                system_provided.append(key)
     
     return SettingsResponse(
         ai_provider=settings.get("ai_provider", "gemini"),
@@ -224,7 +214,7 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
     
     source = "request"
     
-    # 如果前端沒傳 Key 或傳的是遮蔽碼
+    # 如果前端沒傳 Key 或傳的是遮蔽碼，則尋找環境變數或資料庫的金鑰
     if not api_key or "****" in api_key:
         if provider == "openrouter":
             # 優先從特定的環境變數讀取
@@ -233,29 +223,36 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
                 api_key = env_val
                 source = "env(OPENROUTER_API_KEY)"
             else:
-                # 其次從資料庫讀取，但必須確保資料庫目前的 provider 也是 openrouter
-                db_provider = Settings.get_value(db, "ai_provider", None)
+                # 其次從資料庫讀取
                 db_key = Settings.get_value(db, "ai_api_key", None)
+                db_provider = Settings.get_value(db, "ai_provider", None)
                 if db_provider == "openrouter" and db_key:
                     api_key = db_key
                     source = "database"
                 else:
                     api_key = None
-                    source = "FAILED - No OpenRouter specific key found"
         
         elif provider == "zeabur":
             api_key = os.getenv("ZEABUR_AI_API_KEY") or os.getenv("AI_API_KEY")
             source = "env(ZEABUR/AI_API_KEY)"
             if not api_key:
-                api_key = Settings.get_value(db, "ai_api_key", None)
-                source = "database"
+                db_key = Settings.get_value(db, "ai_api_key", None)
+                db_provider = Settings.get_value(db, "ai_provider", None)
+                if db_provider == "zeabur" and db_key:
+                    api_key = db_key
+                    source = "database"
         
         elif provider == "gemini":
             api_key = os.getenv("GEMINI_API_KEY")
             source = "env(GEMINI_API_KEY)"
             if not api_key:
-                api_key = Settings.get_value(db, "ai_api_key", None)
-                source = "database"
+                db_key = Settings.get_value(db, "ai_api_key", None)
+                db_provider = Settings.get_value(db, "ai_provider", None)
+                if db_provider == "gemini" and db_key:
+                    api_key = db_key
+                    source = "database"
+    else:
+        source = "request (explicitly provided)"
     
     if not api_key:
         logger.error(f"[DEBUG] Final Decision -> Source: {source}, Key: None")
