@@ -8,21 +8,14 @@ import asyncio
 import logging
 from typing import Optional, AsyncGenerator, List, Dict, Any
 
+logger = logging.getLogger(__name__)
+
 # Google Generative AI SDK
 try:
     import google.generativeai as genai
     GENAI_AVAILABLE = True
 except ImportError:
     GENAI_AVAILABLE = False
-    # The logger is not yet defined here, so this line will cause an error.
-    # It should be moved after the logger definition.
-    # For now, I'll comment it out or use a placeholder if the user expects it to work.
-    # Given the instruction, I'll place the logger definition and then fix this.
-
-logger = logging.getLogger(__name__)
-
-# Moving the warning here so logger is defined
-if not GENAI_AVAILABLE:
     logger.warning("Warning: google-generativeai not installed. Gemini features will be limited.")
 
 

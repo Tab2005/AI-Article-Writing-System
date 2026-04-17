@@ -110,17 +110,26 @@ async def get_settings(db: Session = Depends(get_db)):
                 settings[key] = value
 
         # 檢查是否真理由環境變數提供（支援多種可能的環境變數名稱）
-        env_map = {
-            "ai_api_key": ["AI_API_KEY", "ZEABUR_AI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY"],
-            "ai_provider": ["AI_PROVIDER"],
-            "ai_model": ["AI_MODEL"],
-            "dataforseo_login": ["DATAFORSEO_LOGIN"],
-            "dataforseo_password": ["DATAFORSEO_PASSWORD"],
-            "pexels_api_key": ["PEXELS_API_KEY"],
-            "pixabay_api_key": ["PIXABAY_API_KEY"]
-        }
+        # 針對 AI API Key，只有當目前的 provider 對應的環境變數存在時才算 system_provided
+        if key == "ai_api_key":
+            current_provider = settings.get("ai_provider")
+            provider_env_map = {
+                "zeabur": ["ZEABUR_AI_API_KEY", "AI_API_KEY"],
+                "openrouter": ["OPENROUTER_API_KEY"],
+                "gemini": ["GEMINI_API_KEY"]
+            }
+            possible_envs = provider_env_map.get(current_provider, ["AI_API_KEY"])
+        else:
+            env_map = {
+                "ai_provider": ["AI_PROVIDER"],
+                "ai_model": ["AI_MODEL"],
+                "dataforseo_login": ["DATAFORSEO_LOGIN"],
+                "dataforseo_password": ["DATAFORSEO_PASSWORD"],
+                "pexels_api_key": ["PEXELS_API_KEY"],
+                "pixabay_api_key": ["PIXABAY_API_KEY"]
+            }
+            possible_envs = env_map.get(key, [key.upper()])
         
-        possible_envs = env_map.get(key, [key.upper()])
         if any(env_key in os.environ for env_key in possible_envs):
             system_provided.append(key)
     
@@ -243,7 +252,10 @@ async def test_ai_connection(request: TestConnectionRequest, db: Session = Depen
         
         elif provider == "gemini":
             api_key = os.getenv("GEMINI_API_KEY")
-            source = "env(GEMINI)"
+            source = "env(GEMINI_API_KEY)"
+            if not api_key:
+                api_key = Settings.get_value(db, "ai_api_key", None)
+                source = "database"
     
     if not api_key:
         logger.error(f"[DEBUG] Final Decision -> Source: {source}, Key: None")
