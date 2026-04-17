@@ -102,16 +102,26 @@ export const TopicalMapPage: React.FC = () => {
         <Button variant="cta" onClick={() => setShowCreateModal(true)}>建立主題地圖</Button>
       </div>
 
-      <div className="content-grid">
+      <div className={`content-grid ${selectedMap ? 'has-selection' : ''}`}>
         <div className="map-list-section card">
-          <DataTable columns={columns as any} data={maps} loading={loading} />
+          <DataTable 
+            columns={columns as any} 
+            data={maps} 
+            loading={loading} 
+            onRowClick={(row) => handleViewDetail(row.id)}
+          />
         </div>
 
         {selectedMap && (
-          <div className="map-detail-section card animate-fade-in">
+          <div className="map-detail-section animate-fade-in">
             <div className="detail-header">
-              <h2>{selectedMap.name} - {selectedMap.topic}</h2>
-              <Button size="sm" variant="secondary" onClick={() => setSelectedMap(null)}>關閉</Button>
+              <div>
+                <h2>{selectedMap.name}</h2>
+                <p style={{ color: 'var(--color-primary)', fontWeight: 600 }}>種子主題: {selectedMap.topic}</p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => setSelectedMap(null)}>
+                <span style={{ fontSize: '1.2rem', marginRight: '8px' }}>×</span> 關閉詳情
+              </Button>
             </div>
             
             <div className="detail-stats">
@@ -121,17 +131,17 @@ export const TopicalMapPage: React.FC = () => {
 
             <div className="tree-view">
               {selectedMap.clusters && selectedMap.clusters.length > 0 ? (
-                selectedMap.clusters.map(l1 => (
-                  <div key={l1.id} className="cluster-l1">
+                selectedMap.clusters.map((l1, idx) => (
+                  <div key={l1.id} className="cluster-l1" style={{ animationDelay: `${idx * 0.1}s` }}>
                     <div className="cluster-header">
-                      <span className="level-badge">L1</span>
+                      <span className="level-badge">L1 CATEGORY</span>
                       <h3>{l1.name}</h3>
                     </div>
                     <div className="subclusters">
                       {l1.subclusters && l1.subclusters.map(l2 => (
                         <div key={l2.id} className="cluster-l2">
                           <div className="cluster-header">
-                            <span className="level-badge">L2</span>
+                            <span className="level-badge" style={{ background: 'rgba(255,255,255,0.1)', color: '#94a3b8' }}>L2</span>
                             <h4>{l2.name}</h4>
                           </div>
                           <div className="keywords-tag-cloud">
@@ -148,7 +158,8 @@ export const TopicalMapPage: React.FC = () => {
                 ))
               ) : (
                 <div className="empty-tree">
-                  <p>尚未生成主題分類資料，請稍候再試或檢查後端日誌。</p>
+                  <p>✨ AI 正在努力分析並分類您的關鍵字數據中...</p>
+                  <p style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '10px' }}>這可能需要幾秒鐘的運算時間，請稍後</p>
                 </div>
               )}
             </div>
