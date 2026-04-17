@@ -77,6 +77,36 @@ class GeminiClient:
         except Exception as e:
             raise RuntimeError(f"Gemini generation failed: {e}")
     
+    async def get_models(self) -> List[Dict[str, str]]:
+        """獲取目前 API Key 支援的所有模型清單"""
+        if not self._configured:
+            return []
+        
+        try:
+            # 使用 asyncio.to_thread 執行同步的 list_models
+            # genai.list_models() 返回一個迭代器
+            models_iter = await asyncio.to_thread(genai.list_models)
+            
+            model_list = []
+            for m in models_iter:
+                # 只保留支援內容生成的模型
+                if 'generateContent' in m.supported_generation_methods:
+                    # 統一 ID 格式：models/gemini-1.5-flash -> google/gemini-1.5-flash
+                    # 前端 ModelSearchSelect 需要 google/ 前綴來分組
+                    model_id = m.name.replace("models/", "google/")
+                    model_list.append({
+                        "id": model_id,
+                        "name": m.display_name or m.name
+                    })
+            
+            # 排序：讓較新的版本排前面 (簡單排序)
+            model_list.sort(key=lambda x: x['id'], reverse=True)
+            return model_list
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch Gemini models: {e}")
+            return []
+
     async def generate_stream(
         self,
         prompt: str,

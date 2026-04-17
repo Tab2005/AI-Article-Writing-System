@@ -168,14 +168,31 @@ class AIService:
         })
         
         # 加入 Google Gemini
+        gemini_models = [
+            {"id": "google/gemini-2.0-flash", "name": "Gemini 2.0 Flash"},
+            {"id": "google/gemini-1.5-pro", "name": "Gemini 1.5 Pro"},
+            {"id": "google/gemini-1.5-flash", "name": "Gemini 1.5 Flash"}
+        ]
+        
+        # 如果有 Gemini API Key，嘗試動態抓取完整清單
+        try:
+            # 優先從目前的 config 取 Key，如果沒有就嘗試環境變數
+            gemini_api_key = config.api_key if config.provider == AIProvider.GEMINI else os.getenv("GEMINI_API_KEY")
+            
+            if gemini_api_key:
+                from app.services.gemini_client import GeminiClient
+                client = GeminiClient(gemini_api_key)
+                dynamic_gemini_models = await client.get_models()
+                if dynamic_gemini_models:
+                    # 合併動態抓取的清單，確保預設的三個也在裡面
+                    gemini_models = dynamic_gemini_models
+        except Exception as e:
+            logging.warning(f"Failed to fetch models from Google Gemini: {e}")
+
         providers.append({
             "id": AIProvider.GEMINI,
             "name": "Google Gemini",
-            "models": [
-                {"id": "google/gemini-2.0-flash", "name": "Gemini 2.0 Flash"},
-                {"id": "google/gemini-1.5-pro", "name": "Gemini 1.5 Pro"},
-                {"id": "google/gemini-1.5-flash", "name": "Gemini 1.5 Flash"}
-            ],
+            "models": gemini_models,
             "description": "Google 原生 Gemini API (直連、速度最快)"
         })
         
