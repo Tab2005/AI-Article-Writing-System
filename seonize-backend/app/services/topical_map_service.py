@@ -106,7 +106,13 @@ class TopicalMapService:
         for i in range(0, len(kw_list), batch_size):
             batch = kw_list[i:i+batch_size]
             prompt = f"""你是一位專業的 SEO 戰略專家。請針對核心主題「{topic}」，將以下關鍵字進行語義聚類。
-請嚴格遵守以下 JSON 格式回傳，不要包含任何額外文字：
+
+### 任務要求：
+1. 將關鍵字分組為 L1 (大類別) 與 L2 (子類別)。
+2. 只回傳 JSON 格式數據，禁止包含任何 Markdown 代碼塊標記外的文字說明。
+3. 如果某些詞難以歸類，請將其放入名為「其他相關詞」的類別。
+
+### 回傳格式 (嚴格遵守 JSON 陣列)：
 [
   {{
     "name": "L1 主題名稱",
@@ -121,18 +127,22 @@ class TopicalMapService:
   }}
 ]
 
-關鍵字列表：
+### 關鍵字列表：
 {', '.join(batch)}
 """
             
             try:
                 content = await AIService.generate_content(prompt, temperature=0.2)
-                batch_clusters = parse_ai_json(content)
+                # 使用 [] 作為預設值，這將觸發 parse_ai_json 的自動包裝邏輯 (如果 AI 回傳單個 dict)
+                batch_clusters = parse_ai_json(content, default_value=[]) 
+                
                 if isinstance(batch_clusters, list) and len(batch_clusters) > 0:
                     all_clusters.extend(batch_clusters)
-                    logger.info(f"Batch {i//100 + 1} clustered successfully")
+                    logger.info(f"Topical Map Batch {i//batch_size + 1} clustered successfully with {len(batch_clusters)} nodes")
+                else:
+                    logger.warning(f"Batch {i//batch_size + 1} produced no valid clusters. Raw response snippet: {str(content)[:200]}...")
             except Exception as e:
-                logger.error(f"AI Clustering batch {i} failed: {e}")
+                logger.error(f"AI Clustering batch {i} failed critical error: {str(e)}")
         
         return all_clusters
 

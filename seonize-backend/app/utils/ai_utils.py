@@ -37,14 +37,29 @@ def clean_ai_json(s: str) -> str:
 def parse_ai_json(s: str, default_value: Any = None) -> Any:
     """
     清理並解析 AI 回傳的 JSON。
+    支援自動將單個字典物件包裝為列表格式，以符合預期。
     """
+    if not s:
+        return default_value
+        
     cleaned = clean_ai_json(s)
     if not cleaned:
+        logger.warning("AI JSON cleaning resulted in empty string")
         return default_value
         
     try:
-        return json.loads(cleaned)
+        data = json.loads(cleaned)
+        
+        # 額外安全性檢查與自動轉換
+        # 如果呼叫方期望得到清單 (如主題地圖)，但 AI 回傳了單個物件
+        if default_value == [] and isinstance(data, dict):
+            logger.info("AI returned a dict instead of list, wrapping it automatically")
+            return [data]
+            
+        return data
     except Exception as e:
-        logger.error(f"Failed to parse AI JSON: {e}")
-        logger.debug(f"Attempted to parse: {cleaned[:500]}...")
+        logger.error(f"Failed to parse AI JSON: {str(e)}")
+        # 記錄部分內容方便排查
+        snippet = cleaned[:1000]
+        logger.debug(f"Attempted to parse snippet: {snippet}")
         return default_value
